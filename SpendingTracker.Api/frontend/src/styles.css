@@ -718,6 +718,7 @@ h2 {
 .mappings-panel,
 .comparison-panel,
 .management-panel,
+.spending-comparison-panel,
 .trend-panel,
 .expenses-panel {
     grid-column: span 12;
@@ -818,6 +819,162 @@ h2 {
 .comparison-pie-legend-copy span {
     color: var(--muted);
     font-size: 0.92rem;
+}
+
+.spending-granularity-field {
+    max-width: 180px;
+}
+
+.spending-comparison-note {
+    max-width: 58ch;
+    margin: 8px 0 0;
+}
+
+.spending-comparison-layout {
+    display: grid;
+    gap: 18px;
+}
+
+.spending-comparison-chart-shell {
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.spending-comparison-chart-frame {
+    min-width: 640px;
+    padding: 18px 16px 8px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(47, 122, 115, 0.05));
+}
+
+.spending-comparison-chart-frame svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+.spending-chart-grid-line {
+    stroke: rgba(32, 50, 39, 0.12);
+    stroke-dasharray: 4 8;
+}
+
+.spending-chart-grid-label,
+.spending-chart-axis-label {
+    fill: var(--muted);
+    font-family: Aptos, "Segoe UI Variable", "Trebuchet MS", sans-serif;
+}
+
+.spending-chart-grid-label {
+    font-size: 12px;
+}
+
+.spending-chart-axis-label {
+    font-size: 13px;
+}
+
+.spending-chart-axis-line,
+.spending-chart-tick {
+    stroke: rgba(32, 50, 39, 0.22);
+}
+
+.spending-chart-line {
+    fill: none;
+    stroke-width: 3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.84;
+}
+
+.spending-chart-line.is-selected {
+    stroke-width: 4;
+    opacity: 1;
+}
+
+.spending-chart-point {
+    filter: drop-shadow(0 4px 10px rgba(32, 50, 39, 0.12));
+    cursor: pointer;
+}
+
+.spending-chart-point-label {
+    fill: var(--ink);
+    font-family: Aptos, "Segoe UI Variable", "Trebuchet MS", sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    paint-order: stroke fill;
+    stroke: rgba(255, 250, 243, 0.96);
+    stroke-width: 4px;
+    stroke-linejoin: round;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 140ms ease;
+}
+
+.spending-chart-point-label.is-selected {
+    fill: var(--secondary);
+}
+
+.spending-chart-point-group:hover .spending-chart-point-label,
+.spending-chart-point-group:focus-within .spending-chart-point-label {
+    opacity: 1;
+}
+
+.spending-comparison-series-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+}
+
+.spending-series-card {
+    display: grid;
+    gap: 12px;
+    padding: 16px 18px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.62);
+}
+
+.spending-series-card.is-selected {
+    box-shadow: inset 0 0 0 1px rgba(47, 122, 115, 0.18);
+    background: linear-gradient(135deg, rgba(47, 122, 115, 0.08), rgba(255, 255, 255, 0.68));
+}
+
+.spending-series-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.spending-series-title {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+}
+
+.spending-series-swatch {
+    width: 12px;
+    height: 12px;
+    margin-top: 4px;
+    border-radius: 999px;
+}
+
+.spending-series-copy {
+    display: grid;
+    gap: 4px;
+}
+
+.spending-series-copy span,
+.spending-series-meta {
+    color: var(--muted);
+    font-size: 0.92rem;
+}
+
+.spending-series-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 14px;
 }
 
 .trend-filter-field {
@@ -996,6 +1153,7 @@ h2 {
 
     .section-heading,
     .comparison-card-header,
+    .spending-series-header,
     .category-row header,
     .merchant-card header,
     .expense-card header,

@@ -67,6 +67,7 @@ function App() {
         <OverviewTab
           active={dashboard.activeTab === 'overview'}
           comparisonCycleReports={dashboard.comparisonCycleReports}
+          comparisonCycleTransactions={dashboard.comparisonCycleTransactions}
           cycleTransactions={dashboard.cycleTransactions}
           monthlyReport={dashboard.monthlyReport}
           previousCycleCategorySpend={dashboard.previousCycleCategorySpend}

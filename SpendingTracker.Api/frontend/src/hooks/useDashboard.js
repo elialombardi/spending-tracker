@@ -19,12 +19,15 @@ function getEffectiveSelectedCycleStart(selectedCycleStart, cycleOptions) {
         : cycleOptions[0]?.from || ''
 }
 
-function buildComparisonCycleStarts(cycleOptions) {
+function buildComparisonCycleStarts(selectedCycleStart, cycleOptions) {
     if (cycleOptions.length === 0) {
         return []
     }
 
-    return [...cycleOptions.slice(0, 3)]
+    const selectedCycleIndex = cycleOptions.findIndex((option) => option.from === selectedCycleStart)
+    const comparisonStartIndex = selectedCycleIndex >= 0 ? selectedCycleIndex : 0
+
+    return [...cycleOptions.slice(comparisonStartIndex, comparisonStartIndex + 3)]
         .reverse()
         .map((option) => option.from)
 }
@@ -48,29 +51,29 @@ function formatDateOnly(date) {
     return `${year}-${month}-${day}`
 }
 
-function buildComparablePreviousCycleEnd(currentCycle, previousCycle) {
-    if (!currentCycle || !previousCycle) {
+function buildComparableCycleEnd(referenceCycle, comparedCycle) {
+    if (!referenceCycle || !comparedCycle) {
         return ''
     }
 
     const today = new Date()
     const todayDate = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()))
-    const currentCycleStart = parseDateOnly(currentCycle.from)
-    const currentCycleEnd = parseDateOnly(currentCycle.to)
-    const previousCycleStart = parseDateOnly(previousCycle.from)
-    const previousCycleEnd = parseDateOnly(previousCycle.to)
-    const effectiveCurrentDate = todayDate < currentCycleStart
-        ? currentCycleStart
-        : todayDate > currentCycleEnd
-            ? currentCycleEnd
+    const referenceCycleStart = parseDateOnly(referenceCycle.from)
+    const referenceCycleEnd = parseDateOnly(referenceCycle.to)
+    const comparedCycleStart = parseDateOnly(comparedCycle.from)
+    const comparedCycleEnd = parseDateOnly(comparedCycle.to)
+    const effectiveCurrentDate = todayDate < referenceCycleStart
+        ? referenceCycleStart
+        : todayDate > referenceCycleEnd
+            ? referenceCycleEnd
             : todayDate
-    const elapsedDays = Math.max(0, Math.floor((effectiveCurrentDate - currentCycleStart) / 86400000))
-    const comparablePreviousCycleEnd = new Date(previousCycleStart)
+    const elapsedDays = Math.max(0, Math.floor((effectiveCurrentDate - referenceCycleStart) / 86400000))
+    const comparableCycleEnd = new Date(comparedCycleStart)
 
-    comparablePreviousCycleEnd.setUTCDate(comparablePreviousCycleEnd.getUTCDate() + elapsedDays)
+    comparableCycleEnd.setUTCDate(comparableCycleEnd.getUTCDate() + elapsedDays)
 
     return formatDateOnly(
-        comparablePreviousCycleEnd > previousCycleEnd ? previousCycleEnd : comparablePreviousCycleEnd,
+        comparableCycleEnd > comparedCycleEnd ? comparedCycleEnd : comparableCycleEnd,
     )
 }
 
@@ -146,6 +149,7 @@ async function fetchDashboardData(selectedCycleStart) {
             categoryMappings,
             categorizedExpenses: [],
             comparisonCycleReports: [],
+            comparisonCycleTransactions: [],
             cycleTransactions: [],
             cycleIncomeCategories,
             cycleOptions,
@@ -157,7 +161,7 @@ async function fetchDashboardData(selectedCycleStart) {
         }
     }
 
-    const comparisonCycleStarts = buildComparisonCycleStarts(cycleOptions)
+    const comparisonCycleStarts = buildComparisonCycleStarts(effectiveCycleStart, cycleOptions)
     const comparisonCycleReports = await Promise.all(
         comparisonCycleStarts.map((cycleStart) =>
             fetchJson(`/api/reports/cycle?cycleStart=${encodeURIComponent(cycleStart)}`),
@@ -171,6 +175,7 @@ async function fetchDashboardData(selectedCycleStart) {
             categoryMappings,
             categorizedExpenses: [],
             comparisonCycleReports,
+            comparisonCycleTransactions: [],
             cycleTransactions: [],
             cycleIncomeCategories,
             cycleOptions,
@@ -187,24 +192,39 @@ async function fetchDashboardData(selectedCycleStart) {
         ? cycleOptions[selectedCycleIndex + 1]
         : null
     const previousCycleComparableTo = previousCycleOption
-        ? buildComparablePreviousCycleEnd(monthlyReport, previousCycleOption)
+        ? buildComparableCycleEnd(monthlyReport, previousCycleOption)
         : ''
-
-    const [reviewQueue, cycleTransactions, previousCycleTransactions] = await Promise.all([
+    const [reviewQueue, cycleTransactions, comparisonCycleTransactions] = await Promise.all([
         fetchJson(`/api/transactions?needsReview=true&from=${monthlyReport.from}&to=${monthlyReport.to}`),
         fetchJson(`/api/transactions?from=${monthlyReport.from}&to=${monthlyReport.to}`),
-        previousCycleOption
-            ? fetchJson(
-                `/api/transactions?direction=expense&from=${previousCycleOption.from}&to=${previousCycleComparableTo}`,
-            )
-            : Promise.resolve([]),
+        Promise.all(
+            comparisonCycleReports.map(async (report) => {
+                const transactions = await fetchJson(
+                    `/api/transactions?direction=expense&from=${report.from}&to=${report.to}`,
+                )
+
+                return {
+                    from: report.from,
+                    transactions,
+                }
+            }),
+        ),
     ])
+    const previousCycleComparisonEntry = previousCycleOption
+        ? comparisonCycleTransactions.find((entry) => entry.from === previousCycleOption.from) ?? null
+        : null
+    const previousCycleTransactions = previousCycleComparisonEntry
+        ? previousCycleComparisonEntry.transactions.filter(
+            (transaction) => transaction.bookingDate <= previousCycleComparableTo,
+        )
+        : []
 
     return {
         categories,
         categoryMappings,
         categorizedExpenses: buildCategorizedExpenses(cycleTransactions),
         comparisonCycleReports,
+        comparisonCycleTransactions,
         cycleTransactions,
         cycleIncomeCategories,
         cycleOptions,
@@ -233,6 +253,7 @@ export function useDashboard() {
     })
     const [categoryMappings, setCategoryMappings] = useState([])
     const [comparisonCycleReports, setComparisonCycleReports] = useState([])
+    const [comparisonCycleTransactions, setComparisonCycleTransactions] = useState([])
     const [cycleTransactions, setCycleTransactions] = useState([])
     const [incomeTransactions, setIncomeTransactions] = useState([])
     const [monthlyReport, setMonthlyReport] = useState(null)
@@ -273,6 +294,7 @@ export function useDashboard() {
     function applyDashboardData(data) {
         setCategories(data.categories)
         setComparisonCycleReports(data.comparisonCycleReports)
+        setComparisonCycleTransactions(data.comparisonCycleTransactions)
         setCycleOptions(data.cycleOptions)
         setCycleIncomeCategories(data.cycleIncomeCategories)
         setCategoryMappings(data.categoryMappings)
@@ -584,6 +606,7 @@ export function useDashboard() {
         categoryMappings,
         categorizeTransaction,
         comparisonCycleReports,
+        comparisonCycleTransactions,
         cycleTransactions,
         cycleIncomeCategories,
         cycleOptions,

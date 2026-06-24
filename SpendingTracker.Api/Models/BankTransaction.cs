@@ -30,6 +30,9 @@ public sealed class BankTransaction
 
     public bool NeedsReview { get; set; }
 
+    // When true, this transaction should be excluded from spending calculations and reports
+    public bool ExcludeFromCalculations { get; set; }
+
     public string SourceFingerprint { get; set; } = string.Empty;
 
     public string SourceFileName { get; set; } = string.Empty;

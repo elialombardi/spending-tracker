@@ -152,7 +152,7 @@ public sealed class TransactionImportService(SpendingDbContext dbContext, PosteI
     {
         var query = dbContext.Transactions
             .AsNoTracking()
-            .Where(transaction => transaction.Amount < 0);
+            .Where(transaction => transaction.Amount < 0 && !transaction.ExcludeFromCalculations);
 
         if (from is not null)
         {
@@ -203,7 +203,7 @@ public sealed class TransactionImportService(SpendingDbContext dbContext, PosteI
 
         var transactionCounts = await dbContext.Transactions
             .AsNoTracking()
-            .Where(transaction => !string.IsNullOrWhiteSpace(transaction.Category))
+            .Where(transaction => !transaction.ExcludeFromCalculations && !string.IsNullOrWhiteSpace(transaction.Category))
             .GroupBy(transaction => transaction.Category!)
             .Select(group => new { Category = group.Key, Transactions = group.Count() })
             .ToListAsync(cancellationToken);
@@ -233,7 +233,7 @@ public sealed class TransactionImportService(SpendingDbContext dbContext, PosteI
 
         var incomeCategoryCounts = await dbContext.Transactions
             .AsNoTracking()
-            .Where(transaction => transaction.Amount > 0 && !string.IsNullOrWhiteSpace(transaction.Category))
+            .Where(transaction => transaction.Amount > 0 && !transaction.ExcludeFromCalculations && !string.IsNullOrWhiteSpace(transaction.Category))
             .GroupBy(transaction => transaction.Category!)
             .Select(group => new
             {
@@ -317,7 +317,7 @@ public sealed class TransactionImportService(SpendingDbContext dbContext, PosteI
 
         var transactionCounts = await dbContext.Transactions
             .AsNoTracking()
-            .Where(transaction => transaction.Amount < 0 && merchantKeys.Contains(transaction.MerchantKey))
+            .Where(transaction => transaction.Amount < 0 && !transaction.ExcludeFromCalculations && merchantKeys.Contains(transaction.MerchantKey))
             .GroupBy(transaction => transaction.MerchantKey)
             .Select(group => new
             {
@@ -374,7 +374,7 @@ public sealed class TransactionImportService(SpendingDbContext dbContext, PosteI
         var matchingTransactions = await dbContext.Transactions
             .AsNoTracking()
             .CountAsync(
-                transaction => transaction.MerchantKey == rule.MerchantKey && transaction.Amount < 0,
+                transaction => transaction.MerchantKey == rule.MerchantKey && transaction.Amount < 0 && !transaction.ExcludeFromCalculations,
                 cancellationToken);
 
         return MapCategoryMapping(rule, matchingTransactions);
@@ -418,6 +418,8 @@ public sealed class TransactionImportService(SpendingDbContext dbContext, PosteI
         var now = DateTimeOffset.UtcNow;
 
         ApplyCategory(transaction, category, merchantKey);
+        // respect exclude flag from request for calculations and reports
+        transaction.ExcludeFromCalculations = request.ExcludeFromCalculations;
 
         if (request.SaveRule && !string.IsNullOrWhiteSpace(merchantKey))
         {

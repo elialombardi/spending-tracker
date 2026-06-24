@@ -40,7 +40,8 @@ public sealed record CategorizeTransactionRequest(
     string Category,
     bool SaveRule = true,
     MerchantRuleBehavior? RuleBehavior = null,
-    string? MerchantKey = null);
+    string? MerchantKey = null,
+    bool ExcludeFromCalculations = false);
 
 public sealed record SpendingSummaryResponse(
     DateOnly? From,

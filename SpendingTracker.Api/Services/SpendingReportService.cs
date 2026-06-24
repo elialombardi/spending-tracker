@@ -98,7 +98,7 @@ public sealed class SpendingReportService(SpendingDbContext dbContext)
     {
         var transactions = await dbContext.Transactions
             .AsNoTracking()
-            .Where(transaction => transaction.BookingDate >= from && transaction.BookingDate <= to)
+            .Where(transaction => transaction.BookingDate >= from && transaction.BookingDate <= to && !transaction.ExcludeFromCalculations)
             .ToListAsync(cancellationToken);
 
         return transactions
@@ -311,7 +311,7 @@ public sealed class SpendingReportService(SpendingDbContext dbContext)
     {
         var query = dbContext.Transactions
             .AsNoTracking()
-            .Where(transaction => transaction.Amount > 0);
+            .Where(transaction => transaction.Amount > 0 && !transaction.ExcludeFromCalculations);
 
         if (cycleAnchorCategories.Count == 0)
         {

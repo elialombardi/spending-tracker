@@ -40,14 +40,15 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
           labels: |
-            org.opencontainers.image.title=Backend Service
-            org.opencontainers.image.description=Backend API for my application
+            org.opencontainers.image.title=Spending Tracker API
+            org.opencontainers.image.description=Backend API for Spending Tracker
 
       - name: Build and push Backend
+        id: build
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: ./Dockerfile  # Or change to ./docker/Dockerfile.backend if different
+          context: ./SpendingTracker.Api
+          file: ./SpendingTracker.Api/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

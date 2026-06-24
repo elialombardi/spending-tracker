@@ -1,0 +1,11 @@
+bin/
+obj/
+.vs/
+.git/
+*.user
+*.suo
+*.gitignore
+App_Data/*.bak
+App_Data/*.db
+node_modules/
+**/publish/

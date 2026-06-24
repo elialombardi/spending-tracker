@@ -2,8 +2,8 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
 # copy csproj and restore first for caching
-COPY . .
-RUN dotnet restore "SpendingTracker.Api.csproj"
+COPY ["SpendingTracker.Api/SpendingTracker.Api.csproj", "SpendingTracker.Api/"]
+RUN dotnet restore "SpendingTracker.Api/SpendingTracker.Api.csproj"
 
 # copy everything and publish
 COPY . .

@@ -1,10 +1,15 @@
 using System.Text.Json.Serialization;
+using System.IO;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using SpendingTracker.Api.Data;
 using SpendingTracker.Api.Services;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    WebRootPath = Directory.GetCurrentDirectory()
+});
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -12,6 +17,17 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 builder.Services.AddOpenApi();
+
+// CORS: allow cross-origin requests for API clients (adjust policy as needed)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
 
 var configuredConnectionString = builder.Configuration.GetConnectionString("SpendingTracker")
     ?? "Data Source=App_Data/spending-tracker.db";
@@ -55,9 +71,10 @@ if (app.Environment.IsProduction())
     app.UseHttpsRedirection();
 }
 
-app.UseDefaultFiles();
-app.UseStaticFiles();
+// Enable CORS
+app.UseCors("AllowAll");
+
+// Static UI serving removed — API-only application
 app.MapControllers();
-app.MapFallbackToFile("index.html");
 
 app.Run();

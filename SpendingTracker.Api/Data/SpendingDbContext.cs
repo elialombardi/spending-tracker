@@ -11,6 +11,10 @@ public sealed class SpendingDbContext(DbContextOptions<SpendingDbContext> option
 
     public DbSet<CycleIncomeCategory> CycleIncomeCategories => Set<CycleIncomeCategory>();
 
+    // Locations and tags
+    public DbSet<Location> Locations => Set<Location>();
+    public DbSet<Tag> Tags => Set<Tag>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var transactions = modelBuilder.Entity<BankTransaction>();
@@ -35,5 +39,26 @@ public sealed class SpendingDbContext(DbContextOptions<SpendingDbContext> option
         var cycleIncomeCategories = modelBuilder.Entity<CycleIncomeCategory>();
         cycleIncomeCategories.Property(category => category.Category).HasMaxLength(128);
         cycleIncomeCategories.HasIndex(category => category.Category).IsUnique();
+
+        // Locations / Tags
+        var locations = modelBuilder.Entity<Location>();
+        locations.Property(l => l.Title).IsRequired().HasMaxLength(256);
+        locations.Property(l => l.Url).HasMaxLength(2048);
+        locations.Property(l => l.Description).HasMaxLength(2000);
+
+        var tags = modelBuilder.Entity<Tag>();
+        tags.Property(t => t.Name).IsRequired().HasMaxLength(128);
+        tags.HasIndex(t => t.Name).IsUnique();
+
+        // many-to-many join table
+        modelBuilder.Entity<Location>()
+            .HasMany(l => l.Tags)
+            .WithMany(t => t.Locations)
+            .UsingEntity<Dictionary<string, object>>(
+                "LocationTag",
+                j => j.HasOne<Tag>().WithMany().HasForeignKey("TagId").OnDelete(DeleteBehavior.Cascade),
+                j => j.HasOne<Location>().WithMany().HasForeignKey("LocationId").OnDelete(DeleteBehavior.Cascade),
+                j => j.HasKey("LocationId", "TagId")
+            );
     }
 }

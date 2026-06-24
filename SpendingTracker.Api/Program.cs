@@ -29,8 +29,12 @@ builder.Services.AddCors(options =>
     });
 });
 
-var configuredConnectionString = builder.Configuration.GetConnectionString("SpendingTracker")
-    ?? "Data Source=App_Data/spending-tracker.db";
+// Allow overriding the DB file via environment variable inside containers
+var envDbPath = Environment.GetEnvironmentVariable("SPENDING_TRACKER_DB");
+var configuredConnectionString = !string.IsNullOrEmpty(envDbPath)
+    ? $"Data Source={envDbPath}"
+    : builder.Configuration.GetConnectionString("SpendingTracker")
+        ?? "Data Source=App_Data/spending-tracker.db";
 var sqliteConnectionBuilder = new SqliteConnectionStringBuilder(configuredConnectionString);
 
 if (!Path.IsPathRooted(sqliteConnectionBuilder.DataSource))

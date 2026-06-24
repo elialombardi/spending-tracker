@@ -47,7 +47,6 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          # context: ./SpendingTracker.Api
           file: ./SpendingTracker.Api/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}

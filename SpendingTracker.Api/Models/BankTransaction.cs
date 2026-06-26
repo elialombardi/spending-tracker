@@ -38,4 +38,7 @@ public sealed class BankTransaction
     public string SourceFileName { get; set; } = string.Empty;
 
     public DateTimeOffset ImportedAtUtc { get; set; }
+
+    // When true, this transaction is a monthly recurring payment (e.g., subscription)
+    public bool IsMonthlyRecurring { get; set; }
 }

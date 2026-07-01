@@ -34,14 +34,16 @@ public sealed record TransactionResponse(
     string? Category,
     string? SuggestedCategory,
     double? SuggestionConfidence,
-    bool NeedsReview);
+    bool NeedsReview,
+    bool IsMonthlyRecurring);
 
 public sealed record CategorizeTransactionRequest(
     string Category,
     bool SaveRule = true,
     MerchantRuleBehavior? RuleBehavior = null,
     string? MerchantKey = null,
-    bool ExcludeFromCalculations = false);
+    bool ExcludeFromCalculations = false,
+    bool IsMonthlyRecurring = false);
 
 public sealed record SpendingSummaryResponse(
     DateOnly? From,

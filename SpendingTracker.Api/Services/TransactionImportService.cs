@@ -420,6 +420,7 @@ public sealed class TransactionImportService(SpendingDbContext dbContext, PosteI
         ApplyCategory(transaction, category, merchantKey);
         // respect exclude flag from request for calculations and reports
         transaction.ExcludeFromCalculations = request.ExcludeFromCalculations;
+        transaction.IsMonthlyRecurring = request.IsMonthlyRecurring;
 
         if (request.SaveRule && !string.IsNullOrWhiteSpace(merchantKey))
         {
@@ -583,6 +584,7 @@ public sealed class TransactionImportService(SpendingDbContext dbContext, PosteI
             transaction.Category,
             transaction.SuggestedCategory,
             transaction.SuggestionConfidence,
-            transaction.NeedsReview);
+            transaction.NeedsReview,
+            transaction.IsMonthlyRecurring);
     }
 }

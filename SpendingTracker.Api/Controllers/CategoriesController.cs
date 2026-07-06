@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SpendingTracker.Api.Authentication;
 using SpendingTracker.Api.Contracts;
 using SpendingTracker.Api.Models;
 using SpendingTracker.Api.Services;
@@ -7,6 +9,7 @@ namespace SpendingTracker.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public sealed class CategoriesController(TransactionImportService importService) : ControllerBase
 {
     [HttpGet]
@@ -26,6 +29,7 @@ public sealed class CategoriesController(TransactionImportService importService)
     }
 
     [HttpPut("cycle-income")]
+    [Authorize(Policy = AuthPolicies.ApiWriter)]
     [ProducesResponseType(typeof(CycleIncomeCategoriesResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<CycleIncomeCategoriesResponse>> UpdateCycleIncomeCategories(
         [FromBody] UpdateCycleIncomeCategoriesRequest request,
@@ -44,6 +48,7 @@ public sealed class CategoriesController(TransactionImportService importService)
     }
 
     [HttpPut("mappings/{mappingId:guid}")]
+    [Authorize(Policy = AuthPolicies.ApiWriter)]
     [ProducesResponseType(typeof(CategoryMappingResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -67,6 +72,7 @@ public sealed class CategoriesController(TransactionImportService importService)
     }
 
     [HttpDelete("mappings/{mappingId:guid}")]
+    [Authorize(Policy = AuthPolicies.ApiWriter)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteCategoryMapping(Guid mappingId, CancellationToken cancellationToken)

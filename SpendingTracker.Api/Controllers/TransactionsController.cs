@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SpendingTracker.Api.Authentication;
 using SpendingTracker.Api.Contracts;
 using SpendingTracker.Api.Services;
 
@@ -6,6 +8,7 @@ namespace SpendingTracker.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public sealed class TransactionsController(TransactionImportService importService) : ControllerBase
 {
     [HttpGet]
@@ -41,6 +44,7 @@ public sealed class TransactionsController(TransactionImportService importServic
     }
 
     [HttpPost("{transactionId:guid}/categorize")]
+    [Authorize(Policy = AuthPolicies.ApiWriter)]
     [ProducesResponseType(typeof(TransactionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

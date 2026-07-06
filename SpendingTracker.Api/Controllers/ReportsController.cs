@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SpendingTracker.Api.Contracts;
 using SpendingTracker.Api.Services;
@@ -6,6 +7,7 @@ namespace SpendingTracker.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public sealed class ReportsController(SpendingReportService reportService) : ControllerBase
 {
     [HttpGet("cycles")]

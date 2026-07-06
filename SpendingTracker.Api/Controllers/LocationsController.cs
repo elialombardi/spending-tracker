@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SpendingTracker.Api.Authentication;
 using SpendingTracker.Api.Data;
 using SpendingTracker.Api.Models;
 
@@ -7,6 +9,7 @@ namespace SpendingTracker.Api.Controllers;
 
 [ApiController]
 [Route("locations")]
+[Authorize]
 public class LocationsController : ControllerBase
 {
     private readonly SpendingDbContext _db;
@@ -35,6 +38,7 @@ public class LocationsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = AuthPolicies.ApiWriter)]
     public async Task<IActionResult> Create([FromBody] CreateLocationDto dto)
     {
         var location = new Location
@@ -60,6 +64,7 @@ public class LocationsController : ControllerBase
     }
 
     [HttpPut("{id:int}")]
+    [Authorize(Policy = AuthPolicies.ApiWriter)]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateLocationDto dto)
     {
         var location = await _db.Locations.Include(l => l.Tags).FirstOrDefaultAsync(l => l.Id == id);
@@ -84,6 +89,7 @@ public class LocationsController : ControllerBase
     }
 
     [HttpDelete("{id:int}")]
+    [Authorize(Policy = AuthPolicies.ApiWriter)]
     public async Task<IActionResult> Delete(int id)
     {
         var location = await _db.Locations.FindAsync(id);
@@ -94,6 +100,7 @@ public class LocationsController : ControllerBase
     }
 
     [HttpPost("{id:int}/tags")]
+    [Authorize(Policy = AuthPolicies.ApiWriter)]
     public async Task<IActionResult> ToggleTag(int id, [FromBody] ToggleTagDto dto)
     {
         var location = await _db.Locations.Include(l => l.Tags).FirstOrDefaultAsync(l => l.Id == id);

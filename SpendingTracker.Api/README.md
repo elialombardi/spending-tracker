@@ -46,10 +46,15 @@ The Vite dev server runs on `http://localhost:5173` and proxies `/api` calls to 
 
 The SQLite database is created automatically at `App_Data/spending-tracker.db`.
 
+API authentication is now required for every endpoint except `POST /api/auth/token` and the development OpenAPI document. In development, bootstrap a bearer token with the default credentials from `appsettings.Development.json`, then send `Authorization: Bearer <token>` on subsequent requests. In production, override the `Auth` section with a strong signing key and your own users.
+
+Frontend implementation details are documented in [docs/frontend-auth.md](docs/frontend-auth.md).
+
 Open the root URL shown by ASP.NET Core in the terminal to use the dashboard.
 
 ## Main endpoints
 
+- `POST /api/auth/token` returns a JWT bearer token for a configured API user.
 - `POST /api/imports/poste-italiane` uploads a workbook and imports new transactions.
 - `GET /api/transactions?needsReview=true` lists transactions that still need a category.
 - `POST /api/transactions/{transactionId}/categorize` assigns a category and optionally stores a reusable rule.

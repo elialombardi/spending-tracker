@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SpendingTracker.Api.Authentication;
 using SpendingTracker.Api.Data;
 using SpendingTracker.Api.Models;
 
@@ -7,6 +9,7 @@ namespace SpendingTracker.Api.Controllers;
 
 [ApiController]
 [Route("tags")]
+[Authorize]
 public class TagsController : ControllerBase
 {
     private readonly SpendingDbContext _db;
@@ -24,6 +27,7 @@ public class TagsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = AuthPolicies.ApiWriter)]
     public async Task<IActionResult> Create([FromBody] CreateTagDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) return BadRequest("Name required");
@@ -36,6 +40,7 @@ public class TagsController : ControllerBase
     }
 
     [HttpPatch("{name}")]
+    [Authorize(Policy = AuthPolicies.ApiWriter)]
     public async Task<IActionResult> Rename(string name, [FromBody] RenameTagDto dto)
     {
         var tag = await _db.Tags.FirstOrDefaultAsync(t => t.Name == name);
@@ -51,6 +56,7 @@ public class TagsController : ControllerBase
     }
 
     [HttpDelete("{name}")]
+    [Authorize(Policy = AuthPolicies.ApiWriter)]
     public async Task<IActionResult> Delete(string name)
     {
         var tag = await _db.Tags.Include(t => t.Locations).FirstOrDefaultAsync(t => t.Name == name);

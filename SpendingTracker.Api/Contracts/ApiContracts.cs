@@ -2,6 +2,17 @@ using SpendingTracker.Api.Models;
 
 namespace SpendingTracker.Api.Contracts;
 
+public sealed record LoginRequest(
+    string Username,
+    string Password);
+
+public sealed record AuthTokenResponse(
+    string AccessToken,
+    string TokenType,
+    DateTimeOffset ExpiresAt,
+    string Username,
+    string Role);
+
 public sealed record ImportResultResponse(
     string AccountNumber,
     string FileName,

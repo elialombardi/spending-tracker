@@ -1,4 +1,4 @@
-name: Build and Push Backend Docker Image
+name: Build and Push Docker Image
 
 on:
   push:
@@ -11,7 +11,7 @@ on:
 
 env:
   DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-  DOCKER_IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/spending-tracker-api
+  DOCKER_IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/spending-tracker
 
 jobs:
   build-and-push:
@@ -40,14 +40,14 @@ jobs:
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
           labels: |
-            org.opencontainers.image.title=Spending Tracker API
-            org.opencontainers.image.description=Backend API for Spending Tracker
+            org.opencontainers.image.title=Spending Tracker
+            org.opencontainers.image.description=Beautiful Application
 
       - name: Build and push Backend
         id: build
         uses: docker/build-push-action@v5
         with:
-          file: ./SpendingTracker.Api/Dockerfile
+          file: ./Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

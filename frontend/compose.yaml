@@ -1,0 +1,11 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: test-api-frontend:latest
+    ports:
+      - "${APP_PORT:-8080}:80"
+    environment:
+      API_URL: "${API_URL:-https://localhost:7004}"
+    restart: unless-stopped

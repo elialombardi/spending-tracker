@@ -12,7 +12,6 @@ using SpendingTracker.Api.Services;
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
     Args = args,
-    WebRootPath = Directory.GetCurrentDirectory()
 });
 
 builder.Services.AddControllers()
@@ -107,10 +106,20 @@ if (app.Environment.IsProduction())
 
 // Enable CORS
 app.UseCors("AllowAll");
+
+
+// Manage React application in wwwroot
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 // Static UI serving removed — API-only application
 app.MapControllers();
+
+// Allow anonymous access to the SPA fallback so the global fallback authorization
+// policy doesn't require authentication for the client app route.
+app.MapFallbackToFile("index.html").AllowAnonymous();
 
 app.Run();

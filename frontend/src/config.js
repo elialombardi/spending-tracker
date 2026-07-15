@@ -26,6 +26,22 @@ if (_apiBase === '/') {
 
 export const API_BASE = _apiBase
 
+const _rawPlaceSearchProvider = runtimeEnv.VITE_PLACE_SEARCH_PROVIDER
+    || viteEnv.VITE_PLACE_SEARCH_PROVIDER
+    || runtimeEnv.REACT_APP_PLACE_SEARCH_PROVIDER
+    || processEnv.REACT_APP_PLACE_SEARCH_PROVIDER
+    || 'nominatim'
+
+export const PLACE_SEARCH_PROVIDER = String(_rawPlaceSearchProvider).trim().toLowerCase() === 'geoapify'
+    ? 'geoapify'
+    : 'nominatim'
+
+export const GEOAPIFY_API_KEY = runtimeEnv.VITE_GEOAPIFY_API_KEY
+    || viteEnv.VITE_GEOAPIFY_API_KEY
+    || runtimeEnv.REACT_APP_GEOAPIFY_API_KEY
+    || processEnv.REACT_APP_GEOAPIFY_API_KEY
+    || ''
+
 export const DEV_AUTH_USERNAME = runtimeEnv.VITE_AUTH_USERNAME
     || viteEnv.VITE_AUTH_USERNAME
     || processEnv.REACT_APP_AUTH_USERNAME

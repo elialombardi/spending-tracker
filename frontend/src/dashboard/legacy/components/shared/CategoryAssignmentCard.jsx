@@ -9,6 +9,7 @@ import InputLabel from '@mui/material/InputLabel'
 import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
 import Button from '@mui/material/Button'
+import SaveIcon from '@mui/icons-material/Save'
 import { formatDate, formatMoney, formatPercent } from '../../lib/formatters'
 import CategoryPicker from './CategoryPicker'
 
@@ -85,8 +86,8 @@ export default function CategoryAssignmentCard({ categories, context, isBusy, on
                 {ruleBadge}
             </Box>
 
-            <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                <Box sx={{ flex: 1 }}>
+            <Box component="form" onSubmit={handleSubmit} sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                <Box sx={{ flex: '1 1 0', minWidth: 220 }}>
                     <CategoryPicker
                         categories={categories}
                         disabled={isBusy}
@@ -97,7 +98,7 @@ export default function CategoryAssignmentCard({ categories, context, isBusy, on
                     />
                 </Box>
 
-                <FormControl size="small" sx={{ minWidth: 180 }}>
+                <FormControl size="small" sx={{ minWidth: 180, flex: '0 0 260px' }}>
                     <InputLabel id={`rulemode-label-${transaction.transactionId}`}>Rule</InputLabel>
                     <Select
                         labelId={`rulemode-label-${transaction.transactionId}`}
@@ -112,31 +113,39 @@ export default function CategoryAssignmentCard({ categories, context, isBusy, on
                     </Select>
                 </FormControl>
 
-                <FormControlLabel
-                    control={
-                        <Checkbox
-                            checked={excludeFromCalculations}
-                            onChange={(event) => setExcludeFromCalculations(event.target.checked)}
-                            disabled={isBusy}
-                        />
-                    }
-                    label="Exclude from calculations"
-                />
-
-                <FormControlLabel
-                    control={
-                        <Checkbox
-                            checked={isMonthlyRecurring}
-                            onChange={(event) => setIsMonthlyRecurring(event.target.checked)}
-                            disabled={isBusy}
-                        />
-                    }
-                    label="Monthly recurring"
-                />
-
-                <Button variant="contained" type="submit" disabled={isBusy}>
-                    {context === 'edit' ? 'Update category' : 'Save category'}
+                <Button
+                    variant="contained"
+                    type="submit"
+                    disabled={isBusy}
+                    sx={{ ml: 'auto', flex: '0 0 auto' }}
+                    aria-label={context === 'edit' ? 'Update category' : 'Save category'}
+                >
+                    <SaveIcon />
                 </Button>
+
+                <Box sx={{ flex: '1 1 100%', display: 'flex', gap: 1, alignItems: 'center', mt: 1 }}>
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={excludeFromCalculations}
+                                onChange={(event) => setExcludeFromCalculations(event.target.checked)}
+                                disabled={isBusy}
+                            />
+                        }
+                        label="Exclude from calculations"
+                    />
+
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={isMonthlyRecurring}
+                                onChange={(event) => setIsMonthlyRecurring(event.target.checked)}
+                                disabled={isBusy}
+                            />
+                        }
+                        label="Monthly recurring"
+                    />
+                </Box>
             </Box>
         </Paper>
     )

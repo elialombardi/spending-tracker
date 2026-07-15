@@ -1,6 +1,7 @@
 import React from 'react'
 import { ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Cell } from 'recharts'
 import { formatMoney, formatDate } from '../lib/formatters'
+import { dashboardStatusColors } from '../../../theme'
 
 export default function TrendChart({ comparisonTrendData, selectedCycleStart }) {
     return (
@@ -23,7 +24,7 @@ export default function TrendChart({ comparisonTrendData, selectedCycleStart }) 
                         {comparisonTrendData.map((entry, idx) => (
                             <Cell
                                 key={`cell-${idx}`}
-                                fill={entry.report.from === selectedCycleStart ? '#2f7a73' : '#3f6aa0'}
+                                fill={entry.report.from === selectedCycleStart ? dashboardStatusColors.positive : dashboardStatusColors.neutral}
                             />
                         ))}
                     </Bar>

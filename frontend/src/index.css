@@ -1,309 +1,94 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow: rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
-
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
-}
-
-/* App scoped core typography and smoothing. Scoped to .app-root to avoid global overrides that conflict with MUI */
-.app-root {
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-@media (max-width: 1024px) {
-  .app-root {
-    font-size: 16px;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+html,
+body,
+#root {
+  height: 100%;
 }
 
 body {
   margin: 0;
+  font-family: system-ui, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased
 }
 
+.app-root {
+  font-size: 18px;
+  line-height: 1.45
+}
 
-h2 {
+.page-glow {
+  position: fixed;
+  pointer-events: none;
+  inset: 0;
+  z-index: 0
+}
 
-  h1,
-  h2 {
-    font-family: var(--heading);
-    font-weight: 500;
-    color: var(--text-h);
+.page-glow-left {
+  left: -20%;
+  top: -10%;
+  width: 40%;
+  height: 60%;
+}
+
+.page-glow-right {
+  right: -20%;
+  bottom: -10%;
+  width: 40%;
+  height: 60%;
+}
+
+.shell {
+  padding: 20px 24px
+}
+
+.page-stack {
+  max-width: 1200px;
+  margin: 0 auto
+}
+
+.review-panel {
+  border-radius: 8px;
+  padding: 16px
+}
+
+.review-panel-wide {
+  max-width: 1100px
+}
+
+.review-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 12px
+}
+
+.review-card {
+  background: transparent
+}
+
+.upload-panel {
+  background: transparent
+}
+
+/* Improve visibility of small icon-only buttons */
+.MuiButton-root.Mui-contained {
+  box-shadow: var(--shadow, none)
+}
+
+/* Ensure tab pages are visible when active */
+.tab-page {
+  display: block
+}
+
+.tab-page[hidden] {
+  display: none
+}
+
+/* Basic responsive tweaks */
+@media (max-width:720px) {
+  .page-stack {
+    padding: 12px
   }
 
-  h1 {
-    font-size: 56px;
-    letter-spacing: -1.68px;
-    margin: 32px 0;
-
-    @media (max-width: 1024px) {
-      font-size: 36px;
-      margin: 20px 0;
-    }
+  .app-root {
+    font-size: 16px
   }
-
-  h2 {
-    font-size: 24px;
-    line-height: 118%;
-    letter-spacing: -0.24px;
-    margin: 0 0 8px;
-
-    @media (max-width: 1024px) {
-      font-size: 20px;
-    }
-  }
-
-  p {
-    margin: 0;
-  }
-
-  code,
-  .counter {
-    font-family: var(--mono);
-    display: inline-flex;
-    border-radius: 4px;
-    color: var(--text-h);
-  }
-
-  code {
-    font-size: 15px;
-    line-height: 135%;
-    padding: 4px 8px;
-    background: var(--code-bg);
-  }
-
-  /* Search styling */
-  .search-card {
-    padding: 12px;
-  }
-
-  .search-result {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    text-align: left;
-    padding: 0;
-    background: transparent;
-    border-radius: 10px;
-  }
-
-  .search-result>.result-left {
-    width: 56px;
-    height: 56px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 12px;
-    color: var(--accent);
-  }
-
-  .search-result>.result-content {
-    flex: 1 1 auto;
-    padding: 12px 16px;
-    background: var(--accent-bg);
-    border: 1px solid var(--accent-border);
-    border-radius: 10px;
-  }
-
-  .search-result>.result-action {
-    margin-left: 12px;
-  }
-
-  .search-result .result-main {
-    font-weight: 600;
-    margin-bottom: 6px;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .search-result .result-sub {
-    font-size: 13px;
-    opacity: 0.85;
-  }
-
-  .search-results ul {
-    max-height: 40vh;
-    overflow: auto;
-    padding-right: 8px;
-  }
-
-  .search-result:focus,
-  .search-result button:focus {
-    outline: 2px solid var(--accent-border);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .search-result>.result-content {
-      background: rgba(10, 12, 15, 0.45);
-      border-color: rgba(255, 255, 255, 0.04);
-    }
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .search-input {
-      background: #0f1720;
-      color: var(--text);
-      border: 1px solid rgba(255, 255, 255, 0.03);
-    }
-
-    .search-result>.result-content {
-      background: rgba(10, 12, 15, 0.45);
-      border-color: rgba(255, 255, 255, 0.04);
-    }
-  }
-
-  /* Tag multi-select */
-  .tag-multi {
-    position: relative;
-  }
-
-  .tag-multi .chips {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    padding: 6px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-  }
-
-  .tag-multi .chips input {
-    border: none;
-    outline: none;
-    min-width: 120px;
-    padding: 8px;
-    background: transparent;
-  }
-
-  .tag-chip {
-    background: var(--accent-bg);
-    color: var(--text-h);
-    padding: 6px 8px;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .chip-x {
-    background: transparent;
-    border: none;
-    color: inherit;
-    font-size: 14px;
-    cursor: pointer;
-  }
-
-  .tag-suggestions {
-    position: absolute;
-    left: 0;
-    right: 0;
-    z-index: 40;
-    margin-top: 6px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    list-style: none;
-    padding: 6px;
-    max-height: 220px;
-    overflow: auto;
-  }
-
-  .tag-suggestions li {
-    padding: 8px 10px;
-    cursor: pointer;
-    border-radius: 6px;
-  }
-
-  .tag-suggestions li.highlight {
-    background: var(--accent-bg);
-  }
-
-  .tag-suggestions li.create {
-    font-weight: 600;
-  }
-
-  /* Leaflet control tweaks for consistent Pico-like styling */
-  .leaflet-control-zoom {
-    box-shadow: none;
-    border-radius: 8px;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    background: var(--bg);
-  }
-
-  .leaflet-control-zoom a {
-    display: block;
-    width: 38px;
-    height: 38px;
-    line-height: 38px;
-    text-align: center;
-    color: var(--text-h);
-    background: transparent;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .leaflet-control-zoom a:last-child {
-    border-bottom: none;
-  }
-
-  .leaflet-control-zoom a:hover {
-    background: var(--accent-bg);
-    color: var(--text-h);
-  }
-
-  .leaflet-control-zoom .leaflet-control-zoom-in,
-  .leaflet-control-zoom .leaflet-control-zoom-out {
-    font-weight: 700;
-    font-size: 18px;
-  }
-
-  /* Slight repositioning when controls sit near the edge */
-  .leaflet-top.leaflet-left {
-    margin-left: 8px;
-    margin-top: 8px;
-  }
-
-  /* Marker svg tweaks */
-  .leaflet-marker-icon.leaflet-marker-golden {
-    filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.18));
-  }
+}

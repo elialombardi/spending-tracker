@@ -21,6 +21,7 @@ export default function CategoryPicker({ categories = [], disabled, name, placeh
     return (
         <div className={`category-picker${disabled ? ' is-disabled' : ''}`}>
             <Autocomplete
+                sx={{ width: '100%' }}
                 freeSolo
                 disableClearable
                 disabled={disabled}
@@ -36,12 +37,19 @@ export default function CategoryPicker({ categories = [], disabled, name, placeh
                 onInputChange={(event, newInputValue) => {
                     onChange(newInputValue)
                 }}
+                PopperProps={{ sx: { minWidth: 220 } }}
                 renderInput={(params) => (
                     <TextField
                         {...params}
                         name={name}
                         placeholder={placeholder}
-                        variant="standard"
+                        variant="outlined"
+                        size="small"
+                        fullWidth
+                        InputProps={{
+                            ...params.InputProps,
+                            sx: { bgcolor: 'transparent', color: 'inherit' },
+                        }}
                     />
                 )}
                 renderOption={(props, option) => {
@@ -50,9 +58,12 @@ export default function CategoryPicker({ categories = [], disabled, name, placeh
 
                     return (
                         <li {...props} key={option} className="category-picker-option">
-                            <span className="category-picker-option-copy">
-                                <span className="category-picker-option-title">{option}</span>
-                            </span>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                <span className="category-picker-option-copy">
+                                    <span className="category-picker-option-title">{option}</span>
+                                </span>
+                                <small style={{ opacity: 0.66, marginLeft: 12 }}>{meta}</small>
+                            </div>
                         </li>
                     )
                 }}

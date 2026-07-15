@@ -8,11 +8,13 @@ import IconButton from '@mui/material/IconButton'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
+import { alpha, useTheme } from '@mui/material/styles'
 import CloseIcon from '@mui/icons-material/Close'
 import { ResponsiveContainer, ComposedChart, Bar, CartesianGrid, Cell, Line, Pie, PieChart, Tooltip, XAxis, YAxis } from 'recharts'
 import EmptyState from '../shared/EmptyState'
 import { formatDate, formatMoney, formatPercent } from '../../lib/formatters'
 import { buildCurrentCycleTrendData, buildPieSegments } from './data'
+import { dashboardStatusColors } from '../../../../theme'
 
 function formatSignedMoney(value) {
     return value > 0 ? `+${formatMoney(value)}` : formatMoney(value)
@@ -23,7 +25,7 @@ function getTransactionTitle(transaction) {
 }
 
 function getWeeklySpendBarColor(week) {
-    return week.totalSpent <= week.availableBudget ? '#2f7a73' : '#c65b5b'
+    return week.totalSpent <= week.availableBudget ? dashboardStatusColors.positive : dashboardStatusColors.negative
 }
 
 export default function CurrentMonthTrendsSection({
@@ -33,6 +35,7 @@ export default function CurrentMonthTrendsSection({
     isBusy,
     onSetCycleIncomeTransactionRelation,
 }) {
+    const theme = useTheme()
     const {
         currentWeekLabel,
         cycleBudget,
@@ -149,7 +152,7 @@ export default function CurrentMonthTrendsSection({
                                         fill={getWeeklySpendBarColor(week)}
                                         cursor="pointer"
                                         opacity={visibleSelectedWeekKey && visibleSelectedWeekKey !== week.weekKey ? 0.55 : 1}
-                                        stroke={visibleSelectedWeekKey === week.weekKey ? '#f4a261' : undefined}
+                                        stroke={visibleSelectedWeekKey === week.weekKey ? dashboardStatusColors.highlight : undefined}
                                         strokeWidth={visibleSelectedWeekKey === week.weekKey ? 2 : 0}
                                         onClick={() => setSelectedWeekKey((currentKey) => currentKey === week.weekKey ? null : week.weekKey)}
                                     />
@@ -159,9 +162,9 @@ export default function CurrentMonthTrendsSection({
                                 type="monotone"
                                 dataKey="availableBudget"
                                 name="Weekly available budget"
-                                stroke="#f4a261"
+                                stroke={dashboardStatusColors.highlight}
                                 strokeWidth={3}
-                                dot={{ fill: '#f4a261', r: 4, strokeWidth: 0 }}
+                                dot={{ fill: dashboardStatusColors.highlight, r: 4, strokeWidth: 0 }}
                                 activeDot={{ r: 6 }}
                             />
                         </ComposedChart>
@@ -177,12 +180,9 @@ export default function CurrentMonthTrendsSection({
                 onClose={() => setSelectedWeekKey(null)}
                 PaperProps={{
                     sx: {
-                        backgroundColor: 'rgb(25, 28, 36)',
-                        color: 'rgba(255,255,255,0.92)',
                         borderTopLeftRadius: 12,
                         borderTopRightRadius: 12,
                         maxHeight: '75vh',
-                        border: '1px solid rgba(255,255,255,0.06)',
                         boxShadow: '0 -24px 80px rgba(0,0,0,0.45)',
                     },
                 }}
@@ -194,7 +194,7 @@ export default function CurrentMonthTrendsSection({
                                 width: 56,
                                 height: 5,
                                 borderRadius: 999,
-                                backgroundColor: 'rgba(255,255,255,0.12)',
+                                backgroundColor: alpha(theme.palette.common.white, 0.12),
                                 mx: 'auto',
                                 mb: 2,
                             }}
@@ -207,13 +207,13 @@ export default function CurrentMonthTrendsSection({
                             sx={{ mb: 2 }}
                         >
                             <Box>
-                                <Typography variant="overline" sx={{ color: 'rgba(255,255,255,0.55)', letterSpacing: '0.08em' }}>
+                                <Typography variant="overline" sx={{ color: 'text.secondary', letterSpacing: '0.08em' }}>
                                     Weekly Spend Breakdown
                                 </Typography>
                                 <Typography variant="h6" sx={{ lineHeight: 1.1 }}>
                                     Week {selectedWeek.label}
                                 </Typography>
-                                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.62)', mt: 0.75 }}>
+                                <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.75 }}>
                                     {selectedWeek.from} to {selectedWeek.to}
                                 </Typography>
                             </Box>
@@ -222,14 +222,14 @@ export default function CurrentMonthTrendsSection({
                                 onClick={() => setSelectedWeekKey(null)}
                                 size="small"
                                 sx={{
-                                    color: 'rgba(255,255,255,0.78)',
+                                    color: 'text.primary',
                                     width: 36,
                                     height: 36,
-                                    border: '1px solid rgba(255,255,255,0.08)',
-                                    backgroundColor: 'rgba(255,255,255,0.03)',
+                                    border: `1px solid ${theme.palette.divider}`,
+                                    backgroundColor: alpha(theme.palette.common.white, 0.03),
                                     '&:hover': {
-                                        backgroundColor: 'rgba(255,255,255,0.08)',
-                                        borderColor: 'rgba(255,255,255,0.14)',
+                                        backgroundColor: alpha(theme.palette.common.white, 0.08),
+                                        borderColor: alpha(theme.palette.common.white, 0.14),
                                     },
                                 }}
                             >
@@ -284,7 +284,7 @@ export default function CurrentMonthTrendsSection({
                                             pointerEvents: 'none',
                                         }}
                                     >
-                                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)' }}>
+                                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                                             Total spent
                                         </Typography>
                                         <Typography variant="subtitle1">{formatMoney(selectedWeek.totalSpent)}</Typography>
@@ -306,7 +306,7 @@ export default function CurrentMonthTrendsSection({
                                                 <Typography variant="body2" sx={{ lineHeight: 1.2 }}>
                                                     {segment.category}
                                                 </Typography>
-                                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)' }}>
+                                                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                                                     {formatMoney(segment.totalSpent)} · {formatPercent(segment.share)}
                                                 </Typography>
                                             </Box>
@@ -315,7 +315,7 @@ export default function CurrentMonthTrendsSection({
                                 </Box>
                             </Box>
                         ) : null}
-                        <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', mb: 2.5 }} />
+                        <Divider sx={{ borderColor: 'divider', mb: 2.5 }} />
                         {selectedWeekTransactions.length === 0 ? (
                             <EmptyState message="No non-recurring expense transactions were included in this weekly total." />
                         ) : (
@@ -327,8 +327,8 @@ export default function CurrentMonthTrendsSection({
                                         sx={{
                                             p: 1.5,
                                             borderRadius: 3,
-                                            background: 'rgba(255,255,255,0.035)',
-                                            border: '1px solid rgba(255,255,255,0.06)',
+                                            background: alpha(theme.palette.common.white, 0.035),
+                                            border: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
                                         }}
                                     >
                                         <Stack direction="row" justifyContent="space-between" spacing={2} alignItems="flex-start">
@@ -336,11 +336,11 @@ export default function CurrentMonthTrendsSection({
                                                 <Typography variant="subtitle2" sx={{ fontSize: '0.98rem', lineHeight: 1.3 }}>
                                                     {getTransactionTitle(transaction)}
                                                 </Typography>
-                                                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', mt: 0.25 }}>
+                                                <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.25 }}>
                                                     {formatDate(transaction.bookingDate)}
                                                 </Typography>
                                             </Box>
-                                            <Typography variant="subtitle2" sx={{ whiteSpace: 'nowrap', color: 'rgba(255,255,255,0.96)' }}>
+                                            <Typography variant="subtitle2" sx={{ whiteSpace: 'nowrap', color: 'text.primary' }}>
                                                 {formatSignedMoney(transaction.amount)}
                                             </Typography>
                                         </Stack>
@@ -353,7 +353,7 @@ export default function CurrentMonthTrendsSection({
                                                 variant="body2"
                                                 sx={{
                                                     mt: 1.25,
-                                                    color: 'rgba(255,255,255,0.46)',
+                                                    color: alpha(theme.palette.text.primary, 0.46),
                                                     display: '-webkit-box',
                                                     WebkitLineClamp: 2,
                                                     WebkitBoxOrient: 'vertical',
@@ -378,9 +378,9 @@ export default function CurrentMonthTrendsSection({
                 PaperProps={{
                     sx: {
                         width: { xs: '100%', sm: 460 },
-                        backgroundColor: 'rgb(25, 28, 36)',
-                        color: 'rgba(255,255,255,0.92)',
-                        borderLeft: '1px solid rgba(255,255,255,0.06)',
+                        backgroundColor: 'background.paper',
+                        color: 'text.primary',
+                        borderLeft: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
                         boxShadow: '-24px 0 80px rgba(0,0,0,0.45)',
                     },
                 }}
@@ -394,13 +394,13 @@ export default function CurrentMonthTrendsSection({
                         sx={{ mb: 2 }}
                     >
                         <Box>
-                            <Typography variant="overline" sx={{ color: 'rgba(255,255,255,0.55)', letterSpacing: '0.08em' }}>
+                            <Typography variant="overline" sx={{ color: 'text.secondary', letterSpacing: '0.08em' }}>
                                 Cycle Incomes
                             </Typography>
                             <Typography variant="h6" sx={{ lineHeight: 1.1 }}>
                                 Budget sources for this cycle
                             </Typography>
-                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.62)', mt: 0.75 }}>
+                            <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.75 }}>
                                 Exclude any income that should not count toward the cycle budget.
                             </Typography>
                         </Box>
@@ -409,14 +409,14 @@ export default function CurrentMonthTrendsSection({
                             onClick={() => setIsIncomeDrawerOpen(false)}
                             size="small"
                             sx={{
-                                color: 'rgba(255,255,255,0.78)',
+                                color: 'text.primary',
                                 width: 36,
                                 height: 36,
-                                border: '1px solid rgba(255,255,255,0.08)',
-                                backgroundColor: 'rgba(255,255,255,0.03)',
+                                border: `1px solid ${theme.palette.divider}`,
+                                backgroundColor: alpha(theme.palette.common.white, 0.03),
                                 '&:hover': {
-                                    backgroundColor: 'rgba(255,255,255,0.08)',
-                                    borderColor: 'rgba(255,255,255,0.14)',
+                                    backgroundColor: alpha(theme.palette.common.white, 0.08),
+                                    borderColor: alpha(theme.palette.common.white, 0.14),
                                 },
                             }}
                         >
@@ -427,7 +427,7 @@ export default function CurrentMonthTrendsSection({
                         <Chip label={`${cycleIncomeTransactions.length} incomes`} size="small" variant="outlined" />
                         <Chip label={`Budget ${formatMoney(cycleBudget)}`} size="small" variant="outlined" />
                     </Stack>
-                    <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', mb: 2.5 }} />
+                    <Divider sx={{ borderColor: 'divider', mb: 2.5 }} />
                     {cycleIncomeTransactions.length === 0 ? (
                         <EmptyState message="No income transactions were recorded in this cycle." />
                     ) : (
@@ -442,8 +442,8 @@ export default function CurrentMonthTrendsSection({
                                         sx={{
                                             p: 1.5,
                                             borderRadius: 3,
-                                            background: 'rgba(255,255,255,0.035)',
-                                            border: '1px solid rgba(255,255,255,0.06)',
+                                            background: alpha(theme.palette.common.white, 0.035),
+                                            border: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
                                         }}
                                     >
                                         <Stack direction="row" justifyContent="space-between" spacing={2} alignItems="flex-start">
@@ -451,11 +451,11 @@ export default function CurrentMonthTrendsSection({
                                                 <Typography variant="subtitle2" sx={{ fontSize: '0.98rem', lineHeight: 1.3 }}>
                                                     {getTransactionTitle(transaction)}
                                                 </Typography>
-                                                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.6)', mt: 0.25 }}>
+                                                <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.25 }}>
                                                     {formatDate(transaction.bookingDate)}
                                                 </Typography>
                                             </Box>
-                                            <Typography variant="subtitle2" sx={{ whiteSpace: 'nowrap', color: 'rgba(255,255,255,0.96)' }}>
+                                            <Typography variant="subtitle2" sx={{ whiteSpace: 'nowrap', color: 'text.primary' }}>
                                                 {formatSignedMoney(transaction.amount)}
                                             </Typography>
                                         </Stack>
@@ -473,7 +473,7 @@ export default function CurrentMonthTrendsSection({
                                                 variant="body2"
                                                 sx={{
                                                     mt: 1.25,
-                                                    color: 'rgba(255,255,255,0.46)',
+                                                    color: alpha(theme.palette.text.primary, 0.46),
                                                     display: '-webkit-box',
                                                     WebkitLineClamp: 2,
                                                     WebkitBoxOrient: 'vertical',
@@ -494,12 +494,12 @@ export default function CurrentMonthTrendsSection({
                                             {isRelatedToCycle ? 'Mark as not related to cycle' : 'Count in cycle budget'}
                                         </Button>
                                         {!canWrite ? (
-                                            <Typography variant="caption" sx={{ display: 'block', mt: 0.75, color: 'rgba(255,255,255,0.5)' }}>
+                                            <Typography variant="caption" sx={{ display: 'block', mt: 0.75, color: alpha(theme.palette.text.primary, 0.5) }}>
                                                 Updating cycle-income relations requires a Writer or Admin role.
                                             </Typography>
                                         ) : null}
                                         {!transaction.category ? (
-                                            <Typography variant="caption" sx={{ display: 'block', mt: 0.75, color: 'rgba(255,255,255,0.5)' }}>
+                                            <Typography variant="caption" sx={{ display: 'block', mt: 0.75, color: alpha(theme.palette.text.primary, 0.5) }}>
                                                 This income needs a category before it can be included or excluded.
                                             </Typography>
                                         ) : null}

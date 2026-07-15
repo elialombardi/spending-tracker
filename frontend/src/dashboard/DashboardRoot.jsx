@@ -1,18 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import DashboardApp from './legacy/App';
-import { createTheme, ThemeProvider, CssBaseline, GlobalStyles } from '@mui/material';
-
-const theme = createTheme({
-    palette: {
-        mode: 'dark',
-        background: {
-            paper: '#121217',
-            default: 'transparent',
-        },
-    },
-    shape: { borderRadius: 8 },
-});
+import { alpha, ThemeProvider, CssBaseline, GlobalStyles } from '@mui/material';
+import { appTheme } from '../theme';
 
 function DashboardRoot() {
     const hostRef = useRef(null);
@@ -28,26 +18,26 @@ function DashboardRoot() {
         const root = createRoot(mountNode);
 
         root.render(
-            <ThemeProvider theme={theme}>
+            <ThemeProvider theme={appTheme}>
                 <CssBaseline />
                 <GlobalStyles
-                    styles={{
+                    styles={(theme) => ({
                         '.page-glow': { display: 'none' },
-                        '.dashboard-page': { padding: '16px', background: 'transparent' },
+                        '.dashboard-page': { padding: '16px', background: 'transparent', color: 'inherit' },
                         '.shell': { maxWidth: '1180px', margin: '0 auto' },
                         '.panel': {
-                            borderRadius: 12,
-                            background: 'rgba(255,255,255,0.03)',
+                            borderRadius: theme.shape.borderRadius,
+                            background: alpha(theme.palette.common.white, 0.03),
                             boxShadow: '0 6px 18px rgba(0,0,0,0.5)',
-                            border: '1px solid rgba(255,255,255,0.04)',
+                            border: `1px solid ${alpha(theme.palette.common.white, 0.04)}`,
                             padding: '16px',
                         },
                         '.dashboard-page .MuiPaper-root': {
-                            background: 'rgba(255,255,255,0.03) !important',
+                            background: `${alpha(theme.palette.common.white, 0.03)} !important`,
                             color: 'inherit',
                         },
                         '.dashboard-page .panel, .dashboard-page .paper, .dashboard-page article': {
-                            background: 'rgba(255,255,255,0.03) !important',
+                            background: `${alpha(theme.palette.common.white, 0.03)} !important`,
                         },
                         '.comparison-panel, .spending-comparison-panel, .current-month-trends-panel': {
                             minHeight: '50vh',
@@ -114,20 +104,20 @@ function DashboardRoot() {
                             padding: '14px',
                             marginBottom: '10px',
                             borderRadius: 8,
-                            background: 'rgba(255,255,255,0.04) !important',
-                            color: 'rgba(255,255,255,0.92)'
+                            background: `${alpha(theme.palette.common.white, 0.04)} !important`,
+                            color: theme.palette.text.primary
                         },
                         '.spending-series-card .spending-series-copy strong': {
                             fontSize: '15px',
-                            color: 'rgba(255,255,255,0.95)'
+                            color: theme.palette.text.primary
                         },
                         '.spending-series-card .spending-series-copy span': {
-                            color: 'rgba(255,255,255,0.78)',
+                            color: theme.palette.text.secondary,
                             fontSize: '13px'
                         },
                         '.spending-series-meta span': {
                             display: 'block',
-                            color: 'rgba(255,255,255,0.82)',
+                            color: theme.palette.text.secondary,
                             marginTop: '8px',
                         },
                         '.comparison-pie-visual': {
@@ -159,13 +149,13 @@ function DashboardRoot() {
                             textOverflow: 'ellipsis',
                         },
                         '.comparison-pie-center .metric-label': {
-                            color: 'rgba(255,255,255,0.75)',
+                            color: theme.palette.text.secondary,
                             fontSize: '12px',
                             display: 'block',
                             marginBottom: '4px',
                         },
                         '.comparison-pie-center strong': {
-                            color: 'rgba(255,255,255,0.96)',
+                            color: theme.palette.text.primary,
                             fontSize: '16px',
                             fontWeight: 700,
                             display: 'block',
@@ -196,20 +186,20 @@ function DashboardRoot() {
                             minWidth: 0,
                             wordBreak: 'break-word',
                         },
-                        '.comparison-pie-legend-copy strong': { color: 'rgba(255,255,255,0.95)', display: 'block', fontSize: '15px', fontWeight: 700 },
-                        '.comparison-pie-legend-copy span': { color: 'rgba(255,255,255,0.7)', display: 'block', marginTop: 2, fontSize: '13px' },
+                        '.comparison-pie-legend-copy strong': { color: theme.palette.text.primary, display: 'block', fontSize: '15px', fontWeight: 700 },
+                        '.comparison-pie-legend-copy span': { color: theme.palette.text.secondary, display: 'block', marginTop: 2, fontSize: '13px' },
                         '.button': {
                             border: 'none',
                             padding: '8px 14px',
                             borderRadius: 9999,
-                            background: '#1976d2',
-                            color: '#fff',
+                            background: theme.palette.primary.main,
+                            color: theme.palette.primary.contrastText,
                             cursor: 'pointer',
                         },
                         '.button.button-ghost': {
                             background: 'transparent',
                             color: 'inherit',
-                            border: '1px solid rgba(0,0,0,0.12)',
+                            border: `1px solid ${theme.palette.divider}`,
                         },
                         '.tab-button': {
                             background: 'transparent',
@@ -219,12 +209,12 @@ function DashboardRoot() {
                             marginRight: 8,
                         },
                         '.tab-button.is-active': {
-                            background: 'rgba(25,118,210,0.12)',
-                            boxShadow: 'inset 0 0 0 1px rgba(25,118,210,0.18)',
+                            background: alpha(theme.palette.primary.main, 0.12),
+                            boxShadow: `inset 0 0 0 1px ${alpha(theme.palette.primary.main, 0.18)}`,
                         },
                         '.tab-count, .money-pill, .tag': {
-                            background: 'rgba(255,255,255,0.04)',
-                            color: 'rgba(255,255,255,0.9)',
+                            background: alpha(theme.palette.common.white, 0.04),
+                            color: theme.palette.text.primary,
                             padding: '4px 8px',
                             borderRadius: 9999,
                             display: 'inline-block',
@@ -233,17 +223,17 @@ function DashboardRoot() {
                             width: '100%',
                             height: 10,
                             borderRadius: 9999,
-                            background: 'rgba(255,255,255,0.08)',
+                            background: alpha(theme.palette.common.white, 0.08),
                             overflow: 'hidden',
                             marginTop: 10,
                         },
                         '.category-bar-fill-bg': {
                             height: '100%',
                             borderRadius: 'inherit',
-                            background: 'linear-gradient(90deg, rgba(25,118,210,0.95) 0%, rgba(100,181,246,0.9) 100%)',
+                            background: `linear-gradient(90deg, ${alpha(theme.palette.primary.main, 0.95)} 0%, ${alpha(theme.palette.primary.light, 0.9)} 100%)`,
                         },
                         '.upload-dropzone': {
-                            border: '1px dashed rgba(255,255,255,0.06)',
+                            border: `1px dashed ${alpha(theme.palette.common.white, 0.06)}`,
                             borderRadius: 12,
                             padding: '18px',
                             background: 'transparent',
@@ -252,14 +242,14 @@ function DashboardRoot() {
                             position: 'fixed',
                             right: 16,
                             bottom: 16,
-                            background: 'rgba(255,255,255,0.04)',
-                            color: 'rgba(255,255,255,0.95)',
+                            background: alpha(theme.palette.common.white, 0.04),
+                            color: theme.palette.text.primary,
                             padding: '10px 14px',
                             borderRadius: 8,
                         },
-                        'h1, h2, h3': { color: 'rgba(255,255,255,0.95)' },
-                        '.hero-text, .section-note': { color: 'rgba(255,255,255,0.7)' },
-                    }}
+                        'h1, h2, h3': { color: theme.palette.text.primary },
+                        '.hero-text, .section-note': { color: theme.palette.text.secondary },
+                    })}
                 />
                 <DashboardApp />
             </ThemeProvider>,

@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react'
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts'
 import { formatCycleOptionLabel, formatMoney, formatPercent } from '../lib/formatters'
+import { dashboardChartColors } from '../../../theme'
 
-const LEGEND_COLORS = ['#e07a5f', '#2a9d8f', '#f4a261', '#8fb86a', '#3f6aa0', '#9b5f6b']
+const LEGEND_COLORS = dashboardChartColors
 
 export default function ComparisonPieCard({ report, pieSegments, isSelected }) {
     const [showOther, setShowOther] = useState(false)
@@ -97,7 +98,7 @@ export default function ComparisonPieCard({ report, pieSegments, isSelected }) {
                                         <span style={{ width: 14, height: 14, borderRadius: 3, backgroundColor: cat.color, display: 'inline-block' }} />
                                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                                             <strong style={{ fontSize: 13 }}>{cat.category}</strong>
-                                            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>{formatMoney(cat.totalSpent)} ({formatPercent(cat.totalSpent / (otherCategories.reduce((s, c) => s + c.totalSpent, 0) || 1))})</span>
+                                            <span style={{ fontSize: 13, color: 'var(--mui-palette-text-secondary)' }}>{formatMoney(cat.totalSpent)} ({formatPercent(cat.totalSpent / (otherCategories.reduce((s, c) => s + c.totalSpent, 0) || 1))})</span>
                                         </div>
                                     </div>
                                 ))}

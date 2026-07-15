@@ -4,6 +4,7 @@ import {
     SPENDING_GRANULARITY_OPTIONS,
     SPENDING_SERIES_COLORS,
 } from './constants'
+import { dashboardStatusColors } from '../../../../theme'
 
 function parseDateOnly(value) {
     const [yearText, monthText, dayText] = value.split('-')
@@ -364,7 +365,7 @@ export function buildComparisonSpendChart({
         const visibleSpend = groupedSpend.slice(0, visibleBucketCount)
 
         return {
-            color: isSelectedCycle ? '#2f7a73' : SPENDING_SERIES_COLORS[index % SPENDING_SERIES_COLORS.length],
+            color: isSelectedCycle ? dashboardStatusColors.positive : SPENDING_SERIES_COLORS[index % SPENDING_SERIES_COLORS.length],
             groupedSpend,
             isSelectedCycle,
             report,

@@ -68,7 +68,7 @@ function normalizeSearchResults(payload) {
         : []
 }
 
-function SearchBox({ onSelect }) {
+function SearchBox({ onSelect, onResults, onHover }) {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -91,9 +91,12 @@ function SearchBox({ onSelect }) {
             }
 
             const data = await res.json();
-            setResults(normalizeSearchResults(data));
+            const normalized = normalizeSearchResults(data)
+            setResults(normalized);
+            if (onResults) onResults(normalized);
         } catch (error) {
             setResults([]);
+            if (onResults) onResults([]);
             setErrorMessage(error instanceof Error ? error.message : 'Place search failed.');
         } finally {
             setLoading(false);
@@ -119,7 +122,11 @@ function SearchBox({ onSelect }) {
                 <List>
                     {results.map((r) => (
                         <ListItem key={r.id} disablePadding>
-                            <ListItemButton onClick={() => onSelect({ title: r.title, lat: r.lat, lng: r.lng })}>
+                            <ListItemButton
+                                onClick={() => onSelect({ title: r.title, lat: r.lat, lng: r.lng })}
+                                onMouseEnter={() => onHover && onHover(r.id)}
+                                onMouseLeave={() => onHover && onHover(null)}
+                            >
                                 <ListItemIcon>
                                     <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>

@@ -8,6 +8,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 function NavBar({ canWrite, onLogout, session }) {
     const loc = useLocation()
     const path = loc.pathname
+    const isAdminUser = session?.role === 'Admin'
 
     return (
         <AppBar position="static" color="transparent" elevation={0} sx={{ mb: 2 }}>
@@ -16,12 +17,16 @@ function NavBar({ canWrite, onLogout, session }) {
                     <Button component={NavLink} to="/" variant={path === '/' ? 'contained' : 'text'} sx={{ mr: 1 }} end>
                         Map
                     </Button>
-                    <Button component={NavLink} to="/tags" variant={path === '/tags' ? 'contained' : 'text'}>
-                        Tags
-                    </Button>
-                    <Button component={NavLink} to="/dashboard" variant={path === '/dashboard' ? 'contained' : 'text'} sx={{ ml: 1 }}>
-                        Dashboard
-                    </Button>
+                    {isAdminUser ? (
+                        <>
+                            <Button component={NavLink} to="/tags" variant={path === '/tags' ? 'contained' : 'text'}>
+                                Tags
+                            </Button>
+                            <Button component={NavLink} to="/dashboard" variant={path === '/dashboard' ? 'contained' : 'text'} sx={{ ml: 1 }}>
+                                Dashboard
+                            </Button>
+                        </>
+                    ) : null}
                 </Box>
                 <Box sx={{ alignItems: 'center', display: 'flex', gap: 1.5 }}>
                     <Typography color="text.secondary" variant="body2">

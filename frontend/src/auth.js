@@ -3,6 +3,7 @@ import { API_BASE, DEV_AUTH_PASSWORD, DEV_AUTH_USERNAME, isDevelopmentEnv } from
 
 const STORAGE_KEY = 'spending-tracker.auth-session'
 const listeners = new Set()
+const MANUAL_LOGOUT_KEY = 'spending-tracker.manual-logout'
 
 function createAuthError(message, code, status) {
     const error = new Error(message)
@@ -102,6 +103,10 @@ export function canWrite(session) {
     return session?.role === 'Writer' || session?.role === 'Admin'
 }
 
+export function isAdmin(session) {
+    return session?.role === 'Admin'
+}
+
 export function clearAuthMessage() {
     if (!authState.message) {
         return
@@ -112,6 +117,7 @@ export function clearAuthMessage() {
 
 function setAuthenticatedSession(session) {
     persistSession(session)
+    try { if (typeof window !== 'undefined') window.sessionStorage.removeItem(MANUAL_LOGOUT_KEY) } catch (_) { }
     setAuthState({
         message: '',
         session,
@@ -120,7 +126,10 @@ function setAuthenticatedSession(session) {
     return session
 }
 
-export function logout(message = '') {
+export function logout(message = '', manual = true) {
+    if (typeof window !== 'undefined' && manual) {
+        try { window.sessionStorage.setItem(MANUAL_LOGOUT_KEY, '1') } catch (_) { }
+    }
     persistSession(null)
     setAuthState({
         message,
@@ -173,6 +182,15 @@ export async function bootstrapDevelopmentSession() {
         return null
     }
 
+    // respect manual logout flag: if user manually logged out, don't auto-bootstrap
+    if (typeof window !== 'undefined') {
+        try {
+            if (window.sessionStorage.getItem(MANUAL_LOGOUT_KEY)) {
+                return null
+            }
+        } catch (_) { }
+    }
+
     if (authState.session && !isSessionExpired(authState.session)) {
         return authState.session
     }
@@ -189,7 +207,7 @@ export async function bootstrapDevelopmentSession() {
     })
         .then((session) => setAuthenticatedSession(session))
         .catch((error) => {
-            logout('Development login failed. Set VITE_AUTH_USERNAME and VITE_AUTH_PASSWORD or sign in manually.')
+            logout('Development login failed. Set VITE_AUTH_USERNAME and VITE_AUTH_PASSWORD or sign in manually.', false)
             throw error
         })
         .finally(() => {
@@ -205,7 +223,7 @@ export async function ensureAuthenticated() {
     }
 
     if (authState.session) {
-        logout('Your session expired. Please sign in again.')
+        logout('Your session expired. Please sign in again.', false)
     }
 
     if (isDevelopmentEnv) {

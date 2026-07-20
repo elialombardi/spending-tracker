@@ -34,6 +34,7 @@ const createGoldenIcon = (color = '#F0C330') => {
 };
 
 const goldenIcon = createGoldenIcon();
+const highlightedIcon = createGoldenIcon('#1976d2');
 
 const defaultCenter = [41.9028, 12.4964];
 function MapClickHandler({ onMapClick }) {
@@ -45,27 +46,71 @@ function MapClickHandler({ onMapClick }) {
     return null;
 }
 
-function MapViewSetter({ center }) {
+function MapViewSetter({ center, zoom }) {
     const map = useMap();
-    // synchronize center when it changes
+    // always synchronize center when it changes (used to center on clicked locations)
     useEffect(() => {
-        if (center) map.setView(center, map.getZoom());
-    }, [center, map]);
+        if (center) {
+            try {
+                if (typeof zoom === 'number') {
+                    map.setView(center, zoom);
+                } else {
+                    map.setView(center, map.getZoom());
+                }
+            } catch (err) {
+                console.warn('Failed to set map view', err);
+            }
+        }
+    }, [center, zoom, map]);
     return null;
 }
 
-function LocationMap({ locations, center = defaultCenter, onMapClick, draftLocation }) {
+function FitBoundsToLocations({ locations, padding = [50, 50] }) {
+    const map = useMap();
+    useEffect(() => {
+        if (!map) return;
+        if (Array.isArray(locations) && locations.length > 0) {
+            const latlngs = locations
+                .filter((l) => typeof l.lat === 'number' && typeof l.lng === 'number')
+                .map((l) => [l.lat, l.lng]);
+            if (latlngs.length === 0) return;
+            const bounds = L.latLngBounds(latlngs);
+            map.fitBounds(bounds, { padding });
+        }
+    }, [map, locations, padding]);
+    return null;
+}
+
+function InvalidateSize({ visible }) {
+    const map = useMap();
+    useEffect(() => {
+        if (!map) return;
+        // when container becomes visible, invalidate size so tiles render correctly
+        if (visible) {
+            // slight delay to allow CSS transitions
+            const t = setTimeout(() => {
+                try { map.invalidateSize(); } catch (e) { /* ignore */ }
+            }, 150);
+            return () => clearTimeout(t);
+        }
+    }, [map, visible]);
+    return null;
+}
+
+function LocationMap({ locations, center = defaultCenter, onMapClick, draftLocation, highlightedId, centerZoom, visible = true }) {
     return (
-        <section className="card" aria-label="map">
-            <MapContainer center={center} zoom={13} style={{ height: '500px', width: '100%' }}>
-                <MapViewSetter center={center} />
+        <section className="card" aria-label="map" style={{ height: '100%' }}>
+            <MapContainer key={visible ? 'visible' : 'hidden'} center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
+                <MapViewSetter center={center} zoom={centerZoom} />
+                <InvalidateSize visible={visible} />
+                <FitBoundsToLocations locations={locations} />
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 <MapClickHandler onMapClick={onMapClick} />
                 {locations.map((location) => (
-                    <Marker key={location.id} position={[location.lat, location.lng]} icon={goldenIcon}>
+                    <Marker key={location.id} position={[location.lat, location.lng]} icon={location.id === highlightedId ? highlightedIcon : goldenIcon}>
                         <Popup>
                             <strong>{location.title}</strong> <br />
                             {location.description} <br />

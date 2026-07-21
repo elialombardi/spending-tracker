@@ -38,7 +38,7 @@ const defaultLocations = [
 const defaultTags = ['restaurant', 'kids'];
 
 
-function App() {
+function App({ themeName, setThemeName }) {
   const { message: authMessage, session, status } = useAuthSession();
   const [locations, setLocations] = useState(() => {
     const saved = localStorage.getItem('locations');
@@ -146,7 +146,7 @@ function App() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 2 }}>
-      <NavBar canWrite={canModify} onLogout={() => logout()} session={session} />
+      <NavBar canWrite={canModify} onLogout={() => logout()} session={session} themeName={themeName} setThemeName={setThemeName} />
       <Box>
         {appError ? <Alert severity="error" sx={{ mb: 2 }}>{appError}</Alert> : null}
         <Suspense fallback={routeFallback}>

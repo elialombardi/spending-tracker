@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
 import DashboardApp from './legacy/App';
 import { alpha, ThemeProvider, CssBaseline, GlobalStyles } from '@mui/material';
-import { appTheme } from '../theme';
+import { appTheme, getTheme } from '../theme';
 
 function DashboardRoot() {
     const hostRef = useRef(null);
@@ -17,8 +17,11 @@ function DashboardRoot() {
 
         const root = createRoot(mountNode);
 
+        const themeName = (typeof window !== 'undefined' && localStorage.getItem('theme')) || 'light'
+        const theme = getTheme(themeName)
+
         root.render(
-            <ThemeProvider theme={appTheme}>
+            <ThemeProvider theme={theme}>
                 <CssBaseline />
                 <GlobalStyles
                     styles={(theme) => ({

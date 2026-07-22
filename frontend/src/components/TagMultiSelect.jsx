@@ -1,7 +1,6 @@
 import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
 import Chip from '@mui/material/Chip';
-import Stack from '@mui/material/Stack';
 
 function TagMultiSelect({ options = [], value = [], onChange, placeholder = 'Add tags...' }) {
     // MUI Autocomplete handles keyboard, focus, and freeSolo nicely
@@ -16,16 +15,34 @@ function TagMultiSelect({ options = [], value = [], onChange, placeholder = 'Add
                 const normalized = (arr) => (Array.isArray(arr) ? arr.map((v) => String(v).trim()).filter(Boolean) : []);
                 onChange && onChange(normalized(newValue));
             }}
-            /* Use default tag rendering to avoid passing renderTags into DOM; renderInput is explicit to avoid leaking params */
-            renderInput={(params) => (
-                <TextField
-                    {...params}
-                    placeholder={placeholder}
-                    variant="outlined"
-                    size="small"
-                />
-            )}
-            sx={{ minWidth: 160 }}
+            renderInput={(params) => {
+                const { renderTags: _rt, ...inputParams } = params || {}
+                return (
+                    <TextField
+                        {...inputParams}
+                        placeholder={placeholder}
+                        variant="outlined"
+                        size="medium"
+                        fullWidth
+                    />
+                )
+            }}
+            sx={{
+                width: '100%',
+                '& .MuiAutocomplete-inputRoot': {
+                    alignItems: 'flex-start',
+                    flexWrap: 'wrap',
+                    pr: 1,
+                },
+                '& .MuiAutocomplete-input': {
+                    minWidth: '8rem !important',
+                    width: '0 !important',
+                    flexGrow: 1,
+                },
+                '& .MuiChip-root': {
+                    my: 0.5,
+                },
+            }}
         />
     );
 }

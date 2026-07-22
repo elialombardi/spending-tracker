@@ -1,53 +1,74 @@
+import React, { useEffect, useState } from 'react'
 import TagMultiSelect from './TagMultiSelect';
 import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
-import Grid from '@mui/material/Grid'
 import Box from '@mui/material/Box'
+import Stack from '@mui/material/Stack'
+import Alert from '@mui/material/Alert'
 
 function LocationForm({ value, onChange, onSubmit, tagOptions = [] }) {
+    const [error, setError] = useState('')
+
     const handleFieldChange = (field) => (event) => {
         onChange({ ...value, [field]: event.target.value });
     };
 
+    useEffect(() => {
+        if (value && value.lat && value.lng) setError('')
+    }, [value?.lat, value?.lng])
+
+    const handleSubmit = (e) => {
+        e.preventDefault()
+        if (!value || value.lat == null || value.lng == null || value.lat === '' || value.lng === '') {
+            setError('select a location on the map')
+            return
+        }
+        setError('')
+        onSubmit && onSubmit()
+    }
+
     return (
         <Box sx={{ mt: 2 }}>
-            <form onSubmit={(e) => { e.preventDefault(); onSubmit && onSubmit(); }}>
-                <Grid container spacing={1}>
-                    <Grid xs={12} md={6}>
-                        <TextField
-                            fullWidth
-                            label="Title" value={value.title || ''}
-                            onChange={handleFieldChange('title')}
-                            required
-                            size="small" />
-                    </Grid>
-                    <Grid xs={12} md={6}>
+            <form onSubmit={handleSubmit}>
+                <Stack spacing={2} sx={{ width: '100%' }}>
+                    {error && <Alert severity="error">{error}</Alert>}
+
+                    <TextField
+                        fullWidth
+                        label="Title"
+                        value={value.title || ''}
+                        onChange={handleFieldChange('title')}
+                        required
+                    />
+
+                    <Box sx={{ width: '100%' }}>
                         <TagMultiSelect
                             options={tagOptions}
                             value={value.tags || []}
                             onChange={(tags) => onChange({ ...value, tags })}
-                            placeholder="Tags" />
-                    </Grid>
+                            placeholder="Tags"
+                        />
+                    </Box>
 
-                    <Grid xs={12} md={6}>
-                        <TextField fullWidth label="Latitude" type="number" value={value.lat || ''} onChange={handleFieldChange('lat')} required size="small" />
-                    </Grid>
-                    <Grid xs={12} md={6}>
-                        <TextField fullWidth label="Longitude" type="number" value={value.lng || ''} onChange={handleFieldChange('lng')} required size="small" />
-                    </Grid>
+                    <TextField
+                        fullWidth
+                        label="Description"
+                        value={value.description || ''}
+                        onChange={handleFieldChange('description')}
+                    />
 
-                    <Grid xs={12}>
-                        <TextField fullWidth label="Description" value={value.description || ''} onChange={handleFieldChange('description')} size="small" />
-                    </Grid>
+                    <TextField
+                        fullWidth
+                        label="URL"
+                        value={value.url || ''}
+                        onChange={handleFieldChange('url')}
+                        placeholder="https://example.com"
+                    />
 
-                    <Grid xs={12}>
-                        <TextField fullWidth label="URL" value={value.url || ''} onChange={handleFieldChange('url')} size="small" placeholder="https://example.com" />
-                    </Grid>
-
-                    <Grid xs={12}>
-                        <Button type="submit" variant="contained">Add Location</Button>
-                    </Grid>
-                </Grid>
+                    <Button type="submit" variant="contained" fullWidth>
+                        Add Location
+                    </Button>
+                </Stack>
             </form>
         </Box>
     );

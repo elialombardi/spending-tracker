@@ -90,84 +90,95 @@ function TagManager({ canWrite, tags, locations, onRenameTag, onDeleteTag, onCre
         <Box>
             <Typography variant="h5" gutterBottom>Manage Tags</Typography>
 
-            <Paper sx={{ p: 2, mb: 2 }}>
-                <Typography variant="subtitle2">Select tag</Typography>
-                <Box sx={{ display: 'flex', gap: 1, mt: 1, alignItems: 'center' }}>
-                    <Select value={selectedTag} onChange={(e) => setSelectedTag(e.target.value)} displayEmpty size="small">
-                        <MenuItem value="">--</MenuItem>
-                        {safeTags.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
-                    </Select>
-                    {canWrite ? (
-                        <>
-                            <TextField size="small" placeholder="New name" value={newTagName} onChange={(e) => setNewTagName(e.target.value)} />
-                            <Button variant="contained" size="small" onClick={handleRename}>Rename</Button>
-                            <Button variant="outlined" color="error" size="small" onClick={handleDelete} startIcon={<DeleteIcon />}>Delete</Button>
-                        </>
-                    ) : null}
-                </Box>
-            </Paper>
+            <Grid container spacing={2}>
+                <Grid item xs={12} md={3}>
+                    <Paper sx={{ p: 2, mb: 2 }}>
+                        <Typography variant="subtitle2">Select tag</Typography>
+                        <Box sx={{ display: 'flex', gap: 1, mt: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <Select value={selectedTag} onChange={(e) => setSelectedTag(e.target.value)} displayEmpty size="small" sx={{ minWidth: 140 }}>
+                                <MenuItem value="">--</MenuItem>
+                                {safeTags.map((t) => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+                            </Select>
+                            {canWrite ? (
+                                <>
+                                    <TextField size="small" placeholder="New name" value={newTagName} onChange={(e) => setNewTagName(e.target.value)} />
+                                    <Button variant="contained" size="small" onClick={handleRename}>Rename</Button>
+                                    <Button variant="outlined" color="error" size="small" onClick={handleDelete} startIcon={<DeleteIcon />}>Delete</Button>
+                                </>
+                            ) : null}
+                        </Box>
 
-            {canWrite ? (
-                <Paper sx={{ p: 2, mb: 2 }}>
-                    <Typography variant="subtitle2">Create new tag</Typography>
-                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                        <TextField size="small" placeholder="Tag name" value={createInput} onChange={(e) => setCreateInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (createInput) { onCreateTag && onCreateTag(createInput); setCreateInput(''); } } }} />
-                        <Button variant="contained" size="small" onClick={() => { if (createInput) { onCreateTag && onCreateTag(createInput); setCreateInput(''); } }}>Add</Button>
-                    </Box>
-                </Paper>
-            ) : null}
+                        {canWrite ? (
+                            <Box sx={{ mt: 2 }}>
+                                <Typography variant="subtitle2">Create new tag</Typography>
+                                <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
+                                    <TextField size="small" placeholder="Tag name" value={createInput} onChange={(e) => setCreateInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (createInput) { onCreateTag && onCreateTag(createInput); setCreateInput(''); } } }} />
+                                    <Button variant="contained" size="small" onClick={() => { if (createInput) { onCreateTag && onCreateTag(createInput); setCreateInput(''); } }}>Add</Button>
+                                </Box>
+                            </Box>
+                        ) : null}
+                    </Paper>
+                </Grid>
 
-            <Box>
-                <Typography variant="h6" gutterBottom>Locations with tag: {selectedTag || '—'}</Typography>
-                <Paper>
-                    {selectedTag ? (
-                        <List>
-                            {safeLocations.map((loc) => (
-                                <ListItem key={loc.id} divider>
-                                    <Checkbox edge="start" checked={Array.isArray(loc.tags) ? loc.tags.includes(selectedTag) : false} disabled={!canWrite} onChange={(e) => onToggleLocationTag && onToggleLocationTag(loc.id, selectedTag, e.target.checked)} />
-                                    <ListItemText
-                                        primary={loc.title || loc.name || `#${loc.id}`}
-                                        secondary={
-                                            <span>{loc.description}</span>
-                                        }
-                                        sx={{ ml: 1 }}
-                                    />
-                                    <ListItemSecondaryAction>
-                                        {canWrite ? (
-                                            <>
-                                                {loc.url && <IconButton
-                                                    edge="end"
-                                                    component="a"
-                                                    href={loc.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    aria-label="open"
-                                                >
-                                                    <OpenInNewIcon />
-                                                </IconButton>}
-                                                <IconButton edge="end" onClick={() => beginEdit(loc)} aria-label="edit"><EditIcon /></IconButton>
-                                                <IconButton
-                                                    edge="end"
-                                                    onClick={() => {
-                                                        const title = loc.title || loc.name || `#${loc.id}`;
-                                                        setConfirmPayload({ type: 'location', id: loc.id, name: title });
-                                                        setConfirmOpen(true);
-                                                    }}
-                                                    aria-label="delete"
-                                                >
-                                                    <DeleteIcon />
-                                                </IconButton>
-                                            </>
-                                        ) : null}
-                                    </ListItemSecondaryAction>
-                                </ListItem>
-                            ))}
-                        </List>
-                    ) : (
-                        <Box sx={{ p: 2 }}>No tag selected.</Box>
-                    )}
-                </Paper>
-            </Box>
+                <Grid item xs={12} md={6}>
+                    <Typography variant="h6" gutterBottom>Locations with tag: {selectedTag || '—'}</Typography>
+                    <Paper>
+                        {selectedTag ? (
+                            <List>
+                                {safeLocations.map((loc) => (
+                                    <ListItem key={loc.id} divider>
+                                        <Checkbox edge="start" checked={Array.isArray(loc.tags) ? loc.tags.includes(selectedTag) : false} disabled={!canWrite} onChange={(e) => onToggleLocationTag && onToggleLocationTag(loc.id, selectedTag, e.target.checked)} />
+                                        <ListItemText
+                                            primary={loc.title || loc.name || `#${loc.id}`}
+                                            secondary={
+                                                <span>{loc.description}</span>
+                                            }
+                                            sx={{ ml: 1 }}
+                                        />
+                                        <ListItemSecondaryAction>
+                                            {canWrite ? (
+                                                <>
+                                                    {loc.url && <IconButton
+                                                        edge="end"
+                                                        component="a"
+                                                        href={loc.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        aria-label="open"
+                                                    >
+                                                        <OpenInNewIcon />
+                                                    </IconButton>}
+                                                    <IconButton edge="end" onClick={() => beginEdit(loc)} aria-label="edit"><EditIcon /></IconButton>
+                                                    <IconButton
+                                                        edge="end"
+                                                        onClick={() => {
+                                                            const title = loc.title || loc.name || `#${loc.id}`;
+                                                            setConfirmPayload({ type: 'location', id: loc.id, name: title });
+                                                            setConfirmOpen(true);
+                                                        }}
+                                                        aria-label="delete"
+                                                    >
+                                                        <DeleteIcon />
+                                                    </IconButton>
+                                                </>
+                                            ) : null}
+                                        </ListItemSecondaryAction>
+                                    </ListItem>
+                                ))}
+                            </List>
+                        ) : (
+                            <Box sx={{ p: 2 }}>No tag selected.</Box>
+                        )}
+                    </Paper>
+                </Grid>
+
+                <Grid item xs={12} md={3}>
+                    <Paper sx={{ p: 2 }}>
+                        <Typography variant="subtitle1">Actions</Typography>
+                        <Typography variant="body2" sx={{ mt: 1 }}>Select a tag to edit or delete it. Use the list to manage locations for the selected tag.</Typography>
+                    </Paper>
+                </Grid>
+            </Grid>
 
             <Drawer anchor="bottom" open={confirmOpen} onClose={() => setConfirmOpen(false)}>
                 <Box sx={{ p: 2 }}>

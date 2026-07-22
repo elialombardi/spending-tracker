@@ -10,6 +10,12 @@ import CloseIcon from '@mui/icons-material/Close'
 import SearchBox from './SearchBox'
 import LocationForm from './form'
 import LocationMap from './LocationMap'
+import Accordion from '@mui/material/Accordion'
+import AccordionSummary from '@mui/material/AccordionSummary'
+import AccordionDetails from '@mui/material/AccordionDetails'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import { useTheme } from '@mui/material/styles'
+import useMediaQuery from '@mui/material/useMediaQuery'
 
 export default function AddLocationDialog({ open, onClose, onCreate, tagOptions = [] }) {
     const empty = { title: '', tags: [], lat: '', lng: '', description: '', url: '' }
@@ -102,54 +108,98 @@ export default function AddLocationDialog({ open, onClose, onCreate, tagOptions 
 
             <Box
                 sx={{
-                    p: 2,
+                    p: { xs: 3, md: 2 },
                     height: 'calc(100vh - 64px)',
-                    overflow: 'hidden',
+                    overflow: 'auto',
+                    WebkitOverflowScrolling: 'touch',
                 }}
             >
-                <Box
-                    sx={{
-                        display: 'flex',
-                        gap: 2,
-                        height: '100%',
-                        flexDirection: { xs: 'column', md: 'row' },
-                    }}
-                >
-                    <Box
-                        sx={{
-                            width: { xs: '100%', md: 420 },
-                            minWidth: 0,
-                            overflowY: 'auto',
-                            flexShrink: 0,
-                        }}
-                    >
-                        <SearchBox onSelect={handleSelectPlace} onResults={handleSearchResults} onHover={handleSearchHover} />
+                <Box sx={{ height: '100%' }}>
+                    {
+                        (() => {
+                            const theme = useTheme()
+                            const isSmall = useMediaQuery(theme.breakpoints.down('sm'))
+                            if (isSmall) {
+                                return (
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                        <Accordion defaultExpanded>
+                                            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2 }}>
+                                                <Typography>Search</Typography>
+                                            </AccordionSummary>
+                                            <AccordionDetails sx={{ p: 2 }}>
+                                                <SearchBox onSelect={handleSelectPlace} onResults={handleSearchResults} onHover={handleSearchHover} />
+                                            </AccordionDetails>
+                                        </Accordion>
 
-                        <Box sx={{ mt: 2 }}>
-                            <LocationForm value={value} onChange={setValue} onSubmit={handleSubmit} tagOptions={tagOptions} />
-                        </Box>
-                    </Box>
+                                        <Accordion>
+                                            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2 }}>
+                                                <Typography>Map</Typography>
+                                            </AccordionSummary>
+                                            <AccordionDetails sx={{ p: 2 }}>
+                                                <Box sx={{ height: 360 }}>
+                                                    <LocationMap
+                                                        locations={searchResults.length > 0 ? searchResults.map((r) => ({ id: r.id, title: r.title, lat: r.lat, lng: r.lng, tags: [] })) : (value.lat && value.lng ? [{ id: 'draft', title: value.title, lat: parseFloat(value.lat), lng: parseFloat(value.lng), tags: value.tags, description: value.description, url: value.url }] : [])}
+                                                        center={center}
+                                                        centerZoom={centerZoom}
+                                                        onMapClick={handleMapClick}
+                                                        draftLocation={null}
+                                                        highlightedId={highlightedSearchId}
+                                                        visible={open}
+                                                    />
+                                                </Box>
+                                            </AccordionDetails>
+                                        </Accordion>
 
-                    <Box
-                        sx={{
-                            flex: 1,
-                            minWidth: 0,
-                            minHeight: { xs: 360, md: 0 },
-                            height: '100%',
-                        }}
-                    >
-                        <Box sx={{ height: '100%', minHeight: { xs: 360, md: 0 } }}>
-                            <LocationMap
-                                locations={searchResults.length > 0 ? searchResults.map((r) => ({ id: r.id, title: r.title, lat: r.lat, lng: r.lng, tags: [] })) : (value.lat && value.lng ? [{ id: 'draft', title: value.title, lat: parseFloat(value.lat), lng: parseFloat(value.lng), tags: value.tags, description: value.description, url: value.url }] : [])}
-                                center={center}
-                                centerZoom={centerZoom}
-                                onMapClick={handleMapClick}
-                                draftLocation={null}
-                                highlightedId={highlightedSearchId}
-                                visible={open}
-                            />
-                        </Box>
-                    </Box>
+
+                                        <Accordion>
+                                            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 2 }}>
+                                                <Typography>Form</Typography>
+                                            </AccordionSummary>
+                                            <AccordionDetails sx={{ p: 2 }}>
+                                                <LocationForm value={value} onChange={setValue} onSubmit={handleSubmit} tagOptions={tagOptions} />
+                                            </AccordionDetails>
+                                        </Accordion>
+
+                                    </Box>
+                                )
+                            }
+
+                            return (
+                                <Box
+                                    sx={{
+                                        display: 'grid',
+                                        gap: { xs: 2.5, md: 2 },
+                                        height: '100%',
+                                        gridTemplateColumns: { xs: '1fr', md: '420px 1fr' },
+                                        gridTemplateRows: { xs: 'auto auto auto', md: '1fr 1fr' },
+                                        gridTemplateAreas: {
+                                            xs: `'search' 'form' 'map'`,
+                                            md: `'search map' 'form map'`,
+                                        },
+                                    }}
+                                >
+                                    <Box sx={{ gridArea: 'search', overflowY: 'auto', maxHeight: { xs: '50vh', md: 'none' }, pr: { xs: 1, md: 0 } }}>
+                                        <SearchBox onSelect={handleSelectPlace} onResults={handleSearchResults} onHover={handleSearchHover} />
+                                    </Box>
+                                    <Box sx={{ gridArea: 'form', overflowY: 'auto', pr: { xs: 1, md: 0 }, pb: { xs: 2, md: 0 } }}>
+                                        <LocationForm value={value} onChange={setValue} onSubmit={handleSubmit} tagOptions={tagOptions} />
+                                    </Box>
+
+                                    <Box sx={{ gridArea: 'map', minHeight: { xs: 320, md: 0 }, height: { xs: 'auto', md: '100%' }, mt: { xs: 1, md: 0 } }}>
+                                        <LocationMap
+                                            locations={searchResults.length > 0 ? searchResults.map((r) => ({ id: r.id, title: r.title, lat: r.lat, lng: r.lng, tags: [] })) : (value.lat && value.lng ? [{ id: 'draft', title: value.title, lat: parseFloat(value.lat), lng: parseFloat(value.lng), tags: value.tags, description: value.description, url: value.url }] : [])}
+                                            center={center}
+                                            centerZoom={centerZoom}
+                                            onMapClick={handleMapClick}
+                                            draftLocation={null}
+                                            highlightedId={highlightedSearchId}
+                                            visible={open}
+                                        />
+                                    </Box>
+                                </Box>
+                            )
+                        })()
+                    }
                 </Box>
             </Box>
         </Dialog>

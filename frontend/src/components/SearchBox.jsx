@@ -3,6 +3,7 @@ import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 import Box from '@mui/material/Box'
 import Alert from '@mui/material/Alert'
+import Chip from '@mui/material/Chip'
 import List from '@mui/material/List'
 import ListItem from '@mui/material/ListItem'
 import ListItemButton from '@mui/material/ListItemButton'
@@ -119,26 +120,25 @@ function SearchBox({ onSelect, onResults, onHover }) {
             )}
 
             {results.length > 0 && (
-                <List>
-                    {results.map((r) => (
-                        <ListItem key={r.id} disablePadding>
-                            <ListItemButton
-                                onClick={() => onSelect({ title: r.title, lat: r.lat, lng: r.lng })}
-                                onMouseEnter={() => onHover && onHover(r.id)}
-                                onMouseLeave={() => onHover && onHover(null)}
-                            >
-                                <ListItemIcon>
-                                    <Avatar sx={{ bgcolor: 'primary.main', width: 32, height: 32 }}>
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                                            <path d="M12 2C8.134 2 5 5.134 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.866-3.134-7-7-7z" fill="white" />
-                                        </svg>
-                                    </Avatar>
-                                </ListItemIcon>
-                                <ListItemText primary={r.title} secondary={r.type} />
-                            </ListItemButton>
-                        </ListItem>
-                    ))}
-                </List>
+                <>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1, mt: 1 }}>
+                        <Chip label={`${results.length} result${results.length !== 1 ? 's' : ''}`} size="small" />
+                    </Box>
+                    <List>
+                        {results.map((r) => (
+                            <ListItem key={r.id} disablePadding>
+                                <ListItemButton
+                                    onClick={() => onSelect({ title: r.title, lat: r.lat, lng: r.lng })}
+                                    onMouseEnter={() => onHover && onHover(r.id)}
+                                    onMouseLeave={() => onHover && onHover(null)}
+                                    sx={{ py: { xs: 1.5, md: 0.5 }, px: { xs: 1.25, md: 0.5 } }}
+                                >
+                                    <ListItemText primary={r.title} secondary={r.type} />
+                                </ListItemButton>
+                            </ListItem>
+                        ))}
+                    </List>
+                </>
             )}
         </Box>
     );

@@ -149,15 +149,17 @@ export default function MapPage() {
     }, {})
 
     return (
-        <Box sx={{ display: 'flex', gap: 2, height: 'calc(100vh - 120px)' }}>
+        <Box sx={{ display: 'flex', gap: 2, height: { xs: 'auto', md: 'calc(100vh - 120px)' }, flexDirection: { xs: 'column', md: 'row' } }}>
             {/* Tags column */}
-            <Box sx={{ width: 220 }}>
-                <Paper sx={{ p: 2, height: '100%' }}>
-                    <Typography variant="h6" sx={{ mb: 1 }}>Tags</Typography>
+            <Box sx={{ width: { xs: '100%', md: 220 } }}>
+                <Paper sx={{ p: 2, height: { xs: 'auto', md: '100%' }, mb: { xs: 2, md: 0 } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="h6">Tags</Typography>
+                        {canWrite(session) ? (
+                            <Button size="small" variant="contained" onClick={() => setAddDialogOpen(true)}>Add location</Button>
+                        ) : null}
+                    </Box>
                     <List sx={{ maxHeight: '60vh', overflow: 'auto' }}>
-                        <ListItemButton key="__all" selected={selectedTag === null} onClick={() => { setSelectedTag(null); setDrawerOpen(false); }}>
-                            <ListItemText primary="All tags" />
-                        </ListItemButton>
                         {tags.map((t) => (
                             <ListItemButton key={t} selected={selectedTag === t} onClick={() => { setSelectedTag(t); setDrawerOpen(true); }}>
                                 <ListItemText primary={t} secondary={`${tagCounts[t] || 0} locations`} />
@@ -168,26 +170,13 @@ export default function MapPage() {
             </Box>
 
             {/* Map column (open tag drawer to view map) */}
-            <Box sx={{ flex: 2 }}>
-                <Paper elevation={1} sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
+            <Box sx={{ flex: 2, minHeight: { xs: 300, md: 'auto' } }}>
+                <Paper elevation={1} sx={{ height: { xs: 'auto', md: '100%' }, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
                     <Typography>Select a tag to view its locations and the map.</Typography>
                 </Paper>
             </Box>
 
-            {/* Right-side controls */}
-            <Box sx={{ width: { xs: '100%', md: 360 } }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <Paper sx={{ p: 2 }}>
-                        {canWrite(session) ? (
-                            <Button variant="contained" onClick={() => setAddDialogOpen(true)}>Add location</Button>
-                        ) : (
-                            <Alert severity="info">
-                                Reader accounts can browse saved locations, but adding locations requires a Writer or Admin role.
-                            </Alert>
-                        )}
-                    </Paper>
-                </Box>
-            </Box>
+            {/* Right-side controls removed - Add location moved into Tags column */}
 
             {/* Drawer: list of locations for selected tag */}
             <TagLocationsDrawer

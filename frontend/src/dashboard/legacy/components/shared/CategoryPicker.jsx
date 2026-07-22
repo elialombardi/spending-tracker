@@ -53,11 +53,12 @@ export default function CategoryPicker({ categories = [], disabled, name, placeh
                     />
                 )}
                 renderOption={(props, option) => {
+                    const { item, ...liProps } = props || {}
                     const cat = categories.find((c) => c.name === option)
                     const meta = cat ? buildCategoryMeta(cat) : ''
 
                     return (
-                        <li {...props} key={option} className="category-picker-option">
+                        <li {...liProps} key={option} className="category-picker-option">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                                 <span className="category-picker-option-copy">
                                     <span className="category-picker-option-title">{option}</span>

@@ -8,18 +8,40 @@ import FormControl from '@mui/material/FormControl'
 import InputLabel from '@mui/material/InputLabel'
 import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
+import { useState } from 'react'
+import IconButton from '@mui/material/IconButton'
+import MenuIcon from '@mui/icons-material/Menu'
+import Drawer from '@mui/material/Drawer'
+import List from '@mui/material/List'
+import ListItem from '@mui/material/ListItem'
+import ListItemButton from '@mui/material/ListItemButton'
+import ListItemText from '@mui/material/ListItemText'
+import Divider from '@mui/material/Divider'
 
 function NavBar({ canWrite, onLogout, session, themeName, setThemeName }) {
     const loc = useLocation()
     const path = loc.pathname
     const isAdminUser = session?.role === 'Admin'
+    const [drawerOpen, setDrawerOpen] = useState(false)
+
+    const closeDrawer = () => setDrawerOpen(false)
 
     return (
         <AppBar position="static" color="transparent" elevation={0} sx={{ mb: 2 }}>
             <Toolbar sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Box component="img" src="/logo.png" alt="App logo" sx={{ height: 40 }} />
-                    <Box>
+                    <IconButton
+                        edge="start"
+                        color="inherit"
+                        aria-label="menu"
+                        onClick={() => setDrawerOpen(true)}
+                        sx={{ display: { xs: 'inline-flex', sm: 'none' } }}
+                    >
+                        <MenuIcon />
+                    </IconButton>
+
+                    <Box component="img" src="/logo.png" alt="App logo" sx={{ height: { xs: 32, sm: 40 } }} />
+                    <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
                         <Button component={NavLink} to="/" variant={path === '/' ? 'contained' : 'text'} sx={{ mr: 1 }} end>
                             Map
                         </Button>
@@ -35,7 +57,8 @@ function NavBar({ canWrite, onLogout, session, themeName, setThemeName }) {
                         ) : null}
                     </Box>
                 </Box>
-                <Box sx={{ alignItems: 'center', display: 'flex', gap: 1.5 }}>
+
+                <Box sx={{ alignItems: 'center', display: { xs: 'none', sm: 'flex' }, gap: 1.5 }}>
                     <FormControl size="small" sx={{ minWidth: 140 }}>
                         <InputLabel id="theme-select-label">Theme</InputLabel>
                         <Select
@@ -57,6 +80,51 @@ function NavBar({ canWrite, onLogout, session, themeName, setThemeName }) {
                         Logout
                     </Button>
                 </Box>
+
+                <Drawer anchor="left" open={drawerOpen} onClose={closeDrawer}>
+                    <Box sx={{ width: 280 }} role="presentation" onClick={closeDrawer} onKeyDown={closeDrawer}>
+                        <List>
+                            <ListItem>
+                                <ListItemButton component={NavLink} to="/">
+                                    <ListItemText primary="Map" />
+                                </ListItemButton>
+                            </ListItem>
+                            {isAdminUser ? (
+                                <>
+                                    <ListItem>
+                                        <ListItemButton component={NavLink} to="/tags">
+                                            <ListItemText primary="Tags" />
+                                        </ListItemButton>
+                                    </ListItem>
+                                    <ListItem>
+                                        <ListItemButton component={NavLink} to="/dashboard">
+                                            <ListItemText primary="Dashboard" />
+                                        </ListItemButton>
+                                    </ListItem>
+                                </>
+                            ) : null}
+                        </List>
+                        <Divider />
+                        <Box sx={{ p: 2 }}>
+                            <FormControl fullWidth size="small">
+                                <InputLabel id="theme-select-label-drawer">Theme</InputLabel>
+                                <Select
+                                    labelId="theme-select-label-drawer"
+                                    value={themeName || 'light'}
+                                    label="Theme"
+                                    onChange={(e) => { setThemeName?.(e.target.value); localStorage.setItem('theme', e.target.value); }}
+                                >
+                                    <MenuItem value="light">Light</MenuItem>
+                                    <MenuItem value="dark">Dark</MenuItem>
+                                    <MenuItem value="solarized">Solarized Dark</MenuItem>
+                                </Select>
+                            </FormControl>
+
+                            <Typography sx={{ mt: 2 }} color="text.secondary" variant="body2">{session.username} · {session.role}{canWrite ? '' : ' · Read only'}</Typography>
+                            <Button fullWidth sx={{ mt: 2 }} variant="outlined" onClick={onLogout}>Logout</Button>
+                        </Box>
+                    </Box>
+                </Drawer>
             </Toolbar>
         </AppBar>
     );

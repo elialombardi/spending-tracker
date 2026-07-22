@@ -16,6 +16,8 @@ import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 
+import { version as appVersion } from '../../package.json'
+
 export default function LoginScreen({ errorMessage, isBusy, isDevelopment, onSubmit }) {
     const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
@@ -99,6 +101,9 @@ export default function LoginScreen({ errorMessage, isBusy, isDevelopment, onSub
                         </Stack>
                     </Box>
                 </Stack>
+                <Box sx={{ mt: 1, textAlign: 'right' }}>
+                    <Typography variant="caption" color="text.secondary">Version {appVersion}</Typography>
+                </Box>
             </Paper>
         </Box>
     )

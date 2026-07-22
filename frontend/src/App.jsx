@@ -8,6 +8,7 @@ import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import { bootstrapDevelopmentSession, canWrite, isSessionExpired, login, logout, useAuthSession, isAdmin } from './auth';
 import { isDevelopmentEnv } from './config';
+import { version as appVersion } from '../package.json';
 
 const MapPage = lazy(() => import('./pages/MapPage'));
 const TagsPage = lazy(() => import('./pages/TagsPage'));
@@ -146,87 +147,92 @@ function App({ themeName, setThemeName }) {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 2 }}>
-      <NavBar canWrite={canModify} onLogout={() => logout()} session={session} themeName={themeName} setThemeName={setThemeName} />
-      <Box>
-        {appError ? <Alert severity="error" sx={{ mb: 2 }}>{appError}</Alert> : null}
-        <Suspense fallback={routeFallback}>
-          <Routes>
-            <Route path="/" element={<MapPage />} />
-            <Route path="/cognitive" element={<CognitiveTraining />} />
-            {isAdminUser ? (
-              <>
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/tags" element={
-                  <TagsPage
-                    canWrite={canModify}
-                    tags={tags}
-                    locations={locations}
-                    onRenameTag={async (oldTag, newTag) => {
-                      try {
-                        await api.renameTag(oldTag, newTag);
-                      } catch (err) {
-                        handleApiError(err, 'Failed to rename the tag.');
-                        return;
-                      }
-                      setTags((t) => t.map((x) => (x === oldTag ? newTag : x)));
-                      setLocations((locs) => locs.map((L) => ({ ...L, tags: (L.tags || []).map((tg) => (tg === oldTag ? newTag : tg)) })));
-                    }}
-                    onDeleteTag={async (tagToDelete) => {
-                      try {
-                        await api.deleteTag(tagToDelete);
-                      } catch (err) {
-                        handleApiError(err, 'Failed to delete the tag.');
-                        return;
-                      }
-                      setTags((t) => t.filter((x) => x !== tagToDelete));
-                      setLocations((locs) => locs.map((L) => ({ ...L, tags: (L.tags || []).filter((tg) => tg !== tagToDelete) })));
-                    }}
-                    onCreateTag={async (newTag) => {
-                      try {
-                        await api.createTag(newTag);
-                      } catch (err) {
-                        handleApiError(err, 'Failed to create the tag.');
-                        return;
-                      }
-                      setTags((t) => (t.includes(newTag) ? t : [...t, newTag]));
-                    }}
-                    onToggleLocationTag={async (locId, tag, present) => {
-                      try {
-                        const updated = await api.toggleLocationTag(locId, tag, present);
-                        if (updated && updated.id) {
-                          setLocations((locs) => locs.map((L) => (L.id === updated.id ? updated : L)));
+    <>
+      <Container maxWidth="lg" sx={{ py: 2 }}>
+        <NavBar canWrite={canModify} onLogout={() => logout()} session={session} themeName={themeName} setThemeName={setThemeName} />
+        <Box>
+          {appError ? <Alert severity="error" sx={{ mb: 2 }}>{appError}</Alert> : null}
+          <Suspense fallback={routeFallback}>
+            <Routes>
+              <Route path="/" element={<MapPage />} />
+              <Route path="/cognitive" element={<CognitiveTraining />} />
+              {isAdminUser ? (
+                <>
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route path="/tags" element={
+                    <TagsPage
+                      canWrite={canModify}
+                      tags={tags}
+                      locations={locations}
+                      onRenameTag={async (oldTag, newTag) => {
+                        try {
+                          await api.renameTag(oldTag, newTag);
+                        } catch (err) {
+                          handleApiError(err, 'Failed to rename the tag.');
+                          return;
                         }
-                      } catch (err) {
-                        handleApiError(err, 'Failed to update the location tag.');
-                      }
-                    }}
-                    onUpdateLocation={async (locId, updated) => {
-                      try {
-                        const remote = await api.updateLocation(locId, updated);
-                        if (remote && remote.id) {
-                          setLocations((locs) => locs.map((L) => (L.id === locId ? remote : L)));
+                        setTags((t) => t.map((x) => (x === oldTag ? newTag : x)));
+                        setLocations((locs) => locs.map((L) => ({ ...L, tags: (L.tags || []).map((tg) => (tg === oldTag ? newTag : tg)) })));
+                      }}
+                      onDeleteTag={async (tagToDelete) => {
+                        try {
+                          await api.deleteTag(tagToDelete);
+                        } catch (err) {
+                          handleApiError(err, 'Failed to delete the tag.');
+                          return;
                         }
-                      } catch (err) {
-                        handleApiError(err, 'Failed to update the location.');
-                      }
-                    }}
-                    onDeleteLocation={async (locId) => {
-                      try {
-                        await api.deleteLocation(locId);
-                        setLocations((locs) => locs.filter((L) => L.id !== locId));
-                      } catch (err) {
-                        handleApiError(err, 'Failed to delete the location.');
-                      }
-                    }}
-                  />
-                } />
-              </>
-            ) : null}
-          </Routes>
-        </Suspense>
+                        setTags((t) => t.filter((x) => x !== tagToDelete));
+                        setLocations((locs) => locs.map((L) => ({ ...L, tags: (L.tags || []).filter((tg) => tg !== tagToDelete) })));
+                      }}
+                      onCreateTag={async (newTag) => {
+                        try {
+                          await api.createTag(newTag);
+                        } catch (err) {
+                          handleApiError(err, 'Failed to create the tag.');
+                          return;
+                        }
+                        setTags((t) => (t.includes(newTag) ? t : [...t, newTag]));
+                      }}
+                      onToggleLocationTag={async (locId, tag, present) => {
+                        try {
+                          const updated = await api.toggleLocationTag(locId, tag, present);
+                          if (updated && updated.id) {
+                            setLocations((locs) => locs.map((L) => (L.id === updated.id ? updated : L)));
+                          }
+                        } catch (err) {
+                          handleApiError(err, 'Failed to update the location tag.');
+                        }
+                      }}
+                      onUpdateLocation={async (locId, updated) => {
+                        try {
+                          const remote = await api.updateLocation(locId, updated);
+                          if (remote && remote.id) {
+                            setLocations((locs) => locs.map((L) => (L.id === locId ? remote : L)));
+                          }
+                        } catch (err) {
+                          handleApiError(err, 'Failed to update the location.');
+                        }
+                      }}
+                      onDeleteLocation={async (locId) => {
+                        try {
+                          await api.deleteLocation(locId);
+                          setLocations((locs) => locs.filter((L) => L.id !== locId));
+                        } catch (err) {
+                          handleApiError(err, 'Failed to delete the location.');
+                        }
+                      }}
+                    />
+                  } />
+                </>
+              ) : null}
+            </Routes>
+          </Suspense>
+        </Box>
+      </Container>
+      <Box sx={{ mt: 2, textAlign: 'right', color: 'text.secondary', fontSize: '0.75rem', px: 2, py: 1 }}>
+        Version {appVersion}
       </Box>
-    </Container>
+    </>
   );
 }
 

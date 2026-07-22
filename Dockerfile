@@ -1,37 +1,38 @@
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
-WORKDIR /src
-
-# copy csproj and restore first for caching
-COPY ["api/SpendingTracker.Api", "SpendingTracker.Api"]
-RUN dotnet restore "SpendingTracker.Api/SpendingTracker.Api.csproj"
-
-FROM node:24-alpine AS buildnode
+FROM node:24-alpine AS frontend-build
 WORKDIR /app
 
-# Copy package files first for better caching
-# Use a glob so both `package.json` and `package-lock.json` are included reliably
-COPY ["frontend/package*.json", "."]
+COPY frontend/package*.json ./
 RUN npm ci
 
-# Copy the rest of the source code
-COPY ["frontend", "."]
-
-# Build the app (output goes to /app/dist)
+COPY frontend/ ./
 RUN npm run build
 
-FROM build AS final
-# Move files from dist to wwwroot
-COPY --from=buildnode /app/dist /src/SpendingTracker.Api/wwwroot
+FROM golang:1.22-alpine AS go-build
+WORKDIR /src
 
+COPY api-go/go.mod api-go/go.sum ./
+RUN go mod download
 
-# copy everything and publish
-WORKDIR /src/SpendingTracker.Api
-RUN dotnet publish "SpendingTracker.Api.csproj" -c Release -o /app/publish --no-restore
+COPY api-go/ ./
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o /out/spending-tracker-api .
 
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
+FROM alpine:3.20 AS runtime
 WORKDIR /app
-ENV ASPNETCORE_URLS=http://+:80
-EXPOSE 80
-COPY --from=final /app/publish .
 
-ENTRYPOINT ["dotnet", "SpendingTracker.Api.dll"]
+RUN addgroup -S appgroup \
+	&& adduser -S appuser -G appgroup \
+	&& mkdir -p /app/App_Data /app/public \
+	&& chown -R appuser:appgroup /app
+
+COPY --from=go-build /out/spending-tracker-api /app/spending-tracker-api
+COPY --from=frontend-build /app/dist /app/public
+
+ENV PORT=7004 \
+	STATIC_DIR=/app/public \
+	SPENDING_TRACKER_DB=/app/App_Data/spending-tracker.db
+
+EXPOSE 7004
+
+USER appuser
+
+ENTRYPOINT ["/app/spending-tracker-api"]

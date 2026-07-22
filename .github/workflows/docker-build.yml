@@ -1,64 +1,60 @@
-name: CI - Release and Docker Build
+name: Build and Push Docker Image
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - master
+    paths:
+      - '**'  # Build on any change to backend code
+  workflow_dispatch:  # Manual trigger
 
-permissions:
-  contents: write
-  packages: write
+env:
+  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  DOCKER_IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/spending-tracker
 
 jobs:
-  release-and-build:
+  build-and-push:
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
         with:
-          persist-credentials: true
-          fetch-depth: 0
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
         with:
-          node-version: '18'
+          images: ${{ env.DOCKER_IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=Spending Tracker
+            org.opencontainers.image.description=Beautiful Application
 
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
+      - name: Build and push Backend
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Add platforms if you need ARM support
+          # platforms: linux/amd64,linux/arm64
 
-      - name: Run semantic-release (frontend)
-        working-directory: frontend
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release --no-ci
-
-      - name: Build backend
-        working-directory: api/SpendingTracker.Api
-        run: dotnet build SpendingTracker.Api.csproj --configuration Release
-
-      - name: Build Docker images
-        run: |
-          docker build -t spending-tracker-frontend:latest -f frontend/Dockerfile frontend
-          docker build -t spending-tracker-api:latest -f SpendingTracker.Api/Dockerfile SpendingTracker.Api || true
-
-      - name: Push Docker images (GitHub Packages example)
-        if: env.REGISTRY_PUSH == 'true'
-        env:
-          REGISTRY: ghcr.io
-          IMAGE_PREFIX: ${{ github.repository_owner }}/spending-tracker
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Logging into GitHub Container Registry"
-          echo $GITHUB_TOKEN | docker login ghcr.io -u $GITHUB_ACTOR --password-stdin
-          docker tag spending-tracker-frontend:latest $REGISTRY/$IMAGE_PREFIX-frontend:${{ github.sha }}
-          docker tag spending-tracker-frontend:latest $REGISTRY/$IMAGE_PREFIX-frontend:latest
-          docker tag spending-tracker-api:latest $REGISTRY/$IMAGE_PREFIX-api:${{ github.sha }}
-          docker tag spending-tracker-api:latest $REGISTRY/$IMAGE_PREFIX-api:latest
-          docker push $REGISTRY/$IMAGE_PREFIX-frontend:${{ github.sha }}
-          docker push $REGISTRY/$IMAGE_PREFIX-frontend:latest
-          docker push $REGISTRY/$IMAGE_PREFIX-api:${{ github.sha }}
-          docker push $REGISTRY/$IMAGE_PREFIX-api:latest
-
-      - name: Output
-        run: echo "Workflow completed"
+      - name: Image digest
+        run: echo "Image pushed with digest ${{ steps.build.outputs.digest }}"

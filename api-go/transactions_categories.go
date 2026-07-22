@@ -1,8 +1,8 @@
 package main
 
 import (
-	"crypto/sha256"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"fmt"
@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	dateLayout                      = "2006-01-02"
-	merchantRuleBehaviorAutoApply   = "AutoApply"
+	dateLayout                       = "2006-01-02"
+	merchantRuleBehaviorAutoApply    = "AutoApply"
 	merchantRuleBehaviorAlwaysReview = "AlwaysReview"
 )
 
@@ -40,37 +40,37 @@ var (
 )
 
 type TransactionResponse struct {
-	TransactionID         string   `json:"transactionId"`
-	AccountNumber         string   `json:"accountNumber"`
-	BookingDate           string   `json:"bookingDate"`
-	ValueDate             string   `json:"valueDate"`
-	Amount                float64  `json:"amount"`
-	Direction             string   `json:"direction"`
-	Description           string   `json:"description"`
-	MerchantKey           string   `json:"merchantKey"`
-	MerchantRuleBehavior  string   `json:"merchantRuleBehavior"`
-	Category              *string  `json:"category"`
-	SuggestedCategory     *string  `json:"suggestedCategory"`
-	SuggestionConfidence  *float64 `json:"suggestionConfidence"`
-	NeedsReview           bool     `json:"needsReview"`
-	IsMonthlyRecurring    bool     `json:"isMonthlyRecurring"`
+	TransactionID        string   `json:"transactionId"`
+	AccountNumber        string   `json:"accountNumber"`
+	BookingDate          string   `json:"bookingDate"`
+	ValueDate            string   `json:"valueDate"`
+	Amount               float64  `json:"amount"`
+	Direction            string   `json:"direction"`
+	Description          string   `json:"description"`
+	MerchantKey          string   `json:"merchantKey"`
+	MerchantRuleBehavior string   `json:"merchantRuleBehavior"`
+	Category             *string  `json:"category"`
+	SuggestedCategory    *string  `json:"suggestedCategory"`
+	SuggestionConfidence *float64 `json:"suggestionConfidence"`
+	NeedsReview          bool     `json:"needsReview"`
+	IsMonthlyRecurring   bool     `json:"isMonthlyRecurring"`
 }
 
 type CategorizeTransactionRequest struct {
-	Category               string  `json:"category"`
-	SaveRule               bool    `json:"saveRule"`
-	RuleBehavior           *string `json:"ruleBehavior"`
-	MerchantKey            *string `json:"merchantKey"`
-	ExcludeFromCalculations bool   `json:"excludeFromCalculations"`
-	IsMonthlyRecurring     bool    `json:"isMonthlyRecurring"`
+	Category                string  `json:"category"`
+	SaveRule                bool    `json:"saveRule"`
+	RuleBehavior            *string `json:"ruleBehavior"`
+	MerchantKey             *string `json:"merchantKey"`
+	ExcludeFromCalculations bool    `json:"excludeFromCalculations"`
+	IsMonthlyRecurring      bool    `json:"isMonthlyRecurring"`
 }
 
 type SpendingSummaryResponse struct {
-	From              *string                 `json:"from"`
-	To                *string                 `json:"to"`
-	TotalSpent        float64                 `json:"totalSpent"`
-	UncategorizedSpent float64                `json:"uncategorizedSpent"`
-	Categories        []CategorySpendResponse `json:"categories"`
+	From               *string                 `json:"from"`
+	To                 *string                 `json:"to"`
+	TotalSpent         float64                 `json:"totalSpent"`
+	UncategorizedSpent float64                 `json:"uncategorizedSpent"`
+	Categories         []CategorySpendResponse `json:"categories"`
 }
 
 type CategorySpendResponse struct {
@@ -101,7 +101,7 @@ type UpdateCategoryMappingRequest struct {
 }
 
 type CycleIncomeCategoriesResponse struct {
-	UsesAllIncomeTransactions bool                               `json:"usesAllIncomeTransactions"`
+	UsesAllIncomeTransactions bool                                `json:"usesAllIncomeTransactions"`
 	Categories                []CycleIncomeCategoryOptionResponse `json:"categories"`
 }
 
@@ -116,20 +116,20 @@ type UpdateCycleIncomeCategoriesRequest struct {
 }
 
 type transactionRow struct {
-	ID                     string
-	AccountNumber          string
-	BookingDate            string
-	ValueDate              string
-	Amount                 float64
-	RawDescription         string
-	MerchantKey            string
-	Category               sql.NullString
-	SuggestedCategory      sql.NullString
-	SuggestionConfidence   sql.NullFloat64
-	NeedsReview            bool
+	ID                      string
+	AccountNumber           string
+	BookingDate             string
+	ValueDate               string
+	Amount                  float64
+	RawDescription          string
+	MerchantKey             string
+	Category                sql.NullString
+	SuggestedCategory       sql.NullString
+	SuggestionConfidence    sql.NullFloat64
+	NeedsReview             bool
 	ExcludeFromCalculations bool
-	ImportedAtUtc          string
-	IsMonthlyRecurring     bool
+	ImportedAtUtc           string
+	IsMonthlyRecurring      bool
 }
 
 func listTransactions(c *fiber.Ctx) error {
@@ -151,7 +151,7 @@ func listTransactions(c *fiber.Ctx) error {
 	}
 	category := strings.TrimSpace(c.Query("category"))
 
-	transactions, err := fetchTransactions(db, from, to, direction, category, hasNeedsReview, needsReview)
+	transactions, err := fetchTransactions(database, from, to, direction, category, hasNeedsReview, needsReview)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -168,7 +168,7 @@ func getTransactionsSummary(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid to date. Expected yyyy-MM-dd.")
 	}
 
-	summary, err := fetchTransactionsSummary(db, from, to)
+	summary, err := fetchTransactionsSummary(database, from, to)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -190,7 +190,7 @@ func categorizeTransaction(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Category is required.")
 	}
 
-	response, found, err := applyCategorization(db, transactionID, request, category)
+	response, found, err := applyCategorization(database, transactionID, request, category)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -201,7 +201,7 @@ func categorizeTransaction(c *fiber.Ctx) error {
 }
 
 func listCategories(c *fiber.Ctx) error {
-	responses, err := fetchCategories(db)
+	responses, err := fetchCategories(database)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -209,7 +209,7 @@ func listCategories(c *fiber.Ctx) error {
 }
 
 func getCycleIncomeCategories(c *fiber.Ctx) error {
-	response, err := fetchCycleIncomeCategories(db)
+	response, err := fetchCycleIncomeCategories(database)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -222,7 +222,7 @@ func updateCycleIncomeCategories(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	response, err := saveCycleIncomeCategories(db, request.Categories)
+	response, err := saveCycleIncomeCategories(database, request.Categories)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -230,7 +230,7 @@ func updateCycleIncomeCategories(c *fiber.Ctx) error {
 }
 
 func listCategoryMappings(c *fiber.Ctx) error {
-	mappings, err := fetchCategoryMappings(db)
+	mappings, err := fetchCategoryMappings(database)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -251,7 +251,7 @@ func updateCategoryMapping(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Category is required for auto-apply mappings.")
 	}
 
-	response, found, err := saveCategoryMapping(db, mappingID, behavior, collapseWhitespace(derefString(request.Category)))
+	response, found, err := saveCategoryMapping(database, mappingID, behavior, collapseWhitespace(derefString(request.Category)))
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -262,7 +262,7 @@ func updateCategoryMapping(c *fiber.Ctx) error {
 }
 
 func deleteCategoryMapping(c *fiber.Ctx) error {
-	deleted, err := removeCategoryMapping(db, strings.TrimSpace(c.Params("mappingId")))
+	deleted, err := removeCategoryMapping(database, strings.TrimSpace(c.Params("mappingId")))
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}

@@ -6,6 +6,12 @@ import { ensureAuthenticated, logout } from './auth';
 import { API_BASE } from './config';
 
 const endpoints = {
+    // Tasks
+    listTasks: { method: 'GET', path: '/api/tasks' }, // returns Task[]
+    createTask: { method: 'POST', path: '/api/tasks' }, // body: CreateTask -> returns Task
+    listProjects: { method: 'GET', path: '/api/projects' }, // returns Project[]
+    createProject: { method: 'POST', path: '/api/projects' }, // body: CreateProject -> returns Project
+
     // Locations
     listLocations: { method: 'GET', path: '/locations' }, // returns Location[]
     getLocation: { method: 'GET', path: '/locations/:id' }, // returns Location
@@ -187,6 +193,12 @@ const api = {
     endpoints,
     schemas,
     API_BASE,
+
+    // Tasks
+    listTasks: async () => fetchJSON(endpoints.listTasks.path),
+    createTask: async (task) => fetchJSON(endpoints.createTask.path, { method: 'POST', body: JSON.stringify(task) }),
+    listProjects: async () => fetchJSON(endpoints.listProjects.path),
+    createProject: async (project) => fetchJSON(endpoints.createProject.path, { method: 'POST', body: JSON.stringify(project) }),
 
     // Locations
     listLocations: async () => fetchJSON(endpoints.listLocations.path),

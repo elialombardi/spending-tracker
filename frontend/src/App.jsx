@@ -14,6 +14,7 @@ const MapPage = lazy(() => import('./pages/MapPage'));
 const TagsPage = lazy(() => import('./pages/TagsPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const CognitiveTraining = lazy(() => import('./pages/CognitiveTraining'));
+const TasksPage = lazy(() => import('./pages/TasksPage'));
 
 const defaultLocations = [
   {
@@ -159,7 +160,8 @@ function App({ themeName, setThemeName }) {
               {isAdminUser ? (
                 <>
                   <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route path="/tags" element={
+                  <Route path="/tasks" element={<TasksPage />} />
+                  <Route path="/admin/tags" element={
                     <TagsPage
                       canWrite={canModify}
                       tags={tags}

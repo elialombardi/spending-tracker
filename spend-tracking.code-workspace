@@ -9,6 +9,10 @@
 			"path": "api"
 		},
 		{
+			"name": "api-go",
+			"path": "api-go"
+		},
+		{
 			"name": "frontend",
 			"path": "frontend"
 		}
@@ -56,6 +60,19 @@
 		"version": "0.2.0",
 		"configurations": [
 			{
+				"name": "api-go",
+				"type": "go",
+				"request": "launch",
+				"mode": "auto",
+				"program": "${workspaceFolder:api-go}",
+				"env": {
+					"ALLOW_ORIGINS": "http://localhost:5173",
+					"PORT": "7004",
+					"DB_FILE_PATH": "${workspaceFolder:root}/spending-tracker.db"
+				},
+				"args": []
+			},
+			{
 				"name": "API",
 				"type": "coreclr",
 				"request": "launch",
@@ -78,6 +95,10 @@
 		"compounds": []
 	},
 	"extensions": {
-		"recommendations": []
+		"recommendations": [
+			"golang.go",
+			"dbaeumer.vscode-eslint",
+			"esbenp.prettier-vscode",
+		]
 	}
 }

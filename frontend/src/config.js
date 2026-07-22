@@ -2,6 +2,10 @@ const runtimeEnv = (typeof window !== 'undefined' && window.__ENV__) || {}
 const viteEnv = (typeof import.meta !== 'undefined' && import.meta.env) || {}
 const processEnv = (typeof globalThis !== 'undefined' && globalThis.process && globalThis.process.env) || {}
 
+console.log('runtimeEnv', runtimeEnv)
+console.log('viteEnv', viteEnv)
+console.log('processEnv', processEnv)
+
 // Prefer Vite-provided envs during dev/build, allow optional runtime overrides via window.__ENV__
 const mode = viteEnv.MODE || runtimeEnv.MODE || processEnv.NODE_ENV || ''
 
@@ -46,6 +50,8 @@ export const DEV_AUTH_USERNAME = runtimeEnv.VITE_AUTH_USERNAME
     || viteEnv.VITE_AUTH_USERNAME
     || processEnv.REACT_APP_AUTH_USERNAME
     || 'admin'
+
+console.log('DEV_AUTH_USERNAME', DEV_AUTH_USERNAME)
 
 export const DEV_AUTH_PASSWORD = runtimeEnv.VITE_AUTH_PASSWORD
     || viteEnv.VITE_AUTH_PASSWORD

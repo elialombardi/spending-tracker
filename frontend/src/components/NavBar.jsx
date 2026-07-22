@@ -60,11 +60,14 @@ function NavBar({ canWrite, onLogout, session, themeName, setThemeName }) {
                         </Button>
                         {isAdminUser ? (
                             <>
-                                {/* <Button component={NavLink} to="/tags" variant={path === '/tags' ? 'contained' : 'text'}>
+                                {/* <Button component={NavLink} to="/admin/tags" variant={path === '/admin/tags' ? 'contained' : 'text'}>
                                     Tags
                                 </Button> */}
                                 <Button component={NavLink} to="/dashboard" variant={path === '/dashboard' ? 'contained' : 'text'} sx={{ ml: 1 }}>
                                     Dashboard
+                                </Button>
+                                <Button component={NavLink} to="/tasks" variant={path === '/tasks' ? 'contained' : 'text'} sx={{ ml: 1 }}>
+                                    Tasks
                                 </Button>
                             </>
                         ) : null}
@@ -110,13 +113,18 @@ function NavBar({ canWrite, onLogout, session, themeName, setThemeName }) {
                             {isAdminUser ? (
                                 <>
                                     <ListItem>
-                                        <ListItemButton component={NavLink} to="/tags">
+                                        <ListItemButton component={NavLink} to="/admin/tags">
                                             <ListItemText primary="Tags" />
                                         </ListItemButton>
                                     </ListItem>
                                     <ListItem>
                                         <ListItemButton component={NavLink} to="/dashboard">
                                             <ListItemText primary="Dashboard" />
+                                        </ListItemButton>
+                                    </ListItem>
+                                    <ListItem>
+                                        <ListItemButton component={NavLink} to="/tasks">
+                                            <ListItemText primary="Tasks" />
                                         </ListItemButton>
                                     </ListItem>
                                 </>

@@ -40,16 +40,29 @@ function NavBar({ canWrite, onLogout, session, themeName, setThemeName }) {
                         <MenuIcon />
                     </IconButton>
 
-                    <Box component="img" src="/logo.png" alt="App logo" sx={{ height: { xs: 32, sm: 40 } }} />
+                    <Box
+                        component="img"
+                        src="/logo.png"
+                        alt="App logo"
+                        sx={{
+                            height: { xs: 32, sm: 40 },
+                            width: { xs: 32, sm: 40 },
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                        }}
+                    />
                     <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
                         <Button component={NavLink} to="/" variant={path === '/' ? 'contained' : 'text'} sx={{ mr: 1 }} end>
                             Map
                         </Button>
+                        <Button component={NavLink} to="/cognitive" variant={path === '/cognitive' ? 'contained' : 'text'} sx={{ ml: 1 }}>
+                            Cognitive Traning
+                        </Button>
                         {isAdminUser ? (
                             <>
-                                <Button component={NavLink} to="/tags" variant={path === '/tags' ? 'contained' : 'text'}>
+                                {/* <Button component={NavLink} to="/tags" variant={path === '/tags' ? 'contained' : 'text'}>
                                     Tags
-                                </Button>
+                                </Button> */}
                                 <Button component={NavLink} to="/dashboard" variant={path === '/dashboard' ? 'contained' : 'text'} sx={{ ml: 1 }}>
                                     Dashboard
                                 </Button>
@@ -87,6 +100,11 @@ function NavBar({ canWrite, onLogout, session, themeName, setThemeName }) {
                             <ListItem>
                                 <ListItemButton component={NavLink} to="/">
                                     <ListItemText primary="Map" />
+                                </ListItemButton>
+                            </ListItem>
+                            <ListItem>
+                                <ListItemButton component={NavLink} to="/cognitive">
+                                    <ListItemText primary="Cognitive Traning" />
                                 </ListItemButton>
                             </ListItem>
                             {isAdminUser ? (

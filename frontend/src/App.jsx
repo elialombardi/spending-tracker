@@ -12,6 +12,7 @@ import { isDevelopmentEnv } from './config';
 const MapPage = lazy(() => import('./pages/MapPage'));
 const TagsPage = lazy(() => import('./pages/TagsPage'));
 const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const CognitiveTraining = lazy(() => import('./pages/CognitiveTraining'));
 
 const defaultLocations = [
   {
@@ -152,6 +153,7 @@ function App({ themeName, setThemeName }) {
         <Suspense fallback={routeFallback}>
           <Routes>
             <Route path="/" element={<MapPage />} />
+            <Route path="/cognitive" element={<CognitiveTraining />} />
             {isAdminUser ? (
               <>
                 <Route path="/dashboard" element={<DashboardPage />} />

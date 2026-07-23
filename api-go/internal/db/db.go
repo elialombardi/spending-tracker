@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -24,16 +25,23 @@ func OpenDatabase() (*sql.DB, error) {
 		dbPath = filepath.Join(cwd, dbPath)
 	}
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create database directory %q: %w", filepath.Dir(dbPath), err)
+	}
+	file, err := os.OpenFile(dbPath, os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("open database file %q: %w", dbPath, err)
+	}
+	if err := file.Close(); err != nil {
+		return nil, fmt.Errorf("close database file %q: %w", dbPath, err)
 	}
 
 	database, err := sql.Open("sqlite", dbPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open SQLite database %q: %w", dbPath, err)
 	}
 	if _, err := database.Exec("PRAGMA foreign_keys = ON;"); err != nil {
 		database.Close()
-		return nil, err
+		return nil, fmt.Errorf("initialize SQLite database %q: %w", dbPath, err)
 	}
 	return database, nil
 }

@@ -151,7 +151,6 @@ export default function TaskCreateForm({ isBusy = false, projects = [], onCreate
                         value={cost}
                         onChange={(event) => setCost(event.target.value)}
                         disabled={isBusy}
-                        {...({ inputProps: { min: 0, step: '0.01' } } as any)}
                     />
 
                     <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -183,7 +182,7 @@ export default function TaskCreateForm({ isBusy = false, projects = [], onCreate
                     disabled={isBusy}
                 />
 
-                <Stack alignItems={{ xs: 'stretch', md: 'center' }} direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2}>
+                <Stack spacing={2}>
                     <Typography color="text.secondary" variant="body2">
                         Leave sentOn empty to keep the task in the pending workflow.
                     </Typography>

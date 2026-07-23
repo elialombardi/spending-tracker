@@ -18,6 +18,7 @@ import Typography from '@mui/material/Typography';
 import api from '../../api';
 import ProjectCreateForm from './ProjectCreateForm';
 import TaskCreateForm from './TaskCreateForm';
+import { Task } from '../../types/x';
 
 const VIEW_NOT_SENT = 'not-sent';
 const VIEW_PREPARE = 'prepare';
@@ -62,9 +63,9 @@ function compareByDateDescending(left: any, right: any) {
     return String(right.date || '').localeCompare(String(left.date || '')) || right.id - left.id;
 }
 
-function groupNotSentByMonth(tasks: any[]) {
-    const groups: any[] = [];
-    let currentGroup: any = null;
+function groupNotSentByMonth(tasks: Task[]) {
+    const groups: { key: string; tasks: Task[] }[] = [];
+    let currentGroup: { key: string; tasks: Task[] } | null = null;
 
     [...tasks].sort(compareByDateAscending).forEach((task) => {
         const key = monthKey(task.date);
@@ -78,14 +79,14 @@ function groupNotSentByMonth(tasks: any[]) {
     return groups;
 }
 
-function groupNotSentByProject(tasks: any[]) {
-    const grouped = new Map();
+function groupNotSentByProject(tasks: Task[]) {
+    const grouped = new Map<string, Task[]>();
     [...tasks].sort(compareByDateAscending).forEach((task) => {
-        const key = task.projectName || 'Unknown project';
+        const key = String(task.projectId || 'Unknown project');
         if (!grouped.has(key)) {
             grouped.set(key, []);
         }
-        grouped.get(key).push(task);
+        grouped.get(key)!.push(task);
     });
 
     return [...grouped.entries()]
@@ -124,28 +125,28 @@ function StatCard({ eyebrow, title, value }: any) {
 function TaskLine({ task, showProject = false, showSentOn = false, onEdit }: any) {
     return (
         <ListItem
-            disableGutters
-            sx={{
-                alignItems: 'flex-start',
-                py: 1.25,
-            }}
+            alignItems="flex-start"
         >
             <ListItemText
+                slotProps={{
+                    secondary: {
+                        component: 'div'
+                    }
+                }}
                 primary={
-                    <Stack alignItems={{ xs: 'flex-start', sm: 'center' }} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                    <>
                         <Typography sx={{ fontWeight: 600 }} variant="body1">
+                            {showProject ? task.projectName + ' - ' : null}
                             {task.name}
                         </Typography>
-                        {showProject ? <Chip label={task.projectName} size="small" variant="outlined" /> : null}
-                        {!task.sentOn ? <Chip color="warning" label="Not sent" size="small" /> : null}
-                    </Stack>
+                    </>
                 }
                 secondary={
-                    <Stack divider={<Divider flexItem orientation="vertical" />} direction={{ xs: 'column', md: 'row' }} spacing={1} sx={{ mt: 0.75 }} useFlexGap>
-                        <Typography component="span" variant="body2">Date: {formatDate(task.date)}</Typography>
+                    <>
+                        <Typography component="span" variant="body2">{formatDate(task.date)} </Typography>
                         {showSentOn ? <Typography component="span" variant="body2">Sent on: {formatDate(task.sentOn)}</Typography> : null}
                         {task.description ? <Typography component="span" variant="body2">{task.description}</Typography> : null}
-                    </Stack>
+                    </>
                 }
             />
             <Box sx={{ display: 'flex', alignItems: 'center', ml: 2, gap: 1 }}>
@@ -291,7 +292,7 @@ export default function TasksBoard() {
     return (
         <Stack spacing={3}>
             <Box>
-                <Stack direction={{ xs: 'column', sm: 'row' }} alignItems="center" justifyContent="space-between" spacing={2}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                     <Box>
                         <Typography sx={{ fontWeight: 800, letterSpacing: '-0.02em' }} variant="h4">
                             Tasks
@@ -363,7 +364,7 @@ export default function TasksBoard() {
             {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
 
             {isLoading ? (
-                <Stack alignItems="center" spacing={2} sx={{ py: 8 }}>
+                <Stack spacing={2} sx={{ py: 8 }}>
                     <CircularProgress />
                     <Typography color="text.secondary" variant="body2">
                         Loading tasks...
@@ -389,12 +390,9 @@ export default function TasksBoard() {
                     <Stack spacing={2.5}>
                         {monthlyGroups.map((group) => (
                             <Paper key={group.key} sx={{ borderRadius: 3, p: 2.5 }} variant="outlined">
-                                <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1} sx={{ mb: 1 }}>
+                                <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} sx={{ mb: 1 }}>
                                     <Typography sx={{ fontWeight: 700 }} variant="h6">
                                         {group.key}
-                                    </Typography>
-                                    <Typography color="text.secondary" variant="body2">
-                                        {group.tasks.length} tasks
                                     </Typography>
                                 </Stack>
                                 <List disablePadding>

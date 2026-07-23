@@ -31,12 +31,12 @@ export default function CategoryPicker({ categories = [], disabled, name, placeh
                     if (newValue == null) {
                         onChange('')
                     } else {
+                        onChange(newValue)
                     }
                 }}
                 onInputChange={(event, newInputValue) => {
                     onChange(newInputValue)
                 }}
-                PopperProps={{ sx: { minWidth: 220 } }}
                 renderInput={(params) => (
                     <TextField
                         {...params}
@@ -45,10 +45,6 @@ export default function CategoryPicker({ categories = [], disabled, name, placeh
                         variant="outlined"
                         size="small"
                         fullWidth
-                        InputProps={{
-                            ...params.InputProps,
-                            sx: { bgcolor: 'transparent', color: 'inherit' },
-                        }}
                     />
                 )}
                 renderOption={(props, option) => {

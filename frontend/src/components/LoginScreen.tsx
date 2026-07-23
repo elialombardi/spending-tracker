@@ -14,7 +14,6 @@ import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 
-import { version as appVersion } from '../../package.json'
 
 interface Props {
     errorMessage?: string
@@ -22,6 +21,8 @@ interface Props {
     isDevelopment?: boolean
     onSubmit: (creds: { username: string; password: string }) => Promise<any>
 }
+    
+import { APP_VERSION } from '../config'
 
 export default function LoginScreen({ errorMessage, isBusy, isDevelopment, onSubmit }: Props) {
     const [username, setUsername] = useState('')
@@ -106,7 +107,7 @@ export default function LoginScreen({ errorMessage, isBusy, isDevelopment, onSub
                     </Box>
                 </Stack>
                 <Box sx={{ mt: 1, textAlign: 'right' }}>
-                    <Typography variant="caption" color="text.secondary">Version {appVersion}</Typography>
+                    <Typography variant="caption" color="text.secondary">Version {APP_VERSION}</Typography>
                 </Box>
             </Paper>
         </Box>

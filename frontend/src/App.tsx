@@ -7,8 +7,7 @@ import { Routes, Route } from 'react-router-dom';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import { bootstrapDevelopmentSession, canWrite, isSessionExpired, login, logout, useAuthSession, isAdmin } from './auth';
-import { isDevelopmentEnv } from './config';
-import { version as appVersion } from '../package.json';
+import { APP_VERSION, isDevelopmentEnv } from './config';
 
 const MapPage = lazy(() => import('./pages/MapPage'));
 const TagsPage = lazy(() => import('./pages/TagsPage'));
@@ -280,7 +279,7 @@ function App({ themeName, setThemeName }: { themeName: string; setThemeName: (s:
         </Box>
       </Container>
       <Box sx={{ mt: 2, textAlign: 'right', color: 'text.secondary', fontSize: '0.75rem', px: 2, py: 1 }}>
-        Version {appVersion}
+        Version {APP_VERSION}
       </Box>
     </>
   );

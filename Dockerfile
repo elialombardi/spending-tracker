@@ -5,6 +5,7 @@ COPY frontend/package*.json ./
 RUN npm ci
 
 COPY frontend/ ./
+ENV VITE_APP_VERSION=$(date +%Y.%m.%d-%H.%M.%S)
 RUN npm run build
 
 FROM golang:1.22-alpine AS go-build

@@ -1,10 +1,9 @@
-import Box from '@mui/material/Box'
-
+import Paper from '@mui/material/Paper'
+import TasksBoard from '../components/pages/TasksBoard'
 export default function TasksPage() {
     return (
-        <Box sx={{ p: 3, minHeight: '60vh' }}>
-            <Box sx={{ typography: 'h5', mb: 2 }}>Tasks</Box>
-            <Box>Tasks page (converted to TS)</Box>
-        </Box>
+      <Paper sx={{ p: { xs: 2, md: 3 } }}>
+            <TasksBoard />
+        </Paper>
     )
 }

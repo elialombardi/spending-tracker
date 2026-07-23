@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -7,12 +7,15 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 
 function getTodayValue() {
     return new Date().toISOString().slice(0, 10);
 }
 
-export default function TaskCreateForm({ isBusy = false, projects = [], onCreate }) {
+export default function TaskCreateForm({ isBusy = false, projects = [], onCreate, initialTask = null, onSave }) {
     const projectOptions = useMemo(() => [...projects].sort((left, right) => left.name.localeCompare(right.name)), [projects]);
     const [projectId, setProjectId] = useState('');
     const [name, setName] = useState('');
@@ -21,6 +24,19 @@ export default function TaskCreateForm({ isBusy = false, projects = [], onCreate
     const [sentOn, setSentOn] = useState('');
     const [description, setDescription] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
+
+    // when editing an existing task, populate the form
+    useEffect(() => {
+        if (initialTask) {
+            setProjectId(String(initialTask.projectId || ''));
+            setName(initialTask.name || '');
+            setCost(initialTask.cost != null ? String(initialTask.cost) : '');
+            setDate(initialTask.date || getTodayValue());
+            setSentOn(initialTask.sentOn || '');
+            setDescription(initialTask.description || '');
+            setErrorMessage('');
+        }
+    }, [initialTask]);
 
     async function handleSubmit(event) {
         event.preventDefault();
@@ -44,14 +60,19 @@ export default function TaskCreateForm({ isBusy = false, projects = [], onCreate
         }
 
         try {
-            await onCreate?.({
+            const payload = {
                 projectId: Number(projectId),
                 name: name.trim(),
                 cost: Number(cost),
                 date,
                 sentOn: sentOn || '',
                 description: description.trim(),
-            });
+            };
+            if (initialTask && onSave) {
+                await onSave({ ...initialTask, ...payload });
+            } else {
+                await onCreate?.(payload);
+            }
             setName('');
             setCost('');
             setDate(getTodayValue());
@@ -76,10 +97,10 @@ export default function TaskCreateForm({ isBusy = false, projects = [], onCreate
             <Stack spacing={2}>
                 <Box>
                     <Typography sx={{ fontWeight: 700 }} variant="h6">
-                        Create task
+                        {initialTask ? 'Edit task' : 'Create task'}
                     </Typography>
                     <Typography color="text.secondary" variant="body2">
-                        Add a task and immediately include it in the pending and history views.
+                        {initialTask ? 'Update the task details and save changes.' : 'Add a task and immediately include it in the pending and history views.'}
                     </Typography>
                 </Box>
 
@@ -125,26 +146,23 @@ export default function TaskCreateForm({ isBusy = false, projects = [], onCreate
                         inputProps={{ min: 0, step: '0.01' }}
                     />
 
-                    <TextField
-                        required
-                        fullWidth
-                        label="Date"
-                        type="date"
-                        value={date}
-                        onChange={(event) => setDate(event.target.value)}
-                        disabled={isBusy}
-                        InputLabelProps={{ shrink: true }}
-                    />
+                    <LocalizationProvider dateAdapter={AdapterDateFns}>
+                        <DatePicker
+                            label="Date"
+                            value={date ? new Date(date) : null}
+                            onChange={(newValue) => setDate(newValue ? newValue.toISOString().slice(0, 10) : '')}
+                            disabled={isBusy}
+                            renderInput={(params) => <TextField {...params} required fullWidth />}
+                        />
 
-                    <TextField
-                        fullWidth
-                        label="Sent on"
-                        type="date"
-                        value={sentOn}
-                        onChange={(event) => setSentOn(event.target.value)}
-                        disabled={isBusy}
-                        InputLabelProps={{ shrink: true }}
-                    />
+                        <DatePicker
+                            label="Sent on"
+                            value={sentOn ? new Date(sentOn) : null}
+                            onChange={(newValue) => setSentOn(newValue ? newValue.toISOString().slice(0, 10) : '')}
+                            disabled={isBusy}
+                            renderInput={(params) => <TextField {...params} fullWidth />}
+                        />
+                    </LocalizationProvider>
                 </Stack>
 
                 <TextField
@@ -162,7 +180,7 @@ export default function TaskCreateForm({ isBusy = false, projects = [], onCreate
                         Leave sentOn empty to keep the task in the pending workflow.
                     </Typography>
                     <Button type="submit" variant="contained" disabled={isBusy || projectOptions.length === 0}>
-                        {isBusy ? 'Saving...' : 'Create task'}
+                        {isBusy ? 'Saving...' : initialTask ? 'Save changes' : 'Create task'}
                     </Button>
                 </Stack>
             </Stack>

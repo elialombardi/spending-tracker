@@ -42,6 +42,11 @@ func main() {
 
 	reports.RegisterRoutes(app, database)
 
+	app.Get("/api/version", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"version": getenv("APP_VERSION", "unknown"),
+		})
+	})
 	app.Get("/api/projects", auth.AuthRequired(listProjects, []string{"Reader", "Writer", "Admin"}))
 	app.Get("/api/projects/:id", auth.AuthRequired(getProject, []string{"Reader", "Writer", "Admin"}))
 	app.Post("/api/projects", auth.AuthRequired(createProject, []string{"Writer", "Admin"}))

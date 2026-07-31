@@ -16,7 +16,8 @@ import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 
-import { version as appVersion } from '../../package.json'
+
+const appVersion = import.meta.env.VITE_APP_VERSION
 
 export default function LoginScreen({ errorMessage, isBusy, isDevelopment, onSubmit }) {
     const [username, setUsername] = useState('')

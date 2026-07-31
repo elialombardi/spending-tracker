@@ -5,7 +5,7 @@ COPY frontend/package*.json ./
 RUN npm ci
 
 COPY frontend/ ./
-RUN npm run build
+RUN VITE_APP_VERSION=$(date +%Y_%m_%d.%H.%M.%S) npm run build
 
 FROM golang:1.22-alpine AS go-build
 WORKDIR /src
@@ -29,7 +29,8 @@ COPY --from=frontend-build /app/dist /app/public
 
 ENV PORT=7004 \
 	STATIC_DIR=/app/public \
-	SPENDING_TRACKER_DB=/app/App_Data/spending-tracker.db
+	SPENDING_TRACKER_DB=/app/App_Data/spending-tracker.db \
+	APP_VERSION=$(date +%Y_%m_%d.%H.%M.%S)
 
 EXPOSE 7004
 

@@ -8,7 +8,8 @@ import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import { bootstrapDevelopmentSession, canWrite, isSessionExpired, login, logout, useAuthSession, isAdmin } from './auth';
 import { isDevelopmentEnv } from './config';
-import { version as appVersion } from '../package.json';
+
+const appVersion = import.meta.env.VITE_APP_VERSION;
 
 const MapPage = lazy(() => import('./pages/MapPage'));
 const TagsPage = lazy(() => import('./pages/TagsPage'));

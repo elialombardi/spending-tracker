@@ -5,7 +5,10 @@ COPY frontend/package*.json ./
 RUN npm ci
 
 COPY frontend/ ./
-RUN VITE_APP_VERSION=$(date +%Y_%m_%d.%H.%M.%S) npm run build
+ARG APP_VERSION
+# If no build-arg provided, compute timestamp here so frontend and final image match.
+RUN APP_VERSION=${APP_VERSION:-$(date +%Y_%m_%d.%H.%M.%S)} \
+	&& VITE_APP_VERSION=$APP_VERSION npm run build
 
 FROM golang:1.22-alpine AS go-build
 WORKDIR /src
@@ -27,10 +30,14 @@ RUN addgroup -S appgroup \
 COPY --from=go-build /out/spending-tracker-api /app/spending-tracker-api
 COPY --from=frontend-build /app/dist /app/public
 
+# Allow build system to provide the build timestamp; do not use shell
+# substitution in ENV (invalid Dockerfile syntax). Pass via
+# `--build-arg APP_VERSION="$(date +%Y_%m_%d.%H.%M.%S)"` when building.
+ARG APP_VERSION
 ENV PORT=7004 \
 	STATIC_DIR=/app/public \
 	SPENDING_TRACKER_DB=/app/App_Data/spending-tracker.db \
-	APP_VERSION=$(date +%Y_%m_%d.%H.%M.%S)
+	APP_VERSION=$APP_VERSION
 
 EXPOSE 7004
 

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Drawer from '@mui/material/Drawer';
+import AddIcon from '@mui/icons-material/Add';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
@@ -119,7 +121,7 @@ function StatCard({ eyebrow, title, value }) {
     );
 }
 
-function TaskLine({ task, showProject = false, showSentOn = false }) {
+function TaskLine({ task, showProject = false, showSentOn = false, onEdit }) {
     return (
         <ListItem
             disableGutters
@@ -146,9 +148,16 @@ function TaskLine({ task, showProject = false, showSentOn = false }) {
                     </Stack>
                 }
             />
-            <Typography sx={{ fontWeight: 700, ml: 2, whiteSpace: 'nowrap' }} variant="body1">
-                {formatCurrency(task.cost)}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', ml: 2, gap: 1 }}>
+                <Typography sx={{ fontWeight: 700, whiteSpace: 'nowrap' }} variant="body1">
+                    {formatCurrency(task.cost)}
+                </Typography>
+                {onEdit ? (
+                    <Button size="small" onClick={() => onEdit(task)}>
+                        Edit
+                    </Button>
+                ) : null}
+            </Box>
         </ListItem>
     );
 }
@@ -181,6 +190,29 @@ export default function TasksBoard() {
     const [isSaving, setIsSaving] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
     const [view, setView] = useState(VIEW_NOT_SENT);
+    const [isProjectDrawerOpen, setIsProjectDrawerOpen] = useState(false);
+    const [editingTask, setEditingTask] = useState(null);
+    const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(false);
+
+    function openEditTask(task) {
+        setEditingTask(task);
+        setIsTaskDrawerOpen(true);
+    }
+
+    async function handleUpdateTask(payload) {
+        setIsSaving(true);
+        setErrorMessage('');
+        try {
+            const updated = await api.updateTask(payload);
+            setTasks((current) => (Array.isArray(current) ? current.map((t) => (t.id === updated.id ? updated : t)) : [updated]));
+            setIsTaskDrawerOpen(false);
+        } catch (error) {
+            setErrorMessage(error instanceof Error ? error.message : 'Failed to update the task.');
+            throw error;
+        } finally {
+            setIsSaving(false);
+        }
+    }
 
     useEffect(() => {
         let active = true;
@@ -259,13 +291,42 @@ export default function TasksBoard() {
     return (
         <Stack spacing={3}>
             <Box>
-                <Typography sx={{ fontWeight: 800, letterSpacing: '-0.02em' }} variant="h4">
-                    Tasks
-                </Typography>
-                <Typography color="text.secondary" sx={{ maxWidth: 720, mt: 1 }} variant="body1">
-                    Review work still to send, prepare grouped handoff totals by project, and inspect the full task history.
-                </Typography>
+                <Stack direction={{ xs: 'column', sm: 'row' }} alignItems="center" justifyContent="space-between" spacing={2}>
+                    <Box>
+                        <Typography sx={{ fontWeight: 800, letterSpacing: '-0.02em' }} variant="h4">
+                            Tasks
+                        </Typography>
+                        <Typography color="text.secondary" sx={{ maxWidth: 720, mt: 1 }} variant="body1">
+                            Review work still to send, prepare grouped handoff totals by project, and inspect the full task history.
+                        </Typography>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Button
+                            size="small"
+                            variant="contained"
+                            startIcon={<AddIcon />}
+                            onClick={() => setIsProjectDrawerOpen(true)}
+                            disabled={isLoading || isSaving}
+                            sx={{ width: 'auto', px: 1.5 }}
+                        >
+                            Add Project
+                        </Button>
+                        <Drawer anchor="right" open={isProjectDrawerOpen} onClose={() => setIsProjectDrawerOpen(false)}>
+                            <Box sx={{ width: 380, p: 3 }}>
+                                <ProjectCreateForm
+                                    isBusy={isLoading || isSaving}
+                                    onCreate={async (payload) => {
+                                        await handleCreateProject(payload);
+                                        setIsProjectDrawerOpen(false);
+                                    }}
+                                />
+                            </Box>
+                        </Drawer>
+                    </Box>
+                </Stack>
             </Box>
+            <TaskCreateForm isBusy={isLoading || isSaving} projects={projects} onCreate={handleCreateTask} />
 
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
                 <StatCard eyebrow="Pending total" title="All tasks without sentOn" value={formatCurrency(unsentTotal)} />
@@ -273,9 +334,6 @@ export default function TasksBoard() {
                 <StatCard eyebrow="History" title="All stored tasks" value={String(tasks.length)} />
             </Stack>
 
-            <ProjectCreateForm isBusy={isLoading || isSaving} onCreate={handleCreateProject} />
-
-            <TaskCreateForm isBusy={isLoading || isSaving} projects={projects} onCreate={handleCreateTask} />
 
             <Box>
                 <ToggleButtonGroup
@@ -313,6 +371,17 @@ export default function TasksBoard() {
                 </Stack>
             ) : null}
 
+            <Drawer anchor="right" open={isTaskDrawerOpen} onClose={() => setIsTaskDrawerOpen(false)}>
+                <Box sx={{ width: 520, p: 3 }}>
+                    <TaskCreateForm
+                        isBusy={isSaving}
+                        projects={projects}
+                        initialTask={editingTask}
+                        onSave={handleUpdateTask}
+                    />
+                </Box>
+            </Drawer>
+
             {!isLoading && view === VIEW_NOT_SENT ? (
                 monthlyGroups.length === 0 ? (
                     <EmptyState title="Nothing pending" body="Every task already has a sentOn date." />
@@ -330,7 +399,7 @@ export default function TasksBoard() {
                                 </Stack>
                                 <List disablePadding>
                                     {group.tasks.map((task) => (
-                                        <TaskLine key={task.id} showProject task={task} />
+                                        <TaskLine key={task.id} showProject task={task} onEdit={openEditTask} />
                                     ))}
                                 </List>
                             </Paper>
@@ -361,7 +430,7 @@ export default function TasksBoard() {
                                 </Stack>
                                 <List disablePadding>
                                     {group.tasks.map((task) => (
-                                        <TaskLine key={task.id} task={task} />
+                                        <TaskLine key={task.id} task={task} onEdit={openEditTask} />
                                     ))}
                                 </List>
                             </Paper>
@@ -385,7 +454,7 @@ export default function TasksBoard() {
                         </Stack>
                         <List disablePadding>
                             {historyTasks.map((task) => (
-                                <TaskLine key={task.id} showProject showSentOn task={task} />
+                                <TaskLine key={task.id} showProject showSentOn task={task} onEdit={openEditTask} />
                             ))}
                         </List>
                     </Paper>

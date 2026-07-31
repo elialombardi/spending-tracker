@@ -19,6 +19,7 @@ func RegisterRoutes(app *fiber.App, db *sql.DB) {
 	app.Get("/api/transactions", auth.AuthRequired(listTransactions, []string{"Reader", "Writer", "Admin"}))
 	app.Get("/api/transactions/summary", auth.AuthRequired(getTransactionsSummary, []string{"Reader", "Writer", "Admin"}))
 	app.Post("/api/transactions/:transactionId/categorize", auth.AuthRequired(categorizeTransaction, []string{"Writer", "Admin"}))
+	app.Put("/api/transactions/:transactionId/amount", auth.AuthRequired(updateTransactionAmount, []string{"Writer", "Admin"}))
 	app.Get("/api/categories", auth.AuthRequired(listCategories, []string{"Reader", "Writer", "Admin"}))
 	app.Get("/api/categories/cycle-income", auth.AuthRequired(getCycleIncomeCategories, []string{"Reader", "Writer", "Admin"}))
 	app.Put("/api/categories/cycle-income", auth.AuthRequired(updateCycleIncomeCategories, []string{"Writer", "Admin"}))

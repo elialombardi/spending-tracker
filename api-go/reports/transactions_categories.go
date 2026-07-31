@@ -539,6 +539,71 @@ func applyCategorization(database *sql.DB, transactionID string, request Categor
 	return mapTransaction(updatedRow, finalBehavior), true, nil
 }
 
+type UpdateAmountRequest struct {
+	Amount float64 `json:"amount"`
+}
+
+func updateTransactionAmount(c *fiber.Ctx) error {
+	transactionID := strings.TrimSpace(c.Params("transactionId"))
+	if transactionID == "" {
+		return fiber.ErrBadRequest
+	}
+
+	var req UpdateAmountRequest
+	if err := c.BodyParser(&req); err != nil {
+		return fiber.ErrBadRequest
+	}
+
+	tx, err := database.Begin()
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+	defer tx.Rollback()
+
+	_, err = fetchTransactionRowTx(tx, transactionID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return c.SendStatus(fiber.StatusNotFound)
+		}
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	amount := req.Amount
+	debit := 0.0
+	credit := 0.0
+	if amount < 0 {
+		debit = -amount
+	} else {
+		credit = amount
+	}
+
+	if _, err := tx.Exec(`UPDATE Transactions SET Amount = ?, DebitAmount = ?, CreditAmount = ? WHERE Id = ?;`, amount, debit, credit, transactionID); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	// Read the updated row within the tx to determine merchant behavior
+	updatedRowTx, err := fetchTransactionRowTx(tx, transactionID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	behavior, err := getMerchantRuleBehaviorTx(tx, updatedRowTx.MerchantKey)
+	if err != nil {
+		behavior = defaultRuleBehavior(updatedRowTx.MerchantKey)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	updatedRow, err := fetchTransactionRow(database, transactionID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(mapTransaction(updatedRow, behavior))
+}
+
 func fetchRuleBehaviorLookup(database *sql.DB) (map[string]string, error) {
 	rows, err := database.Query(`SELECT MerchantKey, Behavior FROM CategoryRules`)
 	if err != nil {

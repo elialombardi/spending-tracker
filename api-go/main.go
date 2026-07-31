@@ -5,6 +5,8 @@ import (
 	"log"
 	"os"
 
+	reports "github.com/your/repo/spendingtracker.go/reports"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/your/repo/spendingtracker.go/internal/auth"
@@ -37,21 +39,9 @@ func main() {
 	app.Use(cors.New())
 
 	app.Post("/api/auth/token", auth.HandleToken)
-	app.Post("/api/imports/poste-italiane", auth.AuthRequired(importPosteItaliane, []string{"Writer", "Admin"}))
-	app.Get("/api/transactions", auth.AuthRequired(listTransactions, []string{"Reader", "Writer", "Admin"}))
-	app.Get("/api/transactions/summary", auth.AuthRequired(getTransactionsSummary, []string{"Reader", "Writer", "Admin"}))
-	app.Post("/api/transactions/:transactionId/categorize", auth.AuthRequired(categorizeTransaction, []string{"Writer", "Admin"}))
-	app.Get("/api/categories", auth.AuthRequired(listCategories, []string{"Reader", "Writer", "Admin"}))
-	app.Get("/api/categories/cycle-income", auth.AuthRequired(getCycleIncomeCategories, []string{"Reader", "Writer", "Admin"}))
-	app.Put("/api/categories/cycle-income", auth.AuthRequired(updateCycleIncomeCategories, []string{"Writer", "Admin"}))
-	app.Get("/api/categories/mappings", auth.AuthRequired(listCategoryMappings, []string{"Reader", "Writer", "Admin"}))
-	app.Put("/api/categories/mappings/:mappingId", auth.AuthRequired(updateCategoryMapping, []string{"Writer", "Admin"}))
-	app.Delete("/api/categories/mappings/:mappingId", auth.AuthRequired(deleteCategoryMapping, []string{"Writer", "Admin"}))
-	app.Get("/api/reports/cycles", auth.AuthRequired(getReportCycles, []string{"Reader", "Writer", "Admin"}))
-	app.Get("/api/reports/cycle", auth.AuthRequired(getCycleReport, []string{"Reader", "Writer", "Admin"}))
-	app.Get("/api/reports/cycle/export", auth.AuthRequired(exportCycleReport, []string{"Reader", "Writer", "Admin"}))
-	app.Get("/api/reports/monthly", auth.AuthRequired(getMonthlyReport, []string{"Reader", "Writer", "Admin"}))
-	app.Get("/api/reports/monthly/export", auth.AuthRequired(exportMonthlyReport, []string{"Reader", "Writer", "Admin"}))
+
+	reports.RegisterRoutes(app, database)
+
 	app.Get("/api/projects", auth.AuthRequired(listProjects, []string{"Reader", "Writer", "Admin"}))
 	app.Get("/api/projects/:id", auth.AuthRequired(getProject, []string{"Reader", "Writer", "Admin"}))
 	app.Post("/api/projects", auth.AuthRequired(createProject, []string{"Writer", "Admin"}))

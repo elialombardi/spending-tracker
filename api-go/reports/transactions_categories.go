@@ -1,4 +1,4 @@
-package main
+package reports
 
 import (
 	"crypto/rand"
@@ -39,99 +39,6 @@ var (
 	terminalCodeRegex             = regexp.MustCompile(`\s+[A-Z0-9]{8,}$`)
 )
 
-type TransactionResponse struct {
-	TransactionID        string   `json:"transactionId"`
-	AccountNumber        string   `json:"accountNumber"`
-	BookingDate          string   `json:"bookingDate"`
-	ValueDate            string   `json:"valueDate"`
-	Amount               float64  `json:"amount"`
-	Direction            string   `json:"direction"`
-	Description          string   `json:"description"`
-	MerchantKey          string   `json:"merchantKey"`
-	MerchantRuleBehavior string   `json:"merchantRuleBehavior"`
-	Category             *string  `json:"category"`
-	SuggestedCategory    *string  `json:"suggestedCategory"`
-	SuggestionConfidence *float64 `json:"suggestionConfidence"`
-	NeedsReview          bool     `json:"needsReview"`
-	IsMonthlyRecurring   bool     `json:"isMonthlyRecurring"`
-}
-
-type CategorizeTransactionRequest struct {
-	Category                string  `json:"category"`
-	SaveRule                bool    `json:"saveRule"`
-	RuleBehavior            *string `json:"ruleBehavior"`
-	MerchantKey             *string `json:"merchantKey"`
-	ExcludeFromCalculations bool    `json:"excludeFromCalculations"`
-	IsMonthlyRecurring      bool    `json:"isMonthlyRecurring"`
-}
-
-type SpendingSummaryResponse struct {
-	From               *string                 `json:"from"`
-	To                 *string                 `json:"to"`
-	TotalSpent         float64                 `json:"totalSpent"`
-	UncategorizedSpent float64                 `json:"uncategorizedSpent"`
-	Categories         []CategorySpendResponse `json:"categories"`
-}
-
-type CategorySpendResponse struct {
-	Category     string  `json:"category"`
-	TotalSpent   float64 `json:"totalSpent"`
-	Transactions int     `json:"transactions"`
-	ShareOfSpent float64 `json:"shareOfSpent"`
-}
-
-type CategoryResponse struct {
-	Name         string `json:"name"`
-	Rules        int    `json:"rules"`
-	Transactions int    `json:"transactions"`
-}
-
-type CategoryMappingResponse struct {
-	MappingID            string  `json:"mappingId"`
-	MerchantKey          string  `json:"merchantKey"`
-	Category             *string `json:"category"`
-	Behavior             string  `json:"behavior"`
-	AppliedCount         int     `json:"appliedCount"`
-	MatchingTransactions int     `json:"matchingTransactions"`
-}
-
-type UpdateCategoryMappingRequest struct {
-	Category *string `json:"category"`
-	Behavior string  `json:"behavior"`
-}
-
-type CycleIncomeCategoriesResponse struct {
-	UsesAllIncomeTransactions bool                                `json:"usesAllIncomeTransactions"`
-	Categories                []CycleIncomeCategoryOptionResponse `json:"categories"`
-}
-
-type CycleIncomeCategoryOptionResponse struct {
-	Name               string `json:"name"`
-	IncomeTransactions int    `json:"incomeTransactions"`
-	DefinesCycle       bool   `json:"definesCycle"`
-}
-
-type UpdateCycleIncomeCategoriesRequest struct {
-	Categories []string `json:"categories"`
-}
-
-type transactionRow struct {
-	ID                      string
-	AccountNumber           string
-	BookingDate             string
-	ValueDate               string
-	Amount                  float64
-	RawDescription          string
-	MerchantKey             string
-	Category                sql.NullString
-	SuggestedCategory       sql.NullString
-	SuggestionConfidence    sql.NullFloat64
-	NeedsReview             bool
-	ExcludeFromCalculations bool
-	ImportedAtUtc           string
-	IsMonthlyRecurring      bool
-}
-
 func listTransactions(c *fiber.Ctx) error {
 	from, err := parseOptionalDate(c.Query("from"))
 	if err != nil {
@@ -156,23 +63,6 @@ func listTransactions(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	return c.JSON(transactions)
-}
-
-func getTransactionsSummary(c *fiber.Ctx) error {
-	from, err := parseOptionalDate(c.Query("from"))
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid from date. Expected yyyy-MM-dd.")
-	}
-	to, err := parseOptionalDate(c.Query("to"))
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Invalid to date. Expected yyyy-MM-dd.")
-	}
-
-	summary, err := fetchTransactionsSummary(database, from, to)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-	return c.JSON(summary)
 }
 
 func categorizeTransaction(c *fiber.Ctx) error {
@@ -227,14 +117,6 @@ func updateCycleIncomeCategories(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	return c.JSON(response)
-}
-
-func listCategoryMappings(c *fiber.Ctx) error {
-	mappings, err := fetchCategoryMappings(database)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-	return c.JSON(mappings)
 }
 
 func updateCategoryMapping(c *fiber.Ctx) error {

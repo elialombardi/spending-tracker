@@ -1,4 +1,4 @@
-package main
+package reports
 
 import (
 	"bytes"
@@ -6,204 +6,16 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/xuri/excelize/v2"
 )
 
-type ImportResultResponse struct {
-	AccountNumber               string                      `json:"accountNumber"`
-	FileName                    string                      `json:"fileName"`
-	ImportedTransactions        int                         `json:"importedTransactions"`
-	SkippedDuplicates           int                         `json:"skippedDuplicates"`
-	AutoCategorizedTransactions int                         `json:"autoCategorizedTransactions"`
-	ReviewTransactions          int                         `json:"reviewTransactions"`
-	ReviewQueue                 []ReviewTransactionResponse `json:"reviewQueue"`
-}
-
-type ReviewTransactionResponse struct {
-	TransactionID        string   `json:"transactionId"`
-	BookingDate          string   `json:"bookingDate"`
-	Amount               float64  `json:"amount"`
-	Description          string   `json:"description"`
-	MerchantKey          string   `json:"merchantKey"`
-	MerchantRuleBehavior string   `json:"merchantRuleBehavior"`
-	SuggestedCategory    *string  `json:"suggestedCategory"`
-	SuggestionConfidence *float64 `json:"suggestionConfidence"`
-}
-
-type CycleOptionResponse struct {
-	From string `json:"from"`
-	To   string `json:"to"`
-}
-
-type MonthlyReportResponse struct {
-	Year               int                         `json:"year"`
-	Month              int                         `json:"month"`
-	From               string                      `json:"from"`
-	To                 string                      `json:"to"`
-	TotalTransactions  int                         `json:"totalTransactions"`
-	TotalSpent         float64                     `json:"totalSpent"`
-	TotalIncome        float64                     `json:"totalIncome"`
-	UncategorizedSpent float64                     `json:"uncategorizedSpent"`
-	Categories         []CategorySpendResponse     `json:"categories"`
-	TopMerchants       []MerchantSpendResponse     `json:"topMerchants"`
-	LargestExpenses    []ReportTransactionResponse `json:"largestExpenses"`
-}
-
-type MerchantSpendResponse struct {
-	MerchantKey  string  `json:"merchantKey"`
-	Category     *string `json:"category"`
-	TotalSpent   float64 `json:"totalSpent"`
-	Transactions int     `json:"transactions"`
-}
-
-type ReportTransactionResponse struct {
-	TransactionID string  `json:"transactionId"`
-	BookingDate   string  `json:"bookingDate"`
-	ValueDate     string  `json:"valueDate"`
-	Amount        float64 `json:"amount"`
-	Direction     string  `json:"direction"`
-	Description   string  `json:"description"`
-	MerchantKey   string  `json:"merchantKey"`
-	Category      *string `json:"category"`
-	NeedsReview   bool    `json:"needsReview"`
-}
-
-type parsedTransaction struct {
-	AccountNumber         string
-	BookingDate           string
-	ValueDate             string
-	DebitAmount           float64
-	CreditAmount          float64
-	Amount                float64
-	RawDescription        string
-	NormalizedDescription string
-	MerchantKey           string
-	SourceFingerprint     string
-}
-
 var accountNumberRegex = regexp.MustCompile(`(?i)Conto\s+BancoPosta\s+n\.:\s*(\S+)`)
-
-func importPosteItaliane(c *fiber.Ctx) error {
-	fileHeader, err := c.FormFile("file")
-	if err != nil || fileHeader == nil {
-		return c.Status(fiber.StatusBadRequest).SendString("A non-empty Excel file is required.")
-	}
-	if strings.ToLower(filepath.Ext(fileHeader.Filename)) != ".xlsx" {
-		return c.Status(fiber.StatusBadRequest).SendString("Only .xlsx Poste Italiane exports are supported.")
-	}
-
-	file, err := fileHeader.Open()
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-	defer file.Close()
-
-	parsed, err := parsePosteItalianeWorkbook(file)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
-	}
-
-	result, err := importParsedTransactions(database, parsed.accountNumber, fileHeader.Filename, parsed.transactions)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-	return c.JSON(result)
-}
-
-func getReportCycles(c *fiber.Ctx) error {
-	cycles, err := fetchCycleOptions(database)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-	return c.JSON(cycles)
-}
-
-func getCycleReport(c *fiber.Ctx) error {
-	cycleStart, err := parseRequiredDate(c.Query("cycleStart"))
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Cycle start is required.")
-	}
-	report, found, err := buildCycleReport(database, cycleStart)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-	if !found {
-		return c.SendStatus(fiber.StatusNotFound)
-	}
-	return c.JSON(report)
-}
-
-func exportCycleReport(c *fiber.Ctx) error {
-	cycleStart, err := parseRequiredDate(c.Query("cycleStart"))
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).SendString("Cycle start is required.")
-	}
-	format := strings.TrimSpace(strings.ToLower(c.Query("format", "csv")))
-	if format != "csv" && format != "xlsx" {
-		return c.Status(fiber.StatusBadRequest).SendString("Supported formats are csv and xlsx.")
-	}
-	content, contentType, fileName, found, err := exportCycleReportData(database, cycleStart, format)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-	if !found {
-		return c.SendStatus(fiber.StatusNotFound)
-	}
-	c.Set("Content-Type", contentType)
-	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", fileName))
-	return c.Send(content)
-}
-
-func getMonthlyReport(c *fiber.Ctx) error {
-	year, err := strconv.Atoi(c.Query("year"))
-	if err != nil || year < 2000 || year > 2100 {
-		return c.Status(fiber.StatusBadRequest).SendString("Year must be between 2000 and 2100.")
-	}
-	month, err := strconv.Atoi(c.Query("month"))
-	if err != nil || month < 1 || month > 12 {
-		return c.Status(fiber.StatusBadRequest).SendString("Month must be between 1 and 12.")
-	}
-	report, err := buildMonthlyReportByMonth(database, year, month)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-	return c.JSON(report)
-}
-
-func exportMonthlyReport(c *fiber.Ctx) error {
-	year, err := strconv.Atoi(c.Query("year"))
-	if err != nil || year < 2000 || year > 2100 {
-		return c.Status(fiber.StatusBadRequest).SendString("Year must be between 2000 and 2100.")
-	}
-	month, err := strconv.Atoi(c.Query("month"))
-	if err != nil || month < 1 || month > 12 {
-		return c.Status(fiber.StatusBadRequest).SendString("Month must be between 1 and 12.")
-	}
-	format := strings.TrimSpace(strings.ToLower(c.Query("format", "csv")))
-	if format != "csv" && format != "xlsx" {
-		return c.Status(fiber.StatusBadRequest).SendString("Supported formats are csv and xlsx.")
-	}
-	content, contentType, fileName, err := exportMonthlyReportData(database, year, month, format)
-	if err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-	}
-	c.Set("Content-Type", contentType)
-	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", fileName))
-	return c.Send(content)
-}
-
-type parsedWorkbook struct {
-	accountNumber string
-	transactions  []parsedTransaction
-}
 
 func parsePosteItalianeWorkbook(reader multipart.File) (parsedWorkbook, error) {
 	content, err := io.ReadAll(reader)
@@ -241,7 +53,7 @@ func parsePosteItalianeWorkbook(reader multipart.File) (parsedWorkbook, error) {
 		}
 	}
 
-	transactions := []parsedTransaction{}
+	transactions := []ParsedTransaction{}
 	for i := headerRow + 1; i < len(rows); i++ {
 		row := rows[i]
 		description := collapseWhitespace(cellValue(row, 4))
@@ -269,7 +81,7 @@ func parsePosteItalianeWorkbook(reader multipart.File) (parsedWorkbook, error) {
 			amount = credit
 		}
 		merchantKey := extractMerchantKey(description)
-		transactions = append(transactions, parsedTransaction{
+		transactions = append(transactions, ParsedTransaction{
 			AccountNumber:         accountNumber,
 			BookingDate:           bookingDate,
 			ValueDate:             valueDate,
@@ -285,7 +97,7 @@ func parsePosteItalianeWorkbook(reader multipart.File) (parsedWorkbook, error) {
 	return parsedWorkbook{accountNumber: accountNumber, transactions: transactions}, nil
 }
 
-func importParsedTransactions(database *sql.DB, accountNumber string, fileName string, transactions []parsedTransaction) (ImportResultResponse, error) {
+func importParsedTransactions(database *sql.DB, accountNumber string, fileName string, transactions []ParsedTransaction) (ImportResultResponse, error) {
 	known := map[string]struct{}{}
 	if len(transactions) > 0 {
 		placeholders := make([]string, 0, len(transactions))
@@ -820,21 +632,108 @@ func parseWorkbookDate(value string) (string, error) {
 }
 
 func parseAmount(value string) (float64, error) {
-	value = strings.TrimSpace(value)
 	if value == "" {
 		return 0, nil
 	}
-	amount, err := strconv.ParseFloat(value, 64)
-	if err == nil {
+	// Trim common whitespace (including NBSP) and surrounding
+	value = strings.TrimSpace(strings.ReplaceAll(value, "\u00A0", ""))
+	if value == "" {
+		return 0, nil
+	}
+
+	// Quick try: plain parse
+	if amount, err := strconv.ParseFloat(value, 64); err == nil {
 		return amount, nil
 	}
-	normalized := strings.ReplaceAll(value, ".", "")
-	normalized = strings.ReplaceAll(normalized, ",", ".")
-	amount, err = strconv.ParseFloat(normalized, 64)
-	if err == nil {
-		return amount, nil
+
+	// Detect and handle parentheses (e.g. (1.000,00)) and trailing minus (e.g. 1.000,00-)
+	negative := false
+	if strings.HasPrefix(value, "(") && strings.HasSuffix(value, ")") {
+		negative = true
+		value = strings.TrimSpace(value[1 : len(value)-1])
 	}
-	return 0, fmt.Errorf("could not parse amount value '%s'", value)
+	if strings.HasSuffix(value, "-") {
+		negative = true
+		value = strings.TrimSpace(value[:len(value)-1])
+	}
+	if strings.HasPrefix(value, "+") {
+		value = strings.TrimPrefix(value, "+")
+	}
+
+	// Strip any non-digit, non-separator characters (currency symbols, letters)
+	var b strings.Builder
+	for _, r := range value {
+		if (r >= '0' && r <= '9') || r == '.' || r == ',' || r == '-' || r == '+' {
+			b.WriteRune(r)
+		}
+	}
+	cleaned := b.String()
+	if cleaned == "" {
+		return 0, fmt.Errorf("could not parse amount value '%s'", value)
+	}
+
+	// Decide which separator is the decimal separator using digit-count heuristics.
+	lastDot := strings.LastIndex(cleaned, ".")
+	lastComma := strings.LastIndex(cleaned, ",")
+	afterDot := -1
+	afterComma := -1
+	if lastDot >= 0 {
+		afterDot = len(cleaned) - lastDot - 1
+	}
+	if lastComma >= 0 {
+		afterComma = len(cleaned) - lastComma - 1
+	}
+
+	var normalized string
+	if lastDot >= 0 && lastComma >= 0 {
+		// both present: prefer the separator that looks like a decimal (2 digits after)
+		if afterComma == 2 && afterDot != 2 {
+			// comma decimal
+			normalized = strings.ReplaceAll(cleaned, ".", "")
+			normalized = strings.ReplaceAll(normalized, ",", ".")
+		} else if afterDot == 2 && afterComma != 2 {
+			// dot decimal
+			normalized = strings.ReplaceAll(cleaned, ",", "")
+		} else {
+			// fallback to last-separator heuristic
+			if lastComma > lastDot {
+				normalized = strings.ReplaceAll(cleaned, ".", "")
+				normalized = strings.ReplaceAll(normalized, ",", ".")
+			} else {
+				normalized = strings.ReplaceAll(cleaned, ",", "")
+			}
+		}
+	} else if lastComma >= 0 {
+		// only comma present
+		if afterComma == 2 {
+			// comma is decimal
+			normalized = strings.ReplaceAll(cleaned, ".", "")
+			normalized = strings.ReplaceAll(normalized, ",", ".")
+		} else {
+			// comma is thousands separator
+			normalized = strings.ReplaceAll(cleaned, ",", "")
+		}
+	} else if lastDot >= 0 {
+		// only dot present
+		if afterDot == 2 {
+			// dot is decimal
+			normalized = strings.ReplaceAll(cleaned, ",", "")
+		} else {
+			// dot is thousands separator
+			normalized = strings.ReplaceAll(cleaned, ".", "")
+		}
+	} else {
+		normalized = cleaned
+	}
+
+	amount, err := strconv.ParseFloat(normalized, 64)
+	if err != nil {
+		return 0, fmt.Errorf("could not parse amount value '%s'", value)
+	}
+	if negative {
+		amount = -amount
+	}
+	return amount, nil
 }
 
 func cellValue(row []string, index int) string {

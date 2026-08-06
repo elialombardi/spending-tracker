@@ -89,20 +89,21 @@ type CategoryRule struct {
 }
 
 type TransactionResponse struct {
-	TransactionID        string   `json:"transactionId"`
-	AccountNumber        string   `json:"accountNumber"`
-	BookingDate          string   `json:"bookingDate"`
-	ValueDate            string   `json:"valueDate"`
-	Amount               float64  `json:"amount"`
-	Direction            string   `json:"direction"`
-	Description          string   `json:"description"`
-	MerchantKey          string   `json:"merchantKey"`
-	MerchantRuleBehavior string   `json:"merchantRuleBehavior"`
-	Category             *string  `json:"category"`
-	SuggestedCategory    *string  `json:"suggestedCategory"`
-	SuggestionConfidence *float64 `json:"suggestionConfidence"`
-	NeedsReview          bool     `json:"needsReview"`
-	IsMonthlyRecurring   bool     `json:"isMonthlyRecurring"`
+	TransactionID           string   `json:"transactionId"`
+	AccountNumber           string   `json:"accountNumber"`
+	BookingDate             string   `json:"bookingDate"`
+	ValueDate               string   `json:"valueDate"`
+	Amount                  float64  `json:"amount"`
+	Direction               string   `json:"direction"`
+	Description             string   `json:"description"`
+	MerchantKey             string   `json:"merchantKey"`
+	MerchantRuleBehavior    string   `json:"merchantRuleBehavior"`
+	Category                *string  `json:"category"`
+	SuggestedCategory       *string  `json:"suggestedCategory"`
+	SuggestionConfidence    *float64 `json:"suggestionConfidence"`
+	NeedsReview             bool     `json:"needsReview"`
+	IsMonthlyRecurring      bool     `json:"isMonthlyRecurring"`
+	ExcludeFromCalculations bool     `json:"excludeFromCalculations"`
 }
 
 type CategorizeTransactionRequest struct {

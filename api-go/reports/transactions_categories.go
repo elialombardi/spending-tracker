@@ -658,20 +658,21 @@ func mapTransaction(row transactionRow, behavior string) TransactionResponse {
 		direction = "expense"
 	}
 	return TransactionResponse{
-		TransactionID:        row.ID,
-		AccountNumber:        row.AccountNumber,
-		BookingDate:          row.BookingDate,
-		ValueDate:            row.ValueDate,
-		Amount:               row.Amount,
-		Direction:            direction,
-		Description:          row.RawDescription,
-		MerchantKey:          row.MerchantKey,
-		MerchantRuleBehavior: behavior,
-		Category:             nullableStringPtrFromNull(row.Category),
-		SuggestedCategory:    nullableStringPtrFromNull(row.SuggestedCategory),
-		SuggestionConfidence: nullableFloatPtrFromNull(row.SuggestionConfidence),
-		NeedsReview:          row.NeedsReview,
-		IsMonthlyRecurring:   row.IsMonthlyRecurring,
+		TransactionID:           row.ID,
+		AccountNumber:           row.AccountNumber,
+		BookingDate:             row.BookingDate,
+		ValueDate:               row.ValueDate,
+		Amount:                  row.Amount,
+		Direction:               direction,
+		Description:             row.RawDescription,
+		MerchantKey:             row.MerchantKey,
+		MerchantRuleBehavior:    behavior,
+		Category:                nullableStringPtrFromNull(row.Category),
+		SuggestedCategory:       nullableStringPtrFromNull(row.SuggestedCategory),
+		SuggestionConfidence:    nullableFloatPtrFromNull(row.SuggestionConfidence),
+		NeedsReview:             row.NeedsReview,
+		IsMonthlyRecurring:      row.IsMonthlyRecurring,
+		ExcludeFromCalculations: row.ExcludeFromCalculations,
 	}
 }
 

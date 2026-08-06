@@ -85,6 +85,7 @@ function App() {
           onPageSizeChange={dashboard.setReviewPageSize}
           onSaveMapping={dashboard.saveCategoryMapping}
           onSaveCycleIncomeCategories={dashboard.saveCycleIncomeCategories}
+          onUpdateTransactionAmount={dashboard.updateTransactionAmount}
           mappingsPage={dashboard.mappingPage}
           mappingsPageSize={dashboard.mappingPageSize}
           page={dashboard.reviewPage}

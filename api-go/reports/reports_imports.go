@@ -336,6 +336,7 @@ func buildMonthlyReportResponse(year int, month int, from string, to string, tra
 	expenses := []transactionRow{}
 	incomes := []transactionRow{}
 	for _, transaction := range transactions {
+
 		if transaction.Amount < 0 {
 			expenses = append(expenses, transaction)
 		} else if transaction.Amount > 0 {

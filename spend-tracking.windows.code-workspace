@@ -5,10 +5,6 @@
 			"path": "."
 		},
 		{
-			"name": "api",
-			"path": "api"
-		},
-		{
 			"name": "api-go",
 			"path": "api-go"
 		},

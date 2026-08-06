@@ -201,10 +201,9 @@ export default function CurrentMonthTrendsSection({
                         />
                         <Stack
                             direction="row"
-                            alignItems="flex-start"
                             justifyContent="space-between"
                             spacing={2}
-                            sx={{ mb: 2 }}
+                            sx={{ mb: 2, alignItems: 'flex-start' }}
                         >
                             <Box>
                                 <Typography variant="overline" sx={{ color: 'text.secondary', letterSpacing: '0.08em' }}>
@@ -292,7 +291,7 @@ export default function CurrentMonthTrendsSection({
                                 </Box>
                                 <Box sx={{ display: 'grid', gap: 1 }}>
                                     {selectedWeekPieSegments.map((segment) => (
-                                        <Stack key={`week-legend-${segment.category}`} direction="row" spacing={1.25} alignItems="center">
+                                        <Stack key={`week-legend-${segment.category}`} direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
                                             <Box
                                                 sx={{
                                                     width: 10,
@@ -331,7 +330,7 @@ export default function CurrentMonthTrendsSection({
                                             border: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
                                         }}
                                     >
-                                        <Stack direction="row" justifyContent="space-between" spacing={2} alignItems="flex-start">
+                                        <Stack direction="row" justifyContent="space-between" spacing={2} sx={{ alignItems: 'flex-start' }}>
                                             <Box sx={{ minWidth: 0 }}>
                                                 <Typography variant="subtitle2" sx={{ fontSize: '0.98rem', lineHeight: 1.3 }}>
                                                     {getTransactionTitle(transaction)}
@@ -388,10 +387,9 @@ export default function CurrentMonthTrendsSection({
                 <Box sx={{ p: { xs: 2, sm: 3 }, overflow: 'auto', height: '100%' }}>
                     <Stack
                         direction="row"
-                        alignItems="flex-start"
                         justifyContent="space-between"
                         spacing={2}
-                        sx={{ mb: 2 }}
+                        sx={{ mb: 2, alignItems: 'flex-start' }}
                     >
                         <Box>
                             <Typography variant="overline" sx={{ color: 'text.secondary', letterSpacing: '0.08em' }}>
@@ -446,7 +444,7 @@ export default function CurrentMonthTrendsSection({
                                             border: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
                                         }}
                                     >
-                                        <Stack direction="row" justifyContent="space-between" spacing={2} alignItems="flex-start">
+                                        <Stack direction="row" justifyContent="space-between" spacing={2} sx={{ alignItems: 'flex-start' }}>
                                             <Box sx={{ minWidth: 0 }}>
                                                 <Typography variant="subtitle2" sx={{ fontSize: '0.98rem', lineHeight: 1.3 }}>
                                                     {getTransactionTitle(transaction)}

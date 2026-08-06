@@ -156,7 +156,7 @@ function buildCategorySpendLookup(transactions) {
 function buildCategorizedExpenses(cycleTransactions) {
     return cycleTransactions.filter(
         (transaction) =>
-            transaction.direction === 'expense' && !transaction.needsReview && Boolean(transaction.category),
+            transaction.direction === 'expense' && !transaction.needsReview && !transaction.excludeFromCalculations && Boolean(transaction.category),
     )
 }
 
@@ -255,7 +255,9 @@ async function fetchDashboardData(selectedCycleStart) {
         : ''
     const [reviewQueue, cycleTransactions, comparisonCycleTransactions] = await Promise.all([
         fetchJson(`/api/transactions?needsReview=true&from=${monthlyReport.from}&to=${monthlyReport.to}`),
-        fetchJson(`/api/transactions?from=${monthlyReport.from}&to=${monthlyReport.to}`),
+        fetchJson(`/api/transactions?from=${monthlyReport.from}&to=${monthlyReport.to}`).then((transactions) =>
+            transactions.filter((transaction) => !transaction.excludeFromCalculations),
+        ),
         Promise.all(
             comparisonCycleReports.map(async (report) => {
                 const transactions = await fetchJson(
@@ -264,7 +266,7 @@ async function fetchDashboardData(selectedCycleStart) {
 
                 return {
                     from: report.from,
-                    transactions,
+                    transactions: transactions.filter((transaction) => !transaction.excludeFromCalculations),
                 }
             }),
         ),
@@ -514,6 +516,38 @@ export function useDashboard() {
 
             applyDashboardData(await fetchDashboardData(selectedCycleStart))
             showToast(buildCategoryMessage(normalizedCategory, ruleMode, formContext))
+            return true
+        } catch (error) {
+            handleError(error)
+            return false
+        } finally {
+            setIsBusy(false)
+        }
+    }
+
+    async function updateTransactionAmount({ transactionId, amount }) {
+        if (!requireWriteAccess()) {
+            return false
+        }
+
+        if (!Number.isFinite(amount) || amount === 0) {
+            showToast('Enter a valid amount before saving.')
+            return false
+        }
+
+        setIsBusy(true)
+
+        try {
+            await fetchJson(`/api/transactions/${transactionId}/amount`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ amount }),
+            })
+
+            applyDashboardData(await fetchDashboardData(selectedCycleStart))
+            showToast('Transaction amount updated.')
             return true
         } catch (error) {
             handleError(error)
@@ -805,6 +839,7 @@ export function useDashboard() {
         toastMessage,
         canWrite: userCanWrite,
         triggerExport,
+        updateTransactionAmount,
         uploadWorkbook,
     }
 }

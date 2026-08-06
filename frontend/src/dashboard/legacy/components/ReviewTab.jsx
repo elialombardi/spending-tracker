@@ -32,6 +32,7 @@ export default function ReviewTab({
     onPageSizeChange,
     onSaveMapping,
     onSaveCycleIncomeCategories,
+    onUpdateTransactionAmount,
     mappingsPage,
     mappingsPageSize,
     page,
@@ -79,10 +80,11 @@ export default function ReviewTab({
                                 {pageItems.map((transaction) => (
                                     <CategoryAssignmentCard
                                         categories={categories}
-                                        key={`${transaction.transactionId}-${transaction.category || ''}-${transaction.suggestedCategory || ''}-${transaction.merchantRuleBehavior || ''}-${transaction.excludeFromCalculations ? '1' : '0'}-${transaction.isMonthlyRecurring ? '1' : '0'}`}
+                                        key={`${transaction.transactionId}-${transaction.amount}-${transaction.category || ''}-${transaction.suggestedCategory || ''}-${transaction.merchantRuleBehavior || ''}-${transaction.excludeFromCalculations ? '1' : '0'}-${transaction.isMonthlyRecurring ? '1' : '0'}`}
                                         context="review"
                                         isBusy={isBusy}
                                         onSave={onCategorize}
+                                        onUpdateAmount={onUpdateTransactionAmount}
                                         transaction={transaction}
                                     />
                                 ))}
@@ -127,6 +129,7 @@ export default function ReviewTab({
                         onMappingsPageSizeChange={onMappingsPageSizeChange}
                         onSaveMapping={onSaveMapping}
                         onSaveCycleIncomeCategories={onSaveCycleIncomeCategories}
+                        onUpdateTransactionAmount={onUpdateTransactionAmount}
                     />
                 </Box>
             </Box>

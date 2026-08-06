@@ -9,6 +9,7 @@ import InputLabel from '@mui/material/InputLabel'
 import Select from '@mui/material/Select'
 import MenuItem from '@mui/material/MenuItem'
 import Button from '@mui/material/Button'
+import TextField from '@mui/material/TextField'
 import SaveIcon from '@mui/icons-material/Save'
 import { formatDate, formatMoney, formatPercent } from '../../lib/formatters'
 import CategoryPicker from './CategoryPicker'
@@ -25,11 +26,12 @@ function getDefaultRuleMode(transaction, context) {
     return transaction.merchantRuleBehavior === 'AlwaysReview' ? 'always-review' : 'one-off'
 }
 
-export default function CategoryAssignmentCard({ categories, context, isBusy, onSave, transaction }) {
+export default function CategoryAssignmentCard({ categories, context, isBusy, onSave, onUpdateAmount, transaction }) {
     const [category, setCategory] = useState(getDefaultCategory(transaction, context))
     const [ruleMode, setRuleMode] = useState(getDefaultRuleMode(transaction, context))
     const [excludeFromCalculations, setExcludeFromCalculations] = useState(Boolean(transaction.excludeFromCalculations))
     const [isMonthlyRecurring, setIsMonthlyRecurring] = useState(Boolean(transaction.isMonthlyRecurring))
+    const [amount, setAmount] = useState(String(Math.abs(transaction.amount)))
 
     async function handleSubmit(event) {
         event.preventDefault()
@@ -40,6 +42,24 @@ export default function CategoryAssignmentCard({ categories, context, isBusy, on
             ruleMode,
             excludeFromCalculations,
             isMonthlyRecurring,
+        })
+    }
+
+    async function handleAmountSave() {
+        if (!onUpdateAmount) {
+            return
+        }
+
+        const parsedAmount = Number(amount)
+
+        if (!Number.isFinite(parsedAmount)) {
+            return
+        }
+
+        const signedAmount = transaction.amount < 0 ? -Math.abs(parsedAmount) : Math.abs(parsedAmount)
+        await onUpdateAmount({
+            transactionId: transaction.transactionId,
+            amount: signedAmount,
         })
     }
 
@@ -78,8 +98,36 @@ export default function CategoryAssignmentCard({ categories, context, isBusy, on
                     </Box>
                 </Box>
 
-                <Typography variant="subtitle2">{formatMoney(Math.abs(transaction.amount))}</Typography>
+                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <TextField
+                        size="small"
+                        label="Amount"
+                        type="number"
+                        value={amount}
+                        onChange={(event) => setAmount(event.target.value)}
+                        disabled={isBusy}
+                        slotProps={{
+                            htmlInput: {
+                                min: '0',
+                                step: '0.01',
+                                inputMode: 'decimal',
+                            },
+                        }}
+                        sx={{ width: 140 }}
+                    />
+                    <Button
+                        variant="outlined"
+                        onClick={handleAmountSave}
+                        disabled={isBusy || !onUpdateAmount}
+                    >
+                        Update amount
+                    </Button>
+                </Box>
             </Box>
+
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                Current import amount: {formatMoney(Math.abs(transaction.amount))}
+            </Typography>
 
             <Box sx={{ display: 'flex', gap: 1, mb: 1 }} className="merchant-meta">
                 {context === 'review' ? suggestion : null}

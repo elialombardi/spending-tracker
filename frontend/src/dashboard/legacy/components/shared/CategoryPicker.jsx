@@ -38,20 +38,24 @@ export default function CategoryPicker({ categories = [], disabled, name, placeh
                     onChange(newInputValue)
                 }}
                 PopperProps={{ sx: { minWidth: 220 } }}
-                renderInput={(params) => (
-                    <TextField
-                        {...params}
-                        name={name}
-                        placeholder={placeholder}
-                        variant="outlined"
-                        size="small"
-                        fullWidth
-                        InputProps={{
-                            ...params.InputProps,
-                            sx: { bgcolor: 'transparent', color: 'inherit' },
-                        }}
-                    />
-                )}
+                renderInput={(params) => {
+                    const { InputProps, ...textFieldParams } = params || {}
+
+                    return (
+                        <TextField
+                            {...textFieldParams}
+                            name={name}
+                            placeholder={placeholder}
+                            variant="outlined"
+                            size="small"
+                            fullWidth
+                            InputProps={{
+                                ...InputProps,
+                                sx: { bgcolor: 'transparent', color: 'inherit' },
+                            }}
+                        />
+                    )
+                }}
                 renderOption={(props, option) => {
                     const { item, ...liProps } = props || {}
                     const cat = categories.find((c) => c.name === option)

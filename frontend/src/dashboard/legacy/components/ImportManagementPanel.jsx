@@ -73,6 +73,7 @@ export default function ImportManagementPanel({
     onMappingsPageSizeChange,
     onSaveMapping,
     onSaveCycleIncomeCategories,
+    onUpdateTransactionAmount,
 }) {
     const [activeManagementTab, setActiveManagementTab] = useState('corrections')
     const [draftCycleIncomeCategories, setDraftCycleIncomeCategories] = useState(null)
@@ -229,10 +230,11 @@ export default function ImportManagementPanel({
                             {correctionsItems.map((transaction) => (
                                 <CategoryAssignmentCard
                                     categories={categories}
-                                    key={`${transaction.transactionId}-${transaction.category || ''}-${transaction.suggestedCategory || ''}-${transaction.merchantRuleBehavior || ''}-${transaction.excludeFromCalculations ? '1' : '0'}-${transaction.isMonthlyRecurring ? '1' : '0'}`}
+                                    key={`${transaction.transactionId}-${transaction.amount}-${transaction.category || ''}-${transaction.suggestedCategory || ''}-${transaction.merchantRuleBehavior || ''}-${transaction.excludeFromCalculations ? '1' : '0'}-${transaction.isMonthlyRecurring ? '1' : '0'}`}
                                     context="edit"
                                     isBusy={isBusy}
                                     onSave={onCategorize}
+                                    onUpdateAmount={onUpdateTransactionAmount}
                                     transaction={transaction}
                                 />
                             ))}
@@ -386,10 +388,11 @@ export default function ImportManagementPanel({
                                 {incomeItems.map((transaction) => (
                                     <CategoryAssignmentCard
                                         categories={categories}
-                                        key={`${transaction.transactionId}-${transaction.category || ''}-${transaction.suggestedCategory || ''}-${transaction.merchantRuleBehavior || ''}-${transaction.excludeFromCalculations ? '1' : '0'}-${transaction.isMonthlyRecurring ? '1' : '0'}`}
+                                        key={`${transaction.transactionId}-${transaction.amount}-${transaction.category || ''}-${transaction.suggestedCategory || ''}-${transaction.merchantRuleBehavior || ''}-${transaction.excludeFromCalculations ? '1' : '0'}-${transaction.isMonthlyRecurring ? '1' : '0'}`}
                                         context="edit"
                                         isBusy={isBusy}
                                         onSave={onCategorize}
+                                        onUpdateAmount={onUpdateTransactionAmount}
                                         transaction={transaction}
                                     />
                                 ))}

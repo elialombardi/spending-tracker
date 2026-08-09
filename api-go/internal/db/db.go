@@ -8,36 +8,58 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/your/repo/spendingtracker.go/internal/models"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/models"
 	_ "modernc.org/sqlite"
 )
 
-func OpenDatabase() (*sql.DB, error) {
-	dbPath := os.Getenv("SPENDING_TRACKER_DB")
+func SetupDatabaseFile(envVariable string) (string, error) {
+	if envVariable == "" {
+		envVariable = "SPENDING_TRACKER_DB_PATH"
+	}
+
+	dbPath := os.Getenv(envVariable)
 	if dbPath == "" {
 		dbPath = filepath.Join("App_Data", "spending-tracker.db")
 	}
 	if !filepath.IsAbs(dbPath) {
 		cwd, err := os.Getwd()
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 		dbPath = filepath.Join(cwd, dbPath)
 	}
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
-		return nil, fmt.Errorf("create database directory %q: %w", filepath.Dir(dbPath), err)
+		return "", fmt.Errorf("create database directory %q: %w", filepath.Dir(dbPath), err)
 	}
 	file, err := os.OpenFile(dbPath, os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
-		return nil, fmt.Errorf("open database file %q: %w", dbPath, err)
+		return "", fmt.Errorf("open database file %q: %w", dbPath, err)
 	}
 	if err := file.Close(); err != nil {
-		return nil, fmt.Errorf("close database file %q: %w", dbPath, err)
+		return "", fmt.Errorf("close database file %q: %w", dbPath, err)
+	}
+	return dbPath, nil
+}
+
+func OpenDatabase() (*sql.DB, error) {
+	dbPath, err := SetupDatabaseFile("SPENDING_TRACKER_DB_PATH")
+	if err != nil {
+		return nil, err
 	}
 
 	database, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("open SQLite database %q: %w", dbPath, err)
+	}
+	database.SetMaxOpenConns(1)
+	database.SetMaxIdleConns(1)
+	if _, err := database.Exec("PRAGMA journal_mode = WAL;"); err != nil {
+		database.Close()
+		return nil, fmt.Errorf("set SQLite journal mode for %q: %w", dbPath, err)
+	}
+	if _, err := database.Exec("PRAGMA busy_timeout = 5000;"); err != nil {
+		database.Close()
+		return nil, fmt.Errorf("set SQLite busy timeout for %q: %w", dbPath, err)
 	}
 	if _, err := database.Exec("PRAGMA foreign_keys = ON;"); err != nil {
 		database.Close()
@@ -67,7 +89,8 @@ func EnsureSchema(database *sql.DB) error {
             SourceFingerprint TEXT NOT NULL DEFAULT '',
             SourceFileName TEXT NOT NULL DEFAULT '',
             ImportedAtUtc TEXT NOT NULL,
-            IsMonthlyRecurring INTEGER NOT NULL DEFAULT 0
+            IsMonthlyRecurring INTEGER NOT NULL DEFAULT 0,
+            IsSending INTEGER NOT NULL DEFAULT 0
         );`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS IX_Transactions_SourceFingerprint ON Transactions(SourceFingerprint);`,
 		`CREATE INDEX IF NOT EXISTS IX_Transactions_BookingDate_Category ON Transactions(BookingDate, Category);`,
@@ -132,6 +155,47 @@ func EnsureSchema(database *sql.DB) error {
 	if err := ensureColumn(database, "Tasks", "SentOn", `ALTER TABLE Tasks ADD COLUMN SentOn TEXT NULL;`); err != nil {
 		return err
 	}
+	if err := ensureColumn(database, "Tasks", "Cost", `ALTER TABLE Tasks ADD COLUMN Cost REAL NULL;`); err != nil {
+		return err
+	}
+	if err := ensureColumn(database, "Tasks", "ProjectId", `ALTER TABLE Tasks ADD COLUMN ProjectId INTEGER NULL;`); err != nil {
+		return err
+	}
+	if err := backfillLegacyTaskColumns(database); err != nil {
+		return err
+	}
+	if err := ensureColumn(database, "Transactions", "IsSending", `ALTER TABLE Transactions ADD COLUMN IsSending INTEGER NOT NULL DEFAULT 0;`); err != nil {
+		return err
+	}
+	return nil
+}
+
+func backfillLegacyTaskColumns(database *sql.DB) error {
+	var projectID int
+	err := database.QueryRow(`SELECT Id FROM Projects ORDER BY Id LIMIT 1;`).Scan(&projectID)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			return err
+		}
+
+		result, insertErr := database.Exec(`INSERT INTO Projects (Name, Description) VALUES (?, ?);`, "General", nil)
+		if insertErr != nil {
+			return insertErr
+		}
+		id64, idErr := result.LastInsertId()
+		if idErr != nil {
+			return idErr
+		}
+		projectID = int(id64)
+	}
+
+	if _, err := database.Exec(`UPDATE Tasks SET ProjectId = ? WHERE ProjectId IS NULL OR ProjectId = 0;`, projectID); err != nil {
+		return err
+	}
+	if _, err := database.Exec(`UPDATE Tasks SET Cost = 0 WHERE Cost IS NULL;`); err != nil {
+		return err
+	}
+
 	return nil
 }
 

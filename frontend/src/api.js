@@ -12,6 +12,9 @@ const endpoints = {
     listProjects: { method: 'GET', path: '/api/projects' }, // returns Project[]
     createProject: { method: 'POST', path: '/api/projects' }, // body: CreateProject -> returns Project
 
+    // Transactions
+    sendTransactions: { method: 'POST', path: '/api/transactions/send' }, // body: { transactionIds, isSending }
+
     // Locations
     listLocations: { method: 'GET', path: '/locations' }, // returns Location[]
     getLocation: { method: 'GET', path: '/locations/:id' }, // returns Location
@@ -204,6 +207,12 @@ const api = {
     },
     listProjects: async () => fetchJSON(endpoints.listProjects.path),
     createProject: async (project) => fetchJSON(endpoints.createProject.path, { method: 'POST', body: JSON.stringify(project) }),
+
+    // Transactions
+    sendTransactions: async (transactionIds, isSending = true) => fetchJSON(endpoints.sendTransactions.path, {
+        method: 'POST',
+        body: JSON.stringify({ transactionIds, isSending }),
+    }),
 
     // Locations
     listLocations: async () => fetchJSON(endpoints.listLocations.path),

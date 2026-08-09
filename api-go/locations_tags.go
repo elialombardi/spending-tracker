@@ -1,41 +1,69 @@
 package main
 
 import (
-	"database/sql"
 	"errors"
 	"strconv"
 	"strings"
 
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/auth"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/models"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/services"
 	"github.com/gofiber/fiber/v2"
-	"github.com/your/repo/spendingtracker.go/internal/db"
-	"github.com/your/repo/spendingtracker.go/internal/models"
+	"gorm.io/gorm"
 )
 
-func listLocations(c *fiber.Ctx) error {
-	locations, err := db.FetchLocations(database, 0)
+type LocationTagHandler struct {
+	service *services.LocationService
+}
+
+func NewLocationTagHandler(service *services.LocationService) *LocationTagHandler {
+	return &LocationTagHandler{service: service}
+}
+
+func (h *LocationTagHandler) RegisterRoutes(app *fiber.App) {
+	app.Get("/locations", auth.AuthRequired(h.listLocations, []string{"Reader", "Writer", "Admin"}))
+	app.Get("/locations/:id", auth.AuthRequired(h.getLocation, []string{"Reader", "Writer", "Admin"}))
+	app.Post("/locations", auth.AuthRequired(h.createLocation, []string{"Writer", "Admin"}))
+	app.Put("/locations/:id", auth.AuthRequired(h.updateLocation, []string{"Writer", "Admin"}))
+	app.Delete("/locations/:id", auth.AuthRequired(h.deleteLocation, []string{"Writer", "Admin"}))
+	app.Post("/locations/:id/tags", auth.AuthRequired(h.toggleLocationTag, []string{"Writer", "Admin"}))
+	app.Get("/tags", auth.AuthRequired(h.listTags, []string{"Reader", "Writer", "Admin"}))
+	app.Post("/tags", auth.AuthRequired(h.createTag, []string{"Writer", "Admin"}))
+	app.Patch("/tags/:name", auth.AuthRequired(h.renameTag, []string{"Writer", "Admin"}))
+	app.Delete("/tags/:name", auth.AuthRequired(h.deleteTag, []string{"Writer", "Admin"}))
+}
+
+func (h *LocationTagHandler) listLocations(c *fiber.Ctx) error {
+	locations, err := h.service.ListLocations()
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-	return c.JSON(locations)
+
+	response := make([]models.Location, 0, len(locations))
+	for _, location := range locations {
+		response = append(response, mapLocationEntity(location))
+	}
+	return c.JSON(response)
 }
 
-func getLocation(c *fiber.Ctx) error {
+func (h *LocationTagHandler) getLocation(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return fiber.ErrBadRequest
 	}
 
-	location, err := db.FetchLocationByID(database, id)
+	location, err := h.service.GetLocation(id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.SendStatus(fiber.StatusNotFound)
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-	return c.JSON(location)
+	return c.JSON(mapLocationEntity(location))
 }
 
-func createLocation(c *fiber.Ctx) error {
+func (h *LocationTagHandler) createLocation(c *fiber.Ctx) error {
 	var payload models.Location
 	if err := c.BodyParser(&payload); err != nil {
 		return fiber.ErrBadRequest
@@ -44,15 +72,23 @@ func createLocation(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Title required")
 	}
 
-	location, err := db.InsertLocation(database, payload)
+	entityPayload := db.LocationEntity{
+		Title:       strings.TrimSpace(payload.Title),
+		URL:         nullableStringPointer(payload.Url),
+		Lat:         payload.Lat,
+		Lng:         payload.Lng,
+		Description: nullableStringPointer(payload.Description),
+	}
+
+	location, err := h.service.CreateLocation(entityPayload, payload.Tags)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	c.Location("/locations/" + strconv.Itoa(location.ID))
-	return c.Status(fiber.StatusCreated).JSON(location)
+	return c.Status(fiber.StatusCreated).JSON(mapLocationEntity(location))
 }
 
-func updateLocation(c *fiber.Ctx) error {
+func (h *LocationTagHandler) updateLocation(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -66,23 +102,31 @@ func updateLocation(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Title required")
 	}
 
-	location, err := db.ReplaceLocation(database, id, payload)
+	entityPayload := db.LocationEntity{
+		Title:       strings.TrimSpace(payload.Title),
+		URL:         nullableStringPointer(payload.Url),
+		Lat:         payload.Lat,
+		Lng:         payload.Lng,
+		Description: nullableStringPointer(payload.Description),
+	}
+
+	location, err := h.service.UpdateLocation(id, entityPayload, payload.Tags)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.SendStatus(fiber.StatusNotFound)
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-	return c.JSON(location)
+	return c.JSON(mapLocationEntity(location))
 }
 
-func deleteLocation(c *fiber.Ctx) error {
+func (h *LocationTagHandler) deleteLocation(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return fiber.ErrBadRequest
 	}
 
-	deleted, err := db.DeleteLocationByID(database, id)
+	deleted, err := h.service.DeleteLocation(id)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -92,7 +136,7 @@ func deleteLocation(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"success": true})
 }
 
-func toggleLocationTag(c *fiber.Ctx) error {
+func (h *LocationTagHandler) toggleLocationTag(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -110,25 +154,30 @@ func toggleLocationTag(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("tag required")
 	}
 
-	location, err := db.UpdateLocationTag(database, id, payload.Tag, payload.Present)
+	location, err := h.service.ToggleLocationTag(id, payload.Tag, payload.Present)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.SendStatus(fiber.StatusNotFound)
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-	return c.JSON(location)
+	return c.JSON(mapLocationEntity(location))
 }
 
-func listTags(c *fiber.Ctx) error {
-	tags, err := db.FetchTags(database)
+func (h *LocationTagHandler) listTags(c *fiber.Ctx) error {
+	tags, err := h.service.ListTags()
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-	return c.JSON(tags)
+
+	response := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		response = append(response, tag.Name)
+	}
+	return c.JSON(response)
 }
 
-func createTag(c *fiber.Ctx) error {
+func (h *LocationTagHandler) createTag(c *fiber.Ctx) error {
 	var payload struct {
 		Name string `json:"name"`
 	}
@@ -140,7 +189,7 @@ func createTag(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Name required")
 	}
 
-	if err := db.InsertTag(database, payload.Name); err != nil {
+	if err := h.service.CreateTag(payload.Name); err != nil {
 		if db.IsUniqueConstraint(err) {
 			return c.Status(fiber.StatusConflict).SendString("Tag already exists")
 		}
@@ -149,7 +198,7 @@ func createTag(c *fiber.Ctx) error {
 	return c.JSON(payload.Name)
 }
 
-func renameTag(c *fiber.Ctx) error {
+func (h *LocationTagHandler) renameTag(c *fiber.Ctx) error {
 	oldName := c.Params("name")
 	var payload struct {
 		NewName string `json:"newName"`
@@ -162,7 +211,7 @@ func renameTag(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("newName required")
 	}
 
-	renamed, err := db.RenameTagByName(database, oldName, payload.NewName)
+	renamed, err := h.service.RenameTag(oldName, payload.NewName)
 	if err != nil {
 		if db.IsUniqueConstraint(err) {
 			return c.Status(fiber.StatusConflict).SendString("Tag with newName already exists")
@@ -175,8 +224,8 @@ func renameTag(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"oldName": oldName, "newName": payload.NewName})
 }
 
-func deleteTag(c *fiber.Ctx) error {
-	deleted, err := db.DeleteTagByName(database, c.Params("name"))
+func (h *LocationTagHandler) deleteTag(c *fiber.Ctx) error {
+	deleted, err := h.service.DeleteTag(c.Params("name"))
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -184,4 +233,34 @@ func deleteTag(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
 	return c.JSON(fiber.Map{"success": true})
+}
+
+func mapLocationEntity(location db.LocationEntity) models.Location {
+	tags := make([]string, 0, len(location.Tags))
+	for _, tag := range location.Tags {
+		tags = append(tags, tag.Name)
+	}
+
+	response := models.Location{
+		ID:    location.ID,
+		Title: location.Title,
+		Tags:  tags,
+		Lat:   location.Lat,
+		Lng:   location.Lng,
+	}
+	if location.URL != nil {
+		response.Url = *location.URL
+	}
+	if location.Description != nil {
+		response.Description = *location.Description
+	}
+	return response
+}
+
+func nullableStringPointer(value string) *string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
 }

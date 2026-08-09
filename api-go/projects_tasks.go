@@ -1,42 +1,70 @@
 package main
 
 import (
-	"database/sql"
 	"errors"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/auth"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/models"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/services"
 	"github.com/gofiber/fiber/v2"
-	"github.com/your/repo/spendingtracker.go/internal/db"
-	"github.com/your/repo/spendingtracker.go/internal/models"
+	"gorm.io/gorm"
 )
 
-func listProjects(c *fiber.Ctx) error {
-	projects, err := db.FetchProjects(database)
+type ProjectTaskHandler struct {
+	service *services.ProjectTaskService
+}
+
+func NewProjectTaskHandler(service *services.ProjectTaskService) *ProjectTaskHandler {
+	return &ProjectTaskHandler{service: service}
+}
+
+func (h *ProjectTaskHandler) RegisterRoutes(app *fiber.App) {
+	app.Get("/api/projects", auth.AuthRequired(h.listProjects, []string{"Reader", "Writer", "Admin"}))
+	app.Get("/api/projects/:id", auth.AuthRequired(h.getProject, []string{"Reader", "Writer", "Admin"}))
+	app.Post("/api/projects", auth.AuthRequired(h.createProject, []string{"Writer", "Admin"}))
+	app.Put("/api/projects/:id", auth.AuthRequired(h.updateProject, []string{"Writer", "Admin"}))
+	app.Delete("/api/projects/:id", auth.AuthRequired(h.deleteProject, []string{"Writer", "Admin"}))
+	app.Get("/api/tasks", auth.AuthRequired(h.listTasks, []string{"Reader", "Writer", "Admin"}))
+	app.Get("/api/tasks/:id", auth.AuthRequired(h.getTask, []string{"Reader", "Writer", "Admin"}))
+	app.Post("/api/tasks", auth.AuthRequired(h.createTask, []string{"Writer", "Admin"}))
+	app.Put("/api/tasks/:id", auth.AuthRequired(h.updateTask, []string{"Writer", "Admin"}))
+	app.Delete("/api/tasks/:id", auth.AuthRequired(h.deleteTask, []string{"Writer", "Admin"}))
+}
+
+func (h *ProjectTaskHandler) listProjects(c *fiber.Ctx) error {
+	projects, err := h.service.ListProjects()
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-	return c.JSON(projects)
+
+	response := make([]models.Project, 0, len(projects))
+	for _, project := range projects {
+		response = append(response, mapProjectEntity(project))
+	}
+	return c.JSON(response)
 }
 
-func getProject(c *fiber.Ctx) error {
+func (h *ProjectTaskHandler) getProject(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return fiber.ErrBadRequest
 	}
 
-	project, err := db.FetchProjectByID(database, id)
+	project, err := h.service.GetProject(id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.SendStatus(fiber.StatusNotFound)
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-	return c.JSON(project)
+	return c.JSON(mapProjectEntity(project))
 }
 
-func createProject(c *fiber.Ctx) error {
+func (h *ProjectTaskHandler) createProject(c *fiber.Ctx) error {
 	var payload models.Project
 	if err := c.BodyParser(&payload); err != nil {
 		return fiber.ErrBadRequest
@@ -45,7 +73,10 @@ func createProject(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Name required")
 	}
 
-	project, err := db.InsertProject(database, payload)
+	project, err := h.service.CreateProject(db.ProjectEntity{
+		Name:        strings.TrimSpace(payload.Name),
+		Description: nullableStringPointer(payload.Description),
+	})
 	if err != nil {
 		if db.IsUniqueConstraint(err) {
 			return c.Status(fiber.StatusConflict).SendString("Project already exists")
@@ -53,10 +84,10 @@ func createProject(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	c.Location("/api/projects/" + strconv.Itoa(project.ID))
-	return c.Status(fiber.StatusCreated).JSON(project)
+	return c.Status(fiber.StatusCreated).JSON(mapProjectEntity(project))
 }
 
-func updateProject(c *fiber.Ctx) error {
+func (h *ProjectTaskHandler) updateProject(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -70,9 +101,12 @@ func updateProject(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString("Name required")
 	}
 
-	project, err := db.ReplaceProject(database, id, payload)
+	project, err := h.service.UpdateProject(id, db.ProjectEntity{
+		Name:        strings.TrimSpace(payload.Name),
+		Description: nullableStringPointer(payload.Description),
+	})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.SendStatus(fiber.StatusNotFound)
 		}
 		if db.IsUniqueConstraint(err) {
@@ -80,16 +114,16 @@ func updateProject(c *fiber.Ctx) error {
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-	return c.JSON(project)
+	return c.JSON(mapProjectEntity(project))
 }
 
-func deleteProject(c *fiber.Ctx) error {
+func (h *ProjectTaskHandler) deleteProject(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return fiber.ErrBadRequest
 	}
 
-	deleted, err := db.DeleteProjectByID(database, id)
+	deleted, err := h.service.DeleteProject(id)
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "foreign key") {
 			return c.Status(fiber.StatusConflict).SendString("Project is referenced by existing tasks")
@@ -102,31 +136,36 @@ func deleteProject(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"success": true})
 }
 
-func listTasks(c *fiber.Ctx) error {
-	tasks, err := db.FetchTasks(database)
+func (h *ProjectTaskHandler) listTasks(c *fiber.Ctx) error {
+	tasks, err := h.service.ListTasks()
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-	return c.JSON(tasks)
+
+	response := make([]models.TaskDetails, 0, len(tasks))
+	for _, task := range tasks {
+		response = append(response, mapTaskWithProject(task))
+	}
+	return c.JSON(response)
 }
 
-func getTask(c *fiber.Ctx) error {
+func (h *ProjectTaskHandler) getTask(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return fiber.ErrBadRequest
 	}
 
-	task, err := db.FetchTaskByID(database, id)
+	task, err := h.service.GetTask(id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.SendStatus(fiber.StatusNotFound)
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-	return c.JSON(task)
+	return c.JSON(mapTaskWithProject(task))
 }
 
-func createTask(c *fiber.Ctx) error {
+func (h *ProjectTaskHandler) createTask(c *fiber.Ctx) error {
 	var payload models.Task
 	if err := c.BodyParser(&payload); err != nil {
 		return fiber.ErrBadRequest
@@ -135,18 +174,25 @@ func createTask(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
-	task, err := db.InsertTask(database, payload)
+	task, err := h.service.CreateTask(db.TaskEntity{
+		ProjectID:   payload.ProjectID,
+		Name:        strings.TrimSpace(payload.Name),
+		Cost:        payload.Cost,
+		TaskDate:    strings.TrimSpace(payload.Date),
+		SentOn:      nullableStringPointer(payload.SentOn),
+		Description: nullableStringPointer(payload.Description),
+	})
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "foreign key") {
 			return c.Status(fiber.StatusBadRequest).SendString("Project does not exist")
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-	c.Location("/api/tasks/" + strconv.Itoa(task.ID))
-	return c.Status(fiber.StatusCreated).JSON(task)
+	c.Location("/api/tasks/" + strconv.Itoa(task.Task.ID))
+	return c.Status(fiber.StatusCreated).JSON(mapTaskWithProject(task))
 }
 
-func updateTask(c *fiber.Ctx) error {
+func (h *ProjectTaskHandler) updateTask(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -160,9 +206,16 @@ func updateTask(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
-	task, err := db.ReplaceTask(database, id, payload)
+	task, err := h.service.UpdateTask(id, db.TaskEntity{
+		ProjectID:   payload.ProjectID,
+		Name:        strings.TrimSpace(payload.Name),
+		Cost:        payload.Cost,
+		TaskDate:    strings.TrimSpace(payload.Date),
+		SentOn:      nullableStringPointer(payload.SentOn),
+		Description: nullableStringPointer(payload.Description),
+	})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.SendStatus(fiber.StatusNotFound)
 		}
 		if strings.Contains(strings.ToLower(err.Error()), "foreign key") {
@@ -170,16 +223,16 @@ func updateTask(c *fiber.Ctx) error {
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-	return c.JSON(task)
+	return c.JSON(mapTaskWithProject(task))
 }
 
-func deleteTask(c *fiber.Ctx) error {
+func (h *ProjectTaskHandler) deleteTask(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return fiber.ErrBadRequest
 	}
 
-	deleted, err := db.DeleteTaskByID(database, id)
+	deleted, err := h.service.DeleteTask(id)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -187,6 +240,35 @@ func deleteTask(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
 	return c.JSON(fiber.Map{"success": true})
+}
+
+func mapProjectEntity(project db.ProjectEntity) models.Project {
+	response := models.Project{
+		ID:   project.ID,
+		Name: project.Name,
+	}
+	if project.Description != nil {
+		response.Description = *project.Description
+	}
+	return response
+}
+
+func mapTaskWithProject(task services.TaskWithProject) models.TaskDetails {
+	response := models.TaskDetails{
+		ID:          task.Task.ID,
+		ProjectID:   task.Task.ProjectID,
+		ProjectName: task.Project.Name,
+		Name:        task.Task.Name,
+		Cost:        task.Task.Cost,
+		Date:        task.Task.TaskDate,
+	}
+	if task.Task.SentOn != nil {
+		response.SentOn = *task.Task.SentOn
+	}
+	if task.Task.Description != nil {
+		response.Description = *task.Task.Description
+	}
+	return response
 }
 
 func validateTaskPayload(payload models.Task) error {

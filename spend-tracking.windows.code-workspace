@@ -65,6 +65,7 @@
 				"request": "launch",
 				"mode": "auto",
 				"program": "${workspaceFolder:api-go}",
+				"output": "${workspaceFolder:api-go}/__debug_bin.exe",
 				"env": {
 					"ALLOW_ORIGINS": "http://localhost:5173",
 					"PORT": "7004",

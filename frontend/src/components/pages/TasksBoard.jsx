@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react';
+import { sumCosts, groupNotSentByMonth, groupNotSentByProject, compareByDateDescending } from '../../helpers/comparers';
+import { formatCurrency } from '../../helpers/formatters';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Drawer from '@mui/material/Drawer';
 import AddIcon from '@mui/icons-material/Add';
-import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
-import Divider from '@mui/material/Divider';
 import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemText from '@mui/material/ListItemText';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import ToggleButton from '@mui/material/ToggleButton';
@@ -18,170 +16,17 @@ import Typography from '@mui/material/Typography';
 import api from '../../api';
 import ProjectCreateForm from './ProjectCreateForm';
 import TaskCreateForm from './TaskCreateForm';
+import PrepareSection from '../Tasks/PrepareSection';
+
+import TaskLine from '../Tasks/TaskLine';
+import EmptyState from '../Tasks/EmptyState';
+import StatCard from '../Tasks/StatCard';
+import NotSentSection from '../Tasks/NotSentSection';
+
 
 const VIEW_NOT_SENT = 'not-sent';
 const VIEW_PREPARE = 'prepare';
 const VIEW_HISTORY = 'history';
-
-function monthKey(dateValue) {
-    const parsed = new Date(`${dateValue}T00:00:00`);
-    if (Number.isNaN(parsed.getTime())) {
-        return 'Unknown month';
-    }
-    return new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(parsed);
-}
-
-function formatDate(dateValue) {
-    if (!dateValue) {
-        return 'Not sent';
-    }
-    const parsed = new Date(`${dateValue}T00:00:00`);
-    if (Number.isNaN(parsed.getTime())) {
-        return dateValue;
-    }
-    return new Intl.DateTimeFormat(undefined, { day: '2-digit', month: 'short', year: 'numeric' }).format(parsed);
-}
-
-function formatCurrency(value) {
-    return new Intl.NumberFormat(undefined, {
-        style: 'currency',
-        currency: 'EUR',
-        minimumFractionDigits: 2,
-    }).format(Number(value || 0));
-}
-
-function sumCosts(tasks) {
-    return tasks.reduce((total, task) => total + Number(task.cost || 0), 0);
-}
-
-function compareByDateAscending(left, right) {
-    return String(left.date || '').localeCompare(String(right.date || '')) || left.id - right.id;
-}
-
-function compareByDateDescending(left, right) {
-    return String(right.date || '').localeCompare(String(left.date || '')) || right.id - left.id;
-}
-
-function groupNotSentByMonth(tasks) {
-    const groups = [];
-    let currentGroup = null;
-
-    [...tasks].sort(compareByDateAscending).forEach((task) => {
-        const key = monthKey(task.date);
-        if (!currentGroup || currentGroup.key !== key) {
-            currentGroup = { key, tasks: [] };
-            groups.push(currentGroup);
-        }
-        currentGroup.tasks.push(task);
-    });
-
-    return groups;
-}
-
-function groupNotSentByProject(tasks) {
-    const grouped = new Map();
-    [...tasks].sort(compareByDateAscending).forEach((task) => {
-        const key = task.projectName || 'Unknown project';
-        if (!grouped.has(key)) {
-            grouped.set(key, []);
-        }
-        grouped.get(key).push(task);
-    });
-
-    return [...grouped.entries()]
-        .sort((left, right) => left[0].localeCompare(right[0]))
-        .map(([projectName, projectTasks]) => ({
-            projectName,
-            totalCost: sumCosts(projectTasks),
-            tasks: projectTasks,
-        }));
-}
-
-function StatCard({ eyebrow, title, value }) {
-    return (
-        <Paper
-            variant="outlined"
-            sx={{
-                borderRadius: 3,
-                minWidth: 0,
-                p: 2,
-                background: 'linear-gradient(180deg, rgba(17,94,89,0.08) 0%, rgba(17,94,89,0.02) 100%)',
-            }}
-        >
-            <Typography color="text.secondary" variant="overline">
-                {eyebrow}
-            </Typography>
-            <Typography sx={{ fontWeight: 700 }} variant="h5">
-                {value}
-            </Typography>
-            <Typography color="text.secondary" variant="body2">
-                {title}
-            </Typography>
-        </Paper>
-    );
-}
-
-function TaskLine({ task, showProject = false, showSentOn = false, onEdit }) {
-    return (
-        <ListItem
-            disableGutters
-            sx={{
-                alignItems: 'flex-start',
-                py: 1.25,
-            }}
-        >
-            <ListItemText
-                primary={
-                    <Stack alignItems={{ xs: 'flex-start', sm: 'center' }} direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                        <Typography sx={{ fontWeight: 600 }} variant="body1">
-                            {task.name}
-                        </Typography>
-                        {showProject ? <Chip label={task.projectName} size="small" variant="outlined" /> : null}
-                        {!task.sentOn ? <Chip color="warning" label="Not sent" size="small" /> : null}
-                    </Stack>
-                }
-                secondary={
-                    <Stack divider={<Divider flexItem orientation="vertical" />} direction={{ xs: 'column', md: 'row' }} spacing={1} sx={{ mt: 0.75 }} useFlexGap>
-                        <Typography component="span" variant="body2">Date: {formatDate(task.date)}</Typography>
-                        {showSentOn ? <Typography component="span" variant="body2">Sent on: {formatDate(task.sentOn)}</Typography> : null}
-                        {task.description ? <Typography component="span" variant="body2">{task.description}</Typography> : null}
-                    </Stack>
-                }
-            />
-            <Box sx={{ display: 'flex', alignItems: 'center', ml: 2, gap: 1 }}>
-                <Typography sx={{ fontWeight: 700, whiteSpace: 'nowrap' }} variant="body1">
-                    {formatCurrency(task.cost)}
-                </Typography>
-                {onEdit ? (
-                    <Button size="small" onClick={() => onEdit(task)}>
-                        Edit
-                    </Button>
-                ) : null}
-            </Box>
-        </ListItem>
-    );
-}
-
-function EmptyState({ title, body }) {
-    return (
-        <Paper
-            variant="outlined"
-            sx={{
-                borderRadius: 3,
-                p: 3,
-                textAlign: 'center',
-                background: 'linear-gradient(180deg, rgba(15,23,42,0.02) 0%, rgba(15,23,42,0.04) 100%)',
-            }}
-        >
-            <Typography sx={{ fontWeight: 700, mb: 0.5 }} variant="h6">
-                {title}
-            </Typography>
-            <Typography color="text.secondary" variant="body2">
-                {body}
-            </Typography>
-        </Paper>
-    );
-}
 
 export default function TasksBoard() {
     const [tasks, setTasks] = useState([]);
@@ -280,6 +125,10 @@ export default function TasksBoard() {
         } finally {
             setIsSaving(false);
         }
+    }
+
+    function handleTasksSent(taskIds, sentOnDate) {
+        setTasks((currentTasks) => (Array.isArray(currentTasks) ? currentTasks.map((task) => (taskIds.includes(task.id) ? { ...task, sentOn: sentOnDate } : task)) : currentTasks));
     }
 
     const unsentTasks = tasks.filter((task) => !task.sentOn);
@@ -386,25 +235,7 @@ export default function TasksBoard() {
                 monthlyGroups.length === 0 ? (
                     <EmptyState title="Nothing pending" body="Every task already has a sentOn date." />
                 ) : (
-                    <Stack spacing={2.5}>
-                        {monthlyGroups.map((group) => (
-                            <Paper key={group.key} sx={{ borderRadius: 3, p: 2.5 }} variant="outlined">
-                                <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1} sx={{ mb: 1 }}>
-                                    <Typography sx={{ fontWeight: 700 }} variant="h6">
-                                        {group.key}
-                                    </Typography>
-                                    <Typography color="text.secondary" variant="body2">
-                                        {group.tasks.length} tasks
-                                    </Typography>
-                                </Stack>
-                                <List disablePadding>
-                                    {group.tasks.map((task) => (
-                                        <TaskLine key={task.id} showProject task={task} onEdit={openEditTask} />
-                                    ))}
-                                </List>
-                            </Paper>
-                        ))}
-                    </Stack>
+                   <NotSentSection monthlyGroups={monthlyGroups} openEditTask={openEditTask} />
                 )
             ) : null}
 
@@ -412,30 +243,7 @@ export default function TasksBoard() {
                 projectGroups.length === 0 ? (
                     <EmptyState title="Nothing to prepare" body="There are no unsent tasks to group by project." />
                 ) : (
-                    <Stack spacing={2.5}>
-                        {projectGroups.map((group) => (
-                            <Paper key={group.projectName} sx={{ borderRadius: 3, p: 2.5 }} variant="outlined">
-                                <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1} sx={{ mb: 1 }}>
-                                    <Box>
-                                        <Typography sx={{ fontWeight: 700 }} variant="h6">
-                                            {group.projectName}
-                                        </Typography>
-                                        <Typography color="text.secondary" variant="body2">
-                                            {group.tasks.length} unsent tasks
-                                        </Typography>
-                                    </Box>
-                                    <Typography sx={{ fontWeight: 700 }} variant="h6">
-                                        {formatCurrency(group.totalCost)}
-                                    </Typography>
-                                </Stack>
-                                <List disablePadding>
-                                    {group.tasks.map((task) => (
-                                        <TaskLine key={task.id} task={task} onEdit={openEditTask} />
-                                    ))}
-                                </List>
-                            </Paper>
-                        ))}
-                    </Stack>
+                    <PrepareSection projectGroups={projectGroups} onTasksSent={handleTasksSent} openEditTask={openEditTask} />
                 )
             ) : null}
 

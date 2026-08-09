@@ -23,6 +23,11 @@ type ReviewTransactionResponse struct {
 	SuggestionConfidence *float64 `json:"suggestionConfidence"`
 }
 
+type SendTransactionsRequest struct {
+	TransactionIDs []string `json:"transactionIds"`
+	IsSending      bool     `json:"isSending"`
+}
+
 type CycleOptionResponse struct {
 	From string `json:"from"`
 	To   string `json:"to"`
@@ -82,28 +87,22 @@ type ParsedTransaction struct {
 	SourceFingerprint     string
 }
 
-type CategoryRule struct {
-	MerchantKey string
-	Category    string
-	Behavior    string
-}
-
 type TransactionResponse struct {
-	TransactionID           string   `json:"transactionId"`
-	AccountNumber           string   `json:"accountNumber"`
-	BookingDate             string   `json:"bookingDate"`
-	ValueDate               string   `json:"valueDate"`
-	Amount                  float64  `json:"amount"`
-	Direction               string   `json:"direction"`
-	Description             string   `json:"description"`
-	MerchantKey             string   `json:"merchantKey"`
-	MerchantRuleBehavior    string   `json:"merchantRuleBehavior"`
-	Category                *string  `json:"category"`
-	SuggestedCategory       *string  `json:"suggestedCategory"`
-	SuggestionConfidence    *float64 `json:"suggestionConfidence"`
-	NeedsReview             bool     `json:"needsReview"`
-	IsMonthlyRecurring      bool     `json:"isMonthlyRecurring"`
-	ExcludeFromCalculations bool     `json:"excludeFromCalculations"`
+	TransactionID           string  `json:"transactionId"`
+	AccountNumber           string  `json:"accountNumber"`
+	BookingDate             string  `json:"bookingDate"`
+	ValueDate               string  `json:"valueDate"`
+	Amount                  float64 `json:"amount"`
+	Direction               string  `json:"direction"`
+	Description             string  `json:"description"`
+	MerchantKey             string  `json:"merchantKey"`
+	MerchantRuleBehavior    string  `json:"merchantRuleBehavior"`
+	Category                string  `json:"category"`
+	SuggestedCategory       string  `json:"suggestedCategory"`
+	SuggestionConfidence    float64 `json:"suggestionConfidence"`
+	NeedsReview             bool    `json:"needsReview"`
+	IsMonthlyRecurring      bool    `json:"isMonthlyRecurring"`
+	ExcludeFromCalculations bool    `json:"excludeFromCalculations"`
 }
 
 type CategorizeTransactionRequest struct {
@@ -178,4 +177,8 @@ type transactionRow struct {
 type parsedWorkbook struct {
 	accountNumber string
 	transactions  []ParsedTransaction
+}
+
+type UpdateAmountRequest struct {
+	Amount float64 `json:"amount"`
 }

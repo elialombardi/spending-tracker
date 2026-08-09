@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"strings"
 
-	"github.com/your/repo/spendingtracker.go/internal/models"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/models"
 )
 
 func FetchProjects(database *sql.DB) ([]models.Project, error) {

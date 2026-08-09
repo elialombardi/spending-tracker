@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/your/repo/spendingtracker.go/internal/models"
 )
 
 var (

@@ -10,7 +10,7 @@ ARG APP_VERSION
 RUN APP_VERSION=${APP_VERSION:-$(date +%Y_%m_%d.%H.%M.%S)} \
 	&& VITE_APP_VERSION=$APP_VERSION npm run build
 
-FROM golang:1.22-alpine AS go-build
+FROM golang:1.26-alpine AS go-build
 WORKDIR /src
 
 COPY api-go/go.mod api-go/go.sum ./

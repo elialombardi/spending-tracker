@@ -109,6 +109,9 @@ func importParsedTransactions(database *sql.DB, accountNumber string, fileName s
 		if err != nil {
 			return ImportResultResponse{}, err
 		}
+		if rows.Err() != nil {
+			return ImportResultResponse{}, rows.Err()
+		}
 		for rows.Next() {
 			var fingerprint string
 			if err := rows.Scan(&fingerprint); err != nil {

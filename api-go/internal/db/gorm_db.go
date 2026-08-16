@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/reports"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/workouts"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -20,9 +21,9 @@ func NewDatabase() (*gorm.DB, error) {
 		return nil, err
 	}
 
-	if err := EnsureSchema(sqlDB); err != nil {
-		return nil, err
-	}
+	// if err := EnsureSchema(sqlDB); err != nil {
+	// 	return nil, err
+	// }
 
 	// Provide the existing *sql.DB connection to GORM's sqlite driver.
 	// This makes GORM use the modernc.org/sqlite driver registered on database/sql
@@ -49,6 +50,11 @@ func NewDatabase() (*gorm.DB, error) {
 		&TagEntity{},
 		&LocationTagEntity{},
 		&ProjectEntity{},
+		&TaskEntity{},
+		&workouts.Session{},
+		&workouts.Timer{},
+		&workouts.Workout{},
+		&workouts.WorkoutSession{},
 	); err != nil {
 		return nil, err
 	}

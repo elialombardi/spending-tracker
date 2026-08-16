@@ -58,6 +58,9 @@ function NavBar({ canWrite, onLogout, session, themeName, setThemeName }) {
                         <Button component={NavLink} to="/cognitive" variant={path === '/cognitive' ? 'contained' : 'text'} sx={{ ml: 1 }}>
                             Cognitive Traning
                         </Button>
+                        <Button component={NavLink} to="/workout" variant={path === '/workout' ? 'contained' : 'text'} sx={{ ml: 1 }}>
+                            Workout
+                        </Button>
                         {isAdminUser ? (
                             <>
                                 {/* <Button component={NavLink} to="/admin/tags" variant={path === '/admin/tags' ? 'contained' : 'text'}>
@@ -108,6 +111,11 @@ function NavBar({ canWrite, onLogout, session, themeName, setThemeName }) {
                             <ListItem>
                                 <ListItemButton component={NavLink} to="/cognitive">
                                     <ListItemText primary="Cognitive Traning" />
+                                </ListItemButton>
+                            </ListItem>
+                            <ListItem>
+                                <ListItemButton component={NavLink} to="/workout">
+                                    <ListItemText primary="Workout" />
                                 </ListItemButton>
                             </ListItem>
                             {isAdminUser ? (

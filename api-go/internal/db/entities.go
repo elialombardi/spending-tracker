@@ -1,7 +1,5 @@
 package db
 
-import "time"
-
 type LocationEntity struct {
 	ID          int         `gorm:"column:Id;primaryKey;autoIncrement"`
 	Title       string      `gorm:"column:Title;not null"`
@@ -57,7 +55,3 @@ type CycleIncomeCategoryEntity struct {
 }
 
 func (CycleIncomeCategoryEntity) TableName() string { return "CycleIncomeCategories" }
-
-func nowUTCString() string {
-	return time.Now().UTC().Format(time.RFC3339)
-}

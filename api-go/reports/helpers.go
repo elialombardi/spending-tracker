@@ -122,14 +122,6 @@ func nullableStringPtrFromNull(value sql.NullString) *string {
 	return &trimmed
 }
 
-func nullableFloatPtrFromNull(value sql.NullFloat64) *float64 {
-	if !value.Valid {
-		return nil
-	}
-	v := value.Float64
-	return &v
-}
-
 func derefString(value *string) string {
 	if value == nil {
 		return ""
@@ -414,114 +406,6 @@ func scanTransactionRow(rows *sql.Rows) (transactionRow, error) {
 	return tr, nil
 }
 
-func fetchTransactionRow(database *sql.DB, transactionID string) (transactionRow, error) {
-	row := database.QueryRow(`SELECT Id, AccountNumber, BookingDate, ValueDate, Amount, RawDescription, MerchantKey, Category, SuggestedCategory, SuggestionConfidence, NeedsReview, ExcludeFromCalculations, ImportedAtUtc, IsMonthlyRecurring FROM Transactions WHERE Id = ?;`, transactionID)
-	var tr transactionRow
-	var cat sql.NullString
-	var sugcat sql.NullString
-	var sugconf sql.NullFloat64
-	var needsReviewInt int
-	var excludeInt int
-	var isMonthlyInt int
-	if err := row.Scan(&tr.ID, &tr.AccountNumber, &tr.BookingDate, &tr.ValueDate, &tr.Amount, &tr.RawDescription, &tr.MerchantKey, &cat, &sugcat, &sugconf, &needsReviewInt, &excludeInt, &tr.ImportedAtUtc, &isMonthlyInt); err != nil {
-		return transactionRow{}, err
-	}
-	tr.Category = cat
-	tr.SuggestedCategory = sugcat
-	tr.SuggestionConfidence = sugconf
-	tr.NeedsReview = needsReviewInt != 0
-	tr.ExcludeFromCalculations = excludeInt != 0
-	tr.IsMonthlyRecurring = isMonthlyInt != 0
-	return tr, nil
-}
-
-func fetchTransactionRowTx(tx *sql.Tx, transactionID string) (transactionRow, error) {
-	row := tx.QueryRow(`SELECT Id, AccountNumber, BookingDate, ValueDate, Amount, RawDescription, MerchantKey, Category, SuggestedCategory, SuggestionConfidence, NeedsReview, ExcludeFromCalculations, ImportedAtUtc, IsMonthlyRecurring FROM Transactions WHERE Id = ?;`, transactionID)
-	var tr transactionRow
-	var cat sql.NullString
-	var sugcat sql.NullString
-	var sugconf sql.NullFloat64
-	var needsReviewInt int
-	var excludeInt int
-	var isMonthlyInt int
-	if err := row.Scan(&tr.ID, &tr.AccountNumber, &tr.BookingDate, &tr.ValueDate, &tr.Amount, &tr.RawDescription, &tr.MerchantKey, &cat, &sugcat, &sugconf, &needsReviewInt, &excludeInt, &tr.ImportedAtUtc, &isMonthlyInt); err != nil {
-		return transactionRow{}, err
-	}
-	tr.Category = cat
-	tr.SuggestedCategory = sugcat
-	tr.SuggestionConfidence = sugconf
-	tr.NeedsReview = needsReviewInt != 0
-	tr.ExcludeFromCalculations = excludeInt != 0
-	tr.IsMonthlyRecurring = isMonthlyInt != 0
-	return tr, nil
-}
-
-func fetchCategories(database *sql.DB) ([]CategoryResponse, error) {
-	rows, err := database.Query(`SELECT Category, COUNT(1) FROM Transactions WHERE Category IS NOT NULL AND TRIM(Category) <> '' GROUP BY Category ORDER BY Category`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	result := []CategoryResponse{}
-	for rows.Next() {
-		var name string
-		var txCount int
-		if err := rows.Scan(&name, &txCount); err != nil {
-			return nil, err
-		}
-		var rulesCount int
-		if err := database.QueryRow(`SELECT COUNT(1) FROM CategoryRules WHERE TRIM(Category) = ?`, name).Scan(&rulesCount); err != nil {
-			return nil, err
-		}
-		result = append(result, CategoryResponse{Name: name, Rules: rulesCount, Transactions: txCount})
-	}
-	return result, rows.Err()
-}
-
-func fetchCycleIncomeCategories(database *sql.DB) (CycleIncomeCategoriesResponse, error) {
-	configured, err := fetchConfiguredCycleIncomeCategories(database)
-	if err != nil {
-		return CycleIncomeCategoriesResponse{}, err
-	}
-	anchors, err := fetchCycleAnchorDates(database)
-	if err != nil {
-		return CycleIncomeCategoriesResponse{}, err
-	}
-	resp := CycleIncomeCategoriesResponse{UsesAllIncomeTransactions: len(configured) == 0, Categories: []CycleIncomeCategoryOptionResponse{}}
-	for _, cat := range configured {
-		var count int
-		if err := database.QueryRow(`SELECT COUNT(1) FROM Transactions WHERE Amount > 0 AND ExcludeFromCalculations = 0 AND Category = ?`, cat).Scan(&count); err != nil {
-			return CycleIncomeCategoriesResponse{}, err
-		}
-		defines := false
-		if count > 0 && len(anchors) > 0 {
-			defines = true
-		}
-		resp.Categories = append(resp.Categories, CycleIncomeCategoryOptionResponse{Name: cat, IncomeTransactions: count, DefinesCycle: defines})
-	}
-	return resp, nil
-}
-
-func saveCycleIncomeCategories(database *sql.DB, categories []string) (CycleIncomeCategoriesResponse, error) {
-	tx, err := database.Begin()
-	if err != nil {
-		return CycleIncomeCategoriesResponse{}, err
-	}
-	defer tx.Rollback()
-	if _, err := tx.Exec(`DELETE FROM CycleIncomeCategories`); err != nil {
-		return CycleIncomeCategoriesResponse{}, err
-	}
-	for _, c := range categories {
-		if _, err := tx.Exec(`INSERT INTO CycleIncomeCategories (Category) VALUES (?)`, c); err != nil {
-			return CycleIncomeCategoriesResponse{}, err
-		}
-	}
-	if err := tx.Commit(); err != nil {
-		return CycleIncomeCategoriesResponse{}, err
-	}
-	return fetchCycleIncomeCategories(database)
-}
-
 func fetchRuleBehaviorLookup(database *sql.DB) (map[string]string, error) {
 	rows, err := database.Query(`SELECT MerchantKey, Behavior FROM CategoryRules`)
 	if err != nil {
@@ -544,16 +428,4 @@ func resolveMerchantRuleBehavior(merchantKey string, lookup map[string]string) s
 		return b
 	}
 	return defaultRuleBehavior(merchantKey)
-}
-
-func getMerchantRuleBehaviorTx(tx *sql.Tx, merchantKey string) (string, error) {
-	var behavior string
-	err := tx.QueryRow(`SELECT Behavior FROM CategoryRules WHERE MerchantKey = ? LIMIT 1`, merchantKey).Scan(&behavior)
-	if err == sql.ErrNoRows {
-		return defaultRuleBehavior(merchantKey), nil
-	}
-	if err != nil {
-		return "", err
-	}
-	return normalizeBehavior(behavior), nil
 }

@@ -1,0 +1,86 @@
+package di
+
+import (
+	"github.com/samber/do/v2"
+	"gorm.io/gorm"
+
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/locations"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/reports"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/tasks"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/workouts"
+)
+
+type AppContainer struct {
+	DB                 *gorm.DB
+	ProjectTaskService *tasks.ProjectTaskService
+	ProjectTaskHandler *tasks.ProjectTaskHandler
+	LocationService    *locations.LocationService
+	LocationTagHandler *locations.LocationTagHandler
+	WorkoutService     workouts.WorkoutService
+	WorkoutHandler     *workouts.WorkoutHandler
+	TransactionService *reports.TransactionService
+	TransactionHandler *reports.TransactionHandler
+}
+
+// InitializeApp sets up the dependency graph using samber/do
+func InitializeApp() (*AppContainer, error) {
+	injector := do.New()
+
+	// 1. Register providers in the injector container
+	do.Provide(injector, func(i do.Injector) (*gorm.DB, error) {
+		return db.NewDatabase()
+	})
+
+	do.Provide(injector, func(i do.Injector) (*tasks.ProjectTaskService, error) {
+		dbConn := do.MustInvoke[*gorm.DB](i)
+		return tasks.NewProjectTaskService(dbConn), nil
+	})
+
+	do.Provide(injector, func(i do.Injector) (*tasks.ProjectTaskHandler, error) {
+		ptService := do.MustInvoke[*tasks.ProjectTaskService](i)
+		return tasks.NewProjectTaskHandler(ptService), nil
+	})
+
+	do.Provide(injector, func(i do.Injector) (*locations.LocationService, error) {
+		dbConn := do.MustInvoke[*gorm.DB](i)
+		return locations.NewLocationService(dbConn), nil
+	})
+	// 	projectTaskHandler := NewProjectTaskHandler(container.ProjectTaskService)
+	do.Provide(injector, func(i do.Injector) (*locations.LocationTagHandler, error) {
+		locService := do.MustInvoke[*locations.LocationService](i)
+		return locations.NewLocationTagHandler(locService), nil
+	})
+
+	do.Provide(injector, func(i do.Injector) (workouts.WorkoutService, error) {
+		dbConn := do.MustInvoke[*gorm.DB](i)
+		return workouts.NewWorkoutService(dbConn), nil
+	})
+	do.Provide(injector, func(i do.Injector) (*workouts.WorkoutHandler, error) {
+		wService := do.MustInvoke[workouts.WorkoutService](i)
+		return workouts.NewWorkoutHandler(wService), nil
+	})
+
+	do.Provide(injector, func(i do.Injector) (*reports.TransactionService, error) {
+		dbConn := do.MustInvoke[*gorm.DB](i)
+		return reports.NewTransactionService(dbConn), nil
+	})
+
+	do.Provide(injector, func(i do.Injector) (*reports.TransactionHandler, error) {
+		txService := do.MustInvoke[*reports.TransactionService](i)
+		return reports.NewTransactionHandler(txService), nil
+	})
+
+	// 2. Resolve dependencies into your AppContainer struct
+	return &AppContainer{
+		DB:                 do.MustInvoke[*gorm.DB](injector),
+		ProjectTaskService: do.MustInvoke[*tasks.ProjectTaskService](injector),
+		ProjectTaskHandler: do.MustInvoke[*tasks.ProjectTaskHandler](injector),
+		LocationService:    do.MustInvoke[*locations.LocationService](injector),
+		LocationTagHandler: do.MustInvoke[*locations.LocationTagHandler](injector),
+		WorkoutService:     do.MustInvoke[workouts.WorkoutService](injector),
+		WorkoutHandler:     do.MustInvoke[*workouts.WorkoutHandler](injector),
+		TransactionService: do.MustInvoke[*reports.TransactionService](injector),
+		TransactionHandler: do.MustInvoke[*reports.TransactionHandler](injector),
+	}, nil
+}

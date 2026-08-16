@@ -1,20 +1,10 @@
-package models
+package auth
 
 import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
-
-type Location struct {
-	ID          int      `json:"id"`
-	Title       string   `json:"title"`
-	Tags        []string `json:"tags"`
-	Url         string   `json:"url,omitempty"`
-	Lat         float64  `json:"lat"`
-	Lng         float64  `json:"lng"`
-	Description string   `json:"description,omitempty"`
-}
 
 type LoginRequest struct {
 	Username string `json:"username"`

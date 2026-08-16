@@ -1,4 +1,4 @@
-package services
+package tasks
 
 import (
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"

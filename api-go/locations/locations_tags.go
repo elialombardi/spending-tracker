@@ -1,23 +1,21 @@
-package main
+package locations
 
 import (
 	"errors"
 	"strconv"
 	"strings"
 
-	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/auth"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/auth"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"
-	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/models"
-	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/services"
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
 
 type LocationTagHandler struct {
-	service *services.LocationService
+	service *LocationService
 }
 
-func NewLocationTagHandler(service *services.LocationService) *LocationTagHandler {
+func NewLocationTagHandler(service *LocationService) *LocationTagHandler {
 	return &LocationTagHandler{service: service}
 }
 
@@ -40,7 +38,7 @@ func (h *LocationTagHandler) listLocations(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	response := make([]models.Location, 0, len(locations))
+	response := make([]Location, 0, len(locations))
 	for _, location := range locations {
 		response = append(response, mapLocationEntity(location))
 	}
@@ -64,7 +62,7 @@ func (h *LocationTagHandler) getLocation(c *fiber.Ctx) error {
 }
 
 func (h *LocationTagHandler) createLocation(c *fiber.Ctx) error {
-	var payload models.Location
+	var payload Location
 	if err := c.BodyParser(&payload); err != nil {
 		return fiber.ErrBadRequest
 	}
@@ -94,7 +92,7 @@ func (h *LocationTagHandler) updateLocation(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	var payload models.Location
+	var payload Location
 	if err := c.BodyParser(&payload); err != nil {
 		return fiber.ErrBadRequest
 	}
@@ -235,13 +233,13 @@ func (h *LocationTagHandler) deleteTag(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"success": true})
 }
 
-func mapLocationEntity(location db.LocationEntity) models.Location {
+func mapLocationEntity(location db.LocationEntity) Location {
 	tags := make([]string, 0, len(location.Tags))
 	for _, tag := range location.Tags {
 		tags = append(tags, tag.Name)
 	}
 
-	response := models.Location{
+	response := Location{
 		ID:    location.ID,
 		Title: location.Title,
 		Tags:  tags,

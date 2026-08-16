@@ -4,8 +4,9 @@ import (
 	"log"
 	"os"
 
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/auth"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/di"
-	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/auth"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	_ "modernc.org/sqlite"
@@ -26,17 +27,14 @@ func main() {
 	}
 	defer sqlDB.Close()
 
-	projectTaskHandler := NewProjectTaskHandler(container.ProjectTaskService)
-	locationTagHandler := NewLocationTagHandler(container.LocationService)
-	transactionHandler := container.TransactionHandler
-
 	app := fiber.New()
 	app.Use(cors.New())
 
 	app.Post("/api/auth/token", auth.HandleToken)
-	transactionHandler.RegisterRoutes(app)
-	projectTaskHandler.RegisterRoutes(app)
-	locationTagHandler.RegisterRoutes(app)
+	container.TransactionHandler.RegisterRoutes(app)
+	container.ProjectTaskHandler.RegisterRoutes(app)
+	container.LocationTagHandler.RegisterRoutes(app)
+	container.WorkoutHandler.RegisterRoutes(app)
 
 	app.Get("/api/version", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{

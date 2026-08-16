@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/auth"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/auth"
 	"github.com/gofiber/fiber/v2"
 )
 

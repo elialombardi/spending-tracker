@@ -7,13 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 )
 
 var (
-	users             = map[string]models.User{}
+	users             = map[string]User{}
 	jwtKey            []byte
 	jwtIssuer         string
 	jwtAudience       string
@@ -38,8 +37,8 @@ func ConfigureUsers() {
 		writerPassword = "dev-password-change-me"
 	}
 
-	users[strings.ToLower(adminUsername)] = models.User{Username: adminUsername, Password: adminPassword, Role: "Admin"}
-	users[strings.ToLower(writerUsername)] = models.User{Username: writerUsername, Password: writerPassword, Role: "Writer"}
+	users[strings.ToLower(adminUsername)] = User{Username: adminUsername, Password: adminPassword, Role: "Admin"}
+	users[strings.ToLower(writerUsername)] = User{Username: writerUsername, Password: writerPassword, Role: "Writer"}
 }
 
 func ConfigureJwt() {
@@ -65,7 +64,7 @@ func ConfigureJwt() {
 }
 
 func HandleToken(c *fiber.Ctx) error {
-	var request models.LoginRequest
+	var request LoginRequest
 	if err := c.BodyParser(&request); err != nil {
 		return fiber.ErrBadRequest
 	}
@@ -77,7 +76,7 @@ func HandleToken(c *fiber.Ctx) error {
 
 	now := time.Now().UTC()
 	expiresAt := now.Add(time.Duration(tokenLifetimeMins) * time.Minute)
-	claims := models.AuthClaims{
+	claims := AuthClaims{
 		Role: user.Role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   user.Username,
@@ -96,7 +95,7 @@ func HandleToken(c *fiber.Ctx) error {
 		return fiber.ErrInternalServerError
 	}
 
-	return c.JSON(models.AuthTokenResponse{
+	return c.JSON(AuthTokenResponse{
 		AccessToken: signed,
 		TokenType:   "Bearer",
 		ExpiresAt:   expiresAt,
@@ -129,7 +128,7 @@ func setUserFromHeader(c *fiber.Ctx) bool {
 	}
 
 	tokenString := strings.TrimPrefix(authorization, "Bearer ")
-	claims := &models.AuthClaims{}
+	claims := &AuthClaims{}
 	parsed, err := jwt.ParseWithClaims(
 		tokenString,
 		claims,

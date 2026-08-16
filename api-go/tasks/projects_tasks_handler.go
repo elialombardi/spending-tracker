@@ -1,4 +1,4 @@
-package main
+package tasks
 
 import (
 	"errors"
@@ -6,19 +6,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/auth"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/auth"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"
-	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/models"
-	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/services"
+
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
 
 type ProjectTaskHandler struct {
-	service *services.ProjectTaskService
+	service *ProjectTaskService
 }
 
-func NewProjectTaskHandler(service *services.ProjectTaskService) *ProjectTaskHandler {
+func NewProjectTaskHandler(service *ProjectTaskService) *ProjectTaskHandler {
 	return &ProjectTaskHandler{service: service}
 }
 
@@ -41,7 +40,7 @@ func (h *ProjectTaskHandler) listProjects(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	response := make([]models.Project, 0, len(projects))
+	response := make([]Project, 0, len(projects))
 	for _, project := range projects {
 		response = append(response, mapProjectEntity(project))
 	}
@@ -65,7 +64,7 @@ func (h *ProjectTaskHandler) getProject(c *fiber.Ctx) error {
 }
 
 func (h *ProjectTaskHandler) createProject(c *fiber.Ctx) error {
-	var payload models.Project
+	var payload Project
 	if err := c.BodyParser(&payload); err != nil {
 		return fiber.ErrBadRequest
 	}
@@ -93,7 +92,7 @@ func (h *ProjectTaskHandler) updateProject(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	var payload models.Project
+	var payload Project
 	if err := c.BodyParser(&payload); err != nil {
 		return fiber.ErrBadRequest
 	}
@@ -142,7 +141,7 @@ func (h *ProjectTaskHandler) listTasks(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	response := make([]models.TaskDetails, 0, len(tasks))
+	response := make([]TaskDetails, 0, len(tasks))
 	for _, task := range tasks {
 		response = append(response, mapTaskWithProject(task))
 	}
@@ -166,7 +165,7 @@ func (h *ProjectTaskHandler) getTask(c *fiber.Ctx) error {
 }
 
 func (h *ProjectTaskHandler) createTask(c *fiber.Ctx) error {
-	var payload models.Task
+	var payload Task
 	if err := c.BodyParser(&payload); err != nil {
 		return fiber.ErrBadRequest
 	}
@@ -198,7 +197,7 @@ func (h *ProjectTaskHandler) updateTask(c *fiber.Ctx) error {
 		return fiber.ErrBadRequest
 	}
 
-	var payload models.Task
+	var payload Task
 	if err := c.BodyParser(&payload); err != nil {
 		return fiber.ErrBadRequest
 	}
@@ -242,8 +241,8 @@ func (h *ProjectTaskHandler) deleteTask(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"success": true})
 }
 
-func mapProjectEntity(project db.ProjectEntity) models.Project {
-	response := models.Project{
+func mapProjectEntity(project db.ProjectEntity) Project {
+	response := Project{
 		ID:   project.ID,
 		Name: project.Name,
 	}
@@ -253,8 +252,8 @@ func mapProjectEntity(project db.ProjectEntity) models.Project {
 	return response
 }
 
-func mapTaskWithProject(task services.TaskWithProject) models.TaskDetails {
-	response := models.TaskDetails{
+func mapTaskWithProject(task TaskWithProject) TaskDetails {
+	response := TaskDetails{
 		ID:          task.Task.ID,
 		ProjectID:   task.Task.ProjectID,
 		ProjectName: task.Project.Name,
@@ -271,7 +270,7 @@ func mapTaskWithProject(task services.TaskWithProject) models.TaskDetails {
 	return response
 }
 
-func validateTaskPayload(payload models.Task) error {
+func validateTaskPayload(payload Task) error {
 	if payload.ProjectID <= 0 {
 		return errors.New("ProjectId required")
 	}
@@ -290,4 +289,12 @@ func validateTaskPayload(payload models.Task) error {
 		}
 	}
 	return nil
+}
+
+func nullableStringPointer(value string) *string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
 }

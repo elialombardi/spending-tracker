@@ -1,4 +1,4 @@
-package models
+package tasks
 
 type Project struct {
 	ID          int    `json:"id"`

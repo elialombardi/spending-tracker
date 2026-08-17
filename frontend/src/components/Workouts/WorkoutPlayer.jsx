@@ -13,7 +13,21 @@ export default function WorkoutPlayer({ workout, onFinish }) {
     const list = [];
     if (!workout || !workout.sessions) return list;
 
+
+
     workout.sessions.forEach((session) => {
+      if (session.roundPrepareDuration > 0) {
+        list.push({
+          sessionName: 'Prepare',
+          cycle: 1,
+          totalCycles: 1,
+          round: 1,
+          totalRounds: 1,
+          timerName: 'Prepare',
+          duration: session.roundPrepareDuration,
+          color: '#facc15',
+        });
+      }
       for (let c = 1; c <= session.cycles; c++) {
         for (let r = 1; r <= session.rounds; r++) {
           (session.timers || []).forEach((t) => {
@@ -29,14 +43,14 @@ export default function WorkoutPlayer({ workout, onFinish }) {
             });
           });
         }
-        if (c < session.cycles && session.cycleRelaxDuration > 0) {
+        if (c < session.cycles && session.CycleRestDuration > 0) {
           list.push({
             sessionName: session.name,
             cycle: c,
             totalCycles: session.cycles,
             round: session.rounds,
-            timerName: 'Cycle Relax',
-            duration: session.cycleRelaxDuration,
+            timerName: 'Cycle Rest',
+            duration: session.CycleRestDuration,
             color: '#10b981',
           });
         }

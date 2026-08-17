@@ -4,13 +4,14 @@ import (
 	"strconv"
 
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/dto"
+
 	"github.com/gofiber/fiber/v2"
 )
 
-// --- Workout Handlers ---
+// --- Session Handlers ---
 
-func (h *WorkoutHandler) CreateWorkout(c *fiber.Ctx) error {
-	var req dto.CreateWorkoutRequest
+func (h *WorkoutHandler) CreateSession(c *fiber.Ctx) error {
+	var req dto.CreateSessionRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid JSON body"})
 	}
@@ -19,7 +20,7 @@ func (h *WorkoutHandler) CreateWorkout(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	resp, err := h.service.CreateWorkout(&req)
+	resp, err := h.service.CreateSession(&req)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -27,13 +28,13 @@ func (h *WorkoutHandler) CreateWorkout(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(resp)
 }
 
-func (h *WorkoutHandler) GetWorkoutByID(c *fiber.Ctx) error {
+func (h *WorkoutHandler) GetSessionByID(c *fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid ID parameter"})
 	}
 
-	resp, err := h.service.GetWorkoutByID(uint(id))
+	resp, err := h.service.GetSessionByID(uint(id))
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -41,14 +42,14 @@ func (h *WorkoutHandler) GetWorkoutByID(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-func (h *WorkoutHandler) ListWorkouts(c *fiber.Ctx) error {
+func (h *WorkoutHandler) ListSessions(c *fiber.Ctx) error {
 	var query dto.PaginationQuery
 	if err := c.QueryParser(&query); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid query params"})
 	}
 	query.SetDefaults()
 
-	resp, err := h.service.ListWorkouts(&query)
+	resp, err := h.service.ListSessions(&query)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -56,13 +57,13 @@ func (h *WorkoutHandler) ListWorkouts(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-func (h *WorkoutHandler) UpdateWorkout(c *fiber.Ctx) error {
+func (h *WorkoutHandler) UpdateSession(c *fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid ID parameter"})
 	}
 
-	var req dto.UpdateWorkoutRequest
+	var req dto.UpdateSessionRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid JSON body"})
 	}
@@ -71,7 +72,7 @@ func (h *WorkoutHandler) UpdateWorkout(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	resp, err := h.service.UpdateWorkout(uint(id), &req)
+	resp, err := h.service.UpdateSession(uint(id), &req)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -79,13 +80,13 @@ func (h *WorkoutHandler) UpdateWorkout(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-func (h *WorkoutHandler) DeleteWorkout(c *fiber.Ctx) error {
+func (h *WorkoutHandler) DeleteSession(c *fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid ID parameter"})
 	}
 
-	if err := h.service.DeleteWorkout(uint(id)); err != nil {
+	if err := h.service.DeleteSession(uint(id)); err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
 	}
 

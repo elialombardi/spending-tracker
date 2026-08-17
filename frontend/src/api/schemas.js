@@ -52,7 +52,7 @@ export const schemas = {
       name: 'HIIT Leg Circuit',
       rounds: 3,
       cycles: 2,
-      cycleRelaxDuration: 60,
+      CycleRestDuration: 60,
       timers: [
         { id: 10, name: 'Sprint', duration: 30, color: '#FF0000' },
         { id: 11, name: 'Rest', duration: 15, color: '#00FF00' }
@@ -66,7 +66,7 @@ export const schemas = {
       name: 'HIIT Leg Circuit',
       rounds: 3,
       cycles: 2,
-      cycleRelaxDuration: 60,
+      CycleRestDuration: 60,
       timers: [
         { name: 'Sprint', duration: 30, color: '#FF0000' },
         { name: 'Rest', duration: 15, color: '#00FF00' }
@@ -78,7 +78,7 @@ export const schemas = {
       id: 5,
       name: 'Full Body Conditioning',
       sessions: [
-        { id: 1, name: 'HIIT Leg Circuit', rounds: 3, cycles: 2, cycleRelaxDuration: 60, timers: [] }
+        { id: 1, name: 'HIIT Leg Circuit', rounds: 3, cycles: 2, CycleRestDuration: 60, timers: [] }
       ],
       createdAt: '2026-08-16T10:00:00Z',
       updatedAt: '2026-08-16T10:00:00Z'

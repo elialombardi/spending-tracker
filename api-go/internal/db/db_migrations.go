@@ -104,7 +104,7 @@ func EnsureSchema(database *sql.DB) error {
             name VARCHAR(100) NOT NULL,
             rounds INTEGER NOT NULL DEFAULT 1,
             cycles INTEGER NOT NULL DEFAULT 1,
-            cycle_relax_duration INTEGER NOT NULL DEFAULT 0,
+            cycle_rest_duration INTEGER NOT NULL DEFAULT 0,
             created_at DATETIME NULL,
             updated_at DATETIME NULL,
             deleted_at DATETIME NULL

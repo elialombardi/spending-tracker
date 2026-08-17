@@ -8,15 +8,16 @@ import (
 
 // Session represents a configured set of interval timers
 type Session struct {
-	ID                 uint           `gorm:"primaryKey" json:"id"`
-	Name               string         `gorm:"type:varchar(100);not null" json:"name"`
-	Rounds             int            `gorm:"not null;default:1" json:"rounds"`
-	Cycles             int            `gorm:"not null;default:1" json:"cycles"`
-	CycleRelaxDuration int            `gorm:"not null;default:0" json:"cycleRelaxDuration"`
-	Timers             []Timer        `gorm:"foreignKey:SessionID;constraint:OnDelete:CASCADE;" json:"timers"`
-	CreatedAt          time.Time      `json:"createdAt"`
-	UpdatedAt          time.Time      `json:"updatedAt"`
-	DeletedAt          gorm.DeletedAt `gorm:"index" json:"-"`
+	ID                   uint           `gorm:"primaryKey" json:"id"`
+	Name                 string         `gorm:"type:varchar(100);not null" json:"name"`
+	Rounds               int            `gorm:"not null;default:1" json:"rounds"`
+	Cycles               int            `gorm:"not null;default:1" json:"cycles"`
+	CycleRestDuration    int            `gorm:"not null;default:0" json:"CycleRestDuration"`
+	RoundPrepareDuration int            `gorm:"not null;default:0" json:"roundPrepareDuration"`
+	Timers               []Timer        `gorm:"foreignKey:SessionID;constraint:OnDelete:CASCADE;" json:"timers"`
+	CreatedAt            time.Time      `json:"createdAt"`
+	UpdatedAt            time.Time      `json:"updatedAt"`
+	DeletedAt            gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 func (Session) TableName() string { return "Sessions" }

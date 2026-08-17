@@ -20,16 +20,16 @@ import TimerInputRow from './TimerInputRow';
 import TimerList from './TimerList';
 
 const DEFAULT_TIMERS = [
-  { id: '1', name: 'Setup', duration: 15, color: '#f59e0b' },
-  { id: '2', name: 'Workout', duration: 30, color: '#ef4444' },
-  { id: '3', name: 'Relax', duration: 15, color: '#10b981' },
+  { id: '1', name: 'Workout', duration: 30, color: '#ef4444' },
+  { id: '2', name: 'Rest', duration: 15, color: '#10b981' },
 ];
 
 export default function SessionFormModal({ open, onClose, onSaveSession, initialData = null }) {
   const [sessionName, setSessionName] = useState('');
   const [rounds, setRounds] = useState(3);
   const [cycles, setCycles] = useState(1);
-  const [cycleRelax, setCycleRelax] = useState(60);
+  const [cycleRest, setCycleRest] = useState(60);
+  const [roundPrepare, setRoundPrepare] = useState(15);
   const [customTimers, setCustomTimers] = useState([...DEFAULT_TIMERS]);
   const [saving, setSaving] = useState(false);
 
@@ -40,14 +40,16 @@ export default function SessionFormModal({ open, onClose, onSaveSession, initial
         setSessionName(initialData.name || '');
         setRounds(initialData.rounds ?? 3);
         setCycles(initialData.cycles ?? 1);
-        setCycleRelax(initialData.cycleRelaxDuration ?? 60);
+        setCycleRest(initialData.CycleRestDuration ?? 60);
+        setRoundPrepare(initialData.roundPrepareDuration ?? 15);
         setCustomTimers(initialData.timers?.length ? initialData.timers : [...DEFAULT_TIMERS]);
       } else {
         // Reset to default for creation mode
         setSessionName('');
         setRounds(3);
         setCycles(1);
-        setCycleRelax(60);
+        setCycleRest(60);
+        setRoundPrepare(15);
         setCustomTimers([...DEFAULT_TIMERS]);
       }
     }
@@ -84,7 +86,8 @@ export default function SessionFormModal({ open, onClose, onSaveSession, initial
         name: sessionName.trim(),
         rounds: Number(rounds),
         cycles: Number(cycles),
-        cycleRelaxDuration: Number(cycleRelax),
+        CycleRestDuration: Number(cycleRest),
+        roundPrepareDuration: Number(roundPrepare),
         timers: customTimers.map((t) => ({
           name: t.name,
           duration: t.duration,
@@ -165,10 +168,20 @@ export default function SessionFormModal({ open, onClose, onSaveSession, initial
             </Grid>
             <Grid item xs={4}>
               <TextField
-                label="Cycle Relax (s)"
+                label="Cycle Rest (s)"
                 type="number"
-                value={cycleRelax}
-                onChange={(e) => setCycleRelax(e.target.value)}
+                value={cycleRest}
+                onChange={(e) => setCycleRest(e.target.value)}
+                size="small"
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={4}>
+              <TextField
+                label="Round Prepare (s)"
+                type="number"
+                value={roundPrepare}
+                onChange={(e) => setRoundPrepare(e.target.value)}
                 size="small"
                 fullWidth
               />

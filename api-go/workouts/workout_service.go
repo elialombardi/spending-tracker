@@ -35,10 +35,11 @@ func NewWorkoutService(db *gorm.DB) WorkoutService {
 
 func (s *workoutService) CreateSession(req *dto.CreateSessionRequest) (*dto.SessionResponse, error) {
 	session := Session{
-		Name:               req.Name,
-		Rounds:             req.Rounds,
-		Cycles:             req.Cycles,
-		CycleRelaxDuration: req.CycleRelaxDuration,
+		Name:                 req.Name,
+		Rounds:               req.Rounds,
+		Cycles:               req.Cycles,
+		CycleRestDuration:    req.CycleRestDuration,
+		RoundPrepareDuration: req.RoundPrepareDuration,
 	}
 
 	for _, t := range req.Timers {
@@ -117,8 +118,11 @@ func (s *workoutService) UpdateSession(id uint, req *dto.UpdateSessionRequest) (
 		if req.Cycles != nil {
 			session.Cycles = *req.Cycles
 		}
-		if req.CycleRelaxDuration != nil {
-			session.CycleRelaxDuration = *req.CycleRelaxDuration
+		if req.CycleRestDuration != nil {
+			session.CycleRestDuration = *req.CycleRestDuration
+		}
+		if req.RoundPrepareDuration != nil {
+			session.RoundPrepareDuration = *req.RoundPrepareDuration
 		}
 
 		if req.Timers != nil {
@@ -303,14 +307,15 @@ func mapSessionToResponse(s *Session) *dto.SessionResponse {
 	}
 
 	return &dto.SessionResponse{
-		ID:                 s.ID,
-		Name:               s.Name,
-		Rounds:             s.Rounds,
-		Cycles:             s.Cycles,
-		CycleRelaxDuration: s.CycleRelaxDuration,
-		Timers:             timers,
-		CreatedAt:          s.CreatedAt,
-		UpdatedAt:          s.UpdatedAt,
+		ID:                   s.ID,
+		Name:                 s.Name,
+		Rounds:               s.Rounds,
+		Cycles:               s.Cycles,
+		CycleRestDuration:    s.CycleRestDuration,
+		RoundPrepareDuration: s.RoundPrepareDuration,
+		Timers:               timers,
+		CreatedAt:            s.CreatedAt,
+		UpdatedAt:            s.UpdatedAt,
 	}
 }
 

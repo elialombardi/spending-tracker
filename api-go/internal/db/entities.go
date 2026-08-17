@@ -36,7 +36,7 @@ func (ProjectEntity) TableName() string { return "Projects" }
 
 type TaskEntity struct {
 	ID          int           `gorm:"column:Id;primaryKey;autoIncrement"`
-	ProjectID   int           `gorm:"column:ProjectId;not null;index:IX_Tasks_ProjectId_TaskDate,priority:1"`
+	ProjectID   *int          `gorm:"column:ProjectId;index:IX_Tasks_ProjectId_TaskDate,priority:1"`
 	Name        string        `gorm:"column:Name;not null"`
 	Cost        float64       `gorm:"column:Cost;not null"`
 	TaskDate    string        `gorm:"column:TaskDate;not null;index:IX_Tasks_ProjectId_TaskDate,priority:2"`

@@ -32,16 +32,7 @@ func NewDatabase() (*gorm.DB, error) {
 		return nil, err
 	}
 
-	tables, err := gormDB.Migrator().GetTables()
-	if err != nil {
-		log.Printf("Error retrieving existing tables: %v", err)
-		return nil, err
-	}
-
-	for _, table := range tables {
-		log.Printf("Existing table: %s", table)
-	}
-
+	log.Printf("Running AutoMigrate...")
 	if err := gormDB.AutoMigrate(
 		&reports.Transaction{},
 		&reports.CategoryRule{},
@@ -58,19 +49,7 @@ func NewDatabase() (*gorm.DB, error) {
 	); err != nil {
 		return nil, err
 	}
-
-	if err := seedDefaultLocations(gormDB); err != nil {
-		return nil, err
-	}
-
-	tables, err = gormDB.Migrator().GetTables()
-	if err != nil {
-		log.Printf("Error retrieving tables after migration: %v", err)
-		return nil, err
-	}
-	for _, table := range tables {
-		log.Printf("Current table: %s", table)
-	}
+	log.Printf("AutoMigrate completed successfully.")
 
 	return gormDB, nil
 }

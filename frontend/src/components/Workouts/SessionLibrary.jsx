@@ -1,9 +1,12 @@
 // components/SessionLibrary.jsx
 import React, { useState } from 'react';
-import { Box, Button, Card, CardContent, List, Paper, Typography, IconButton } from '@mui/material';
+import { Box, Button, Card, CardContent, List, Paper, Typography, IconButton, Stack } from '@mui/material';
 import Add from '@mui/icons-material/Add';
 import Delete from '@mui/icons-material/Delete';
 import Pencil from '@mui/icons-material/Edit';
+import RepeatIcon from '@mui/icons-material/Repeat';
+import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
+import TimerIcon from '@mui/icons-material/Timer';
 import { workoutsApi } from '../../api';
 
 export default function SessionLibrary({ sessions, onAddToWorkout, onDeleteSession, onEditSession }) {
@@ -26,39 +29,111 @@ export default function SessionLibrary({ sessions, onAddToWorkout, onDeleteSessi
   };
 
   return (
-    <Paper sx={{ p: 3 }} elevation={2}>
+    <Paper sx={{ p: { xs: 1.5, sm: 2 }, width: '100%' }} elevation={2}>
       <Typography variant="h6" gutterBottom fontWeight="bold">
         Session Library
       </Typography>
-      <List size="small">
+      <List size="small" disablePadding>
         {sessions.map((sess) => (
-          <Card key={sess.id} variant="outlined" sx={{ mb: 1 }}>
-            <CardContent sx={{ p: '12px !important' }}>
-              <Box display="flex">
-                <Box>
-                  <Typography variant="subtitle1" fontWeight="bold">
+          <Card key={sess.id} variant="outlined" sx={{ mb: 1, width: '100%' }}>
+            <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  justify: 'space-between',
+                  alignItems: { xs: 'flex-start', sm: 'center' },
+                  gap: 1.5,
+                  width: '100%'
+                }}
+              >
+                {/* Session Details */}
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography variant="subtitle1" fontWeight="bold" noWrap>
                     {sess.name}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {sess.cycles} Cycle(s) • {sess.rounds} Round(s) • {sess.timers?.length || 0} Timers
-                  </Typography>
+                  <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+                    {/* Cycles */}
+                    <Box
+                      sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        bgcolor: 'action.hover',
+                        px: 1,
+                        py: 0.25,
+                        borderRadius: 1,
+                        color: 'text.secondary'
+                      }}
+                    >
+                      <RepeatIcon sx={{ fontSize: '1rem' }} />
+                      <Typography variant="caption" fontWeight="600">{sess.cycles}</Typography>
+                    </Box>
+
+                    {/* Rounds */}
+                    <Box
+                      sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        bgcolor: 'action.hover',
+                        px: 1,
+                        py: 0.25,
+                        borderRadius: 1,
+                        color: 'text.secondary'
+                      }}
+                    >
+                      <FitnessCenterIcon sx={{ fontSize: '1rem' }} />
+                      <Typography variant="caption" fontWeight="600">{sess.rounds}</Typography>
+                    </Box>
+
+                    {/* Timers */}
+                    <Box
+                      sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        bgcolor: 'action.hover',
+                        px: 1,
+                        py: 0.25,
+                        borderRadius: 1,
+                        color: 'text.secondary'
+                      }}
+                    >
+                      <TimerIcon sx={{ fontSize: '1rem' }} />
+                      <Typography variant="caption" fontWeight="600">{sess.timers?.length || 0}</Typography>
+                    </Box>
+                  </Stack>
                 </Box>
-                <Box display="flex" gap={1}>
-                  <IconButton
+
+                {/* Actions Row */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    gap: 1,
+                    alignItems: 'center',
+                    alignSelf: { xs: 'flex-end', sm: 'center' }
+                  }}
+                >
+                  <Button
                     size="small"
-                    color="primary"
+                    variant="outlined"
+                    startIcon={<Pencil />}
                     onClick={() => handleEdit(sess.id)}
                   >
-                    <Pencil fontSize="small" />
-                  </IconButton>
-                  <IconButton
+                    Edit
+                  </Button>
+
+                  <Button
                     size="small"
+                    variant="outlined"
+                    startIcon={<Delete />}
                     color="error"
                     disabled={deletingId === sess.id}
                     onClick={() => handleDelete(sess.id)}
                   >
-                    <Delete fontSize="small" />
-                  </IconButton>
+                    Delete
+                  </Button>
                   <Button
                     size="small"
                     variant="outlined"

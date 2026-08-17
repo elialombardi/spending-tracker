@@ -13,6 +13,7 @@ import {
 import Delete from '@mui/icons-material/Delete';
 import PlayArrow from '@mui/icons-material/PlayArrow';
 import FitnessCenter from '@mui/icons-material/FitnessCenter';
+import WorkoutActions from './WorkoutActions';
 
 export default function WorkoutAssembly({
   workoutName,
@@ -20,11 +21,15 @@ export default function WorkoutAssembly({
   workoutSequence,
   onRemoveFromWorkout,
   onStartWorkout,
+  selectedWorkoutId,
+  savingWorkout,
+  onSaveWorkout,
+  onDeleteWorkout,
 }) {
   return (
     <Paper sx={{ p: 3, bgcolor: 'action.hover' }} elevation={2}>
       <Typography variant="h6" gutterBottom fontWeight="bold" display="flex" gap={1}>
-        <FitnessCenter /> Active Workout Assembly
+        <FitnessCenter /> Current Workout
       </Typography>
 
       <TextField
@@ -33,7 +38,7 @@ export default function WorkoutAssembly({
         onChange={(e) => onWorkoutNameChange(e.target.value)}
         size="small"
         fullWidth
-        sx={{ mb: 2, bgcolor: 'background.paper' }}
+        sx={{ my: 2, bgcolor: 'background.paper' }}
       />
 
       {workoutSequence.length === 0 ? (
@@ -61,7 +66,16 @@ export default function WorkoutAssembly({
         </List>
       )}
 
-      <Button
+      <WorkoutActions
+        selectedWorkoutId={selectedWorkoutId}
+        workoutSequence={workoutSequence}
+        savingWorkout={savingWorkout}
+        onSaveWorkout={onSaveWorkout}
+        onDeleteWorkout={onDeleteWorkout}
+        onStartWorkout={onStartWorkout}
+      />
+
+      {/* <Button
         variant="contained"
         color="success"
         size="large"
@@ -72,7 +86,7 @@ export default function WorkoutAssembly({
         sx={{ mt: 2 }}
       >
         Start Workout
-      </Button>
+      </Button> */}
     </Paper>
   );
 }

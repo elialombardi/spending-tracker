@@ -1,6 +1,6 @@
 // components/WorkoutPlayer.jsx
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Box, Button, Typography, Stack, LinearProgress, Paper, Container } from '@mui/material';
+import { Box, Button, Typography, Stack, LinearProgress, Paper, Container, IconButton } from '@mui/material';
 import PauseIcon from '@mui/icons-material/Pause';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -12,8 +12,6 @@ export default function WorkoutPlayer({ workout, onFinish }) {
   const stepsSequence = useMemo(() => {
     const list = [];
     if (!workout || !workout.sessions) return list;
-
-
 
     workout.sessions.forEach((session) => {
       if (session.roundPrepareDuration > 0) {
@@ -65,18 +63,15 @@ export default function WorkoutPlayer({ workout, onFinish }) {
   const [timeLeft, setTimeLeft] = useState(currentStep.duration || 0);
   const [isActive, setIsActive] = useState(true);
 
-  // Ref guard to prevent double-advancing during Strict Mode or race conditions
   const isTransitioningRef = useRef(false);
 
-  // Sync duration when currentStepIdx or step duration changes
   useEffect(() => {
     if (currentStep.duration !== undefined) {
       setTimeLeft(currentStep.duration);
-      isTransitioningRef.current = false; // Reset lock for the new step
+      isTransitioningRef.current = false;
     }
   }, [currentStepIdx, currentStep.duration]);
 
-  // Main countdown timer engine
   useEffect(() => {
     if (!isActive) return;
 
@@ -90,7 +85,6 @@ export default function WorkoutPlayer({ workout, onFinish }) {
 
         const nextTime = prevTime - 1;
 
-        // Sound effects
         if (nextTime <= 3 && nextTime > 0) {
           soundEffects.playBeep(880, 0.15, 'sine');
         } else if (nextTime === 0) {
@@ -105,7 +99,6 @@ export default function WorkoutPlayer({ workout, onFinish }) {
   }, [isActive, currentStepIdx]);
 
   const handleStepExpiration = () => {
-    // Guard against duplicate triggers
     if (isTransitioningRef.current) return;
     isTransitioningRef.current = true;
 
@@ -135,119 +128,223 @@ export default function WorkoutPlayer({ workout, onFinish }) {
   return (
     <Box
       sx={{
-        minHeight: '85vh',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100dvh',
+        zIndex: 9999,
         bgcolor: isCompleted ? '#064e3b' : currentStep.color || '#1e293b',
         color: '#ffffff',
-        borderRadius: 4,
-        p: { xs: 2, md: 4 },
+        p: 2,
+        boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
+        alignItems: 'center',
+        overflow: 'hidden',
         transition: 'background-color 0.5s ease',
+        userSelect: 'none',
       }}
     >
-      {/* Top Header Controls */}
-      <Box display="flex" justifyContent="space-between" alignItems="center">
-        <Button startIcon={<ArrowBackIcon />} sx={{ color: '#fff' }} onClick={onFinish}>
+      {/* 1. Header Bar: Grid ensures horizontal symmetry */}
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: '80px 1fr 80px',
+          alignItems: 'center',
+          width: '100%',
+          flexShrink: 0,
+        }}
+      >
+        <Button
+          startIcon={<ArrowBackIcon />}
+          sx={{
+            color: '#fff',
+            textTransform: 'none',
+            fontSize: '1rem',
+            fontWeight: 700,
+            justifySelf: 'start',
+            p: 0,
+            minWidth: 'auto',
+          }}
+          onClick={onFinish}
+        >
           Exit
         </Button>
-        <Typography variant="h6" fontWeight="bold">
-          {workout?.name || 'Workout Session'}
+
+        <Typography
+          variant="h6"
+          fontWeight="800"
+          noWrap
+          sx={{
+            textAlign: 'center',
+            fontSize: '1.15rem',
+            letterSpacing: 0.5,
+          }}
+        >
+          {workout?.name || 'Workout'}
         </Typography>
-        <Box width={60} />
+
+        <Box />
       </Box>
 
-      {/* Main Counter Display */}
+      {/* 2. Main Workout Display */}
       {isCompleted ? (
-        <Container maxWidth="sm" sx={{ textAlign: 'center', py: 8 }}>
-          <Typography variant="h2" fontWeight="bold" gutterBottom>
+        <Container
+          maxWidth="xs"
+          sx={{
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            flex: 1,
+          }}
+        >
+          <Typography variant="h4" fontWeight="bold" gutterBottom>
             Workout Complete! 🎉
           </Typography>
-          <Typography variant="h6" sx={{ mb: 4, opacity: 0.8 }}>
+          <Typography variant="body1" sx={{ mb: 3, opacity: 0.9 }}>
             Great job pushing through your session.
           </Typography>
-          <Button variant="contained" size="large" onClick={onFinish} sx={{ color: '#000', bgcolor: '#fff' }}>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={onFinish}
+            sx={{
+              color: '#000',
+              bgcolor: '#fff',
+              fontWeight: 'bold',
+              px: 4,
+              py: 1,
+              borderRadius: 4,
+            }}
+          >
             Back to Setup
           </Button>
         </Container>
       ) : (
-        <Stack spacing={3} alignItems="center" sx={{ my: 'auto', textAlign: 'center' }}>
+        <Box
+          sx={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-evenly',
+            alignItems: 'center',
+            width: '100%',
+            minHeight: 0, // Critical to prevent flex item pushing
+            py: 1,
+          }}
+        >
+          {/* Session Tag */}
           <Paper
             elevation={0}
             sx={{
-              bgcolor: 'rgba(255, 255, 255, 0.15)',
-              px: 3,
-              py: 1,
+              bgcolor: 'rgba(255, 255, 255, 0.25)',
+              px: 2.5,
+              py: 0.5,
               borderRadius: 8,
               color: '#fff',
             }}
           >
-            <Typography variant="h5" fontWeight="medium">
-              Session: {currentStep.sessionName}
+            <Typography variant="body1" fontWeight="700" sx={{ fontSize: '1rem' }}>
+              {currentStep.sessionName}
             </Typography>
           </Paper>
 
+          {/* Cycle & Round Info */}
           <Stack direction="row" spacing={3}>
-            <Typography variant="h6" sx={{ opacity: 0.9 }}>
+            <Typography variant="body1" fontWeight="600" sx={{ fontSize: '1.1rem' }}>
               Cycle: <b>{currentStep.cycle} / {currentStep.totalCycles}</b>
             </Typography>
-            <Typography variant="h6" sx={{ opacity: 0.9 }}>
+            <Typography variant="body1" fontWeight="600" sx={{ fontSize: '1.1rem' }}>
               Round: <b>{currentStep.round} / {currentStep.totalRounds}</b>
             </Typography>
           </Stack>
 
-          <Typography variant="h3" fontWeight="bold" sx={{ textTransform: 'uppercase', tracking: 2 }}>
+          {/* Action Name */}
+          <Typography
+            fontWeight="900"
+            sx={{
+              textTransform: 'uppercase',
+              letterSpacing: 2,
+              fontSize: { xs: '1.8rem', sm: '2.5rem' },
+              lineHeight: 1.1,
+            }}
+          >
             {currentStep.timerName}
           </Typography>
 
+          {/* Countdown Digit */}
           <Typography
-            variant="h1"
             sx={{
-              fontSize: { xs: '6rem', md: '10rem' },
+              fontSize: 'clamp(5rem, 24vw, 8.5rem)',
               fontWeight: 900,
               fontFamily: 'monospace',
               lineHeight: 1,
-              my: 2,
             }}
           >
             {timeLeft}s
           </Typography>
 
-          {/* Controls */}
-          <Stack direction="row" spacing={2} alignItems="center">
-            <Button
-              variant="contained"
-              size="large"
+          {/* Controls Container */}
+          <Stack
+            direction="row"
+            spacing={3}
+            sx={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <IconButton
               onClick={togglePlay}
+              aria-label={isActive ? 'Pause' : 'Play'}
               sx={{
-                borderRadius: '50%',
-                minWidth: 72,
-                height: 72,
+                width: 68,
+                height: 68,
                 bgcolor: '#ffffff',
                 color: '#000000',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.8)' },
+                boxShadow: '0px 6px 18px rgba(0,0,0,0.25)',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.9)' },
               }}
             >
-              {isActive ? <PauseIcon fontSize="large" /> : <PlayArrowIcon fontSize="large" />}
-            </Button>
-            <Button
-              variant="outlined"
+              {isActive ? <PauseIcon sx={{ fontSize: 38 }} /> : <PlayArrowIcon sx={{ fontSize: 38 }} />}
+            </IconButton>
+
+            <IconButton
               onClick={handleSkip}
-              sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.5)' }}
+              aria-label="Skip Step"
+              sx={{
+                width: 50,
+                height: 50,
+                color: '#fff',
+                border: '2px solid rgba(255,255,255,0.6)',
+                bgcolor: 'rgba(255,255,255,0.15)',
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' },
+              }}
             >
-              <SkipNextIcon fontSize="medium" />
-            </Button>
+              <SkipNextIcon sx={{ fontSize: 28 }} />
+            </IconButton>
           </Stack>
-        </Stack>
+        </Box>
       )}
 
-      {/* Progress Footer */}
-      <Box sx={{ width: '100%', mt: 4 }}>
-        <Box display="flex" justifyContent="space-between" mb={1}>
-          <Typography variant="body2" sx={{ opacity: 0.8 }}>
-            Overall Progress
-          </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.8 }}>
+      {/* 3. Footer Progress Bar */}
+      <Box sx={{ width: '100%', flexShrink: 0, pt: 1 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 0.5
+          }}
+        >
+          <Typography variant="body2" fontWeight="700" sx={{ opacity: 0.95 }}>
             Step {currentStepIdx + 1} of {stepsSequence.length}
           </Typography>
         </Box>
@@ -255,9 +352,9 @@ export default function WorkoutPlayer({ workout, onFinish }) {
           variant="determinate"
           value={totalProgress}
           sx={{
-            height: 10,
-            borderRadius: 5,
-            bgcolor: 'rgba(255,255,255,0.2)',
+            height: 8,
+            borderRadius: 4,
+            bgcolor: 'rgba(255,255,255,0.3)',
             '& .MuiLinearProgress-bar': { bgcolor: '#ffffff' },
           }}
         />

@@ -217,7 +217,7 @@ export default function SessionBuilder({ onStartWorkout }) {
         </Alert>
       )}
 
-      <Grid container spacing={3}>
+      <Grid container>
         {/* Left Column: Sessions */}
         <Grid xs={12} md={6}>
           <SessionLibrary
@@ -238,26 +238,19 @@ export default function SessionBuilder({ onStartWorkout }) {
         </Grid>
 
         {/* Right Column: Workout Workspace */}
-        <Grid xs={12} md={6}>
-          <Box display="flex">
-            <WorkoutActions
-              selectedWorkoutId={selectedWorkoutId}
-              workoutSequence={workoutSequence}
-              savingWorkout={savingWorkout}
-              onSaveWorkout={handleSaveWorkout}
-              onDeleteWorkout={handleDeleteWorkout}
-              onStartWorkout={handleStart}
-            />
 
-            <WorkoutAssembly
-              workoutName={workoutName}
-              onWorkoutNameChange={setWorkoutName}
-              workoutSequence={workoutSequence}
-              onRemoveFromWorkout={handleRemoveFromWorkout}
-              onStartWorkout={handleStart}
-            />
-          </Box>
-        </Grid>
+        <WorkoutAssembly
+          workoutName={workoutName}
+          onWorkoutNameChange={setWorkoutName}
+          workoutSequence={workoutSequence}
+          onRemoveFromWorkout={handleRemoveFromWorkout}
+          onStartWorkout={handleStart}
+          selectedWorkoutId={selectedWorkoutId}
+          workoutSequence={workoutSequence}
+          savingWorkout={savingWorkout}
+          onSaveWorkout={handleSaveWorkout}
+          onDeleteWorkout={handleDeleteWorkout}
+        />
       </Grid>
 
       <SessionFormModal

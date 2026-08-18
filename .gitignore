@@ -1,3 +1,4 @@
 __debug_bin*
 api-go/App_Data
 sqlite-export
+api-go/.env.*

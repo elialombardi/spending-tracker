@@ -1,10 +1,9 @@
 // components/SessionBuilder.jsx
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import { Grid, CircularProgress, Box, Alert } from '@mui/material';
 import { workoutsApi } from '../../api';
 
 import WorkoutHeader from './WorkoutHeader';
-import WorkoutActions from './WorkoutActions';
 import SessionFormModal from './SessionFormModal';
 import SessionLibrary from './SessionLibrary';
 import WorkoutAssembly from './WorkoutAssembly';
@@ -250,6 +249,7 @@ export default function SessionBuilder({ onStartWorkout }) {
           savingWorkout={savingWorkout}
           onSaveWorkout={handleSaveWorkout}
           onDeleteWorkout={handleDeleteWorkout}
+          onReorderSessions={setWorkoutSequence}
         />
       </Grid>
 

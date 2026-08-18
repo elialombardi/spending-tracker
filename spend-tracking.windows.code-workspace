@@ -69,12 +69,7 @@
 				"env": {
 					"ALLOW_ORIGINS": "http://localhost:5173",
 					"PORT": "7004",
-					// "DB_FILE_PATH": "${workspaceFolder:root}/spending-tracker.db",
-					"SPENDING_TRACKER_POSTGRES_HOST": "localhost",
-					"SPENDING_TRACKER_POSTGRES_USER": "postgres",
-					"SPENDING_TRACKER_POSTGRES_PASSWORD": "secret",
-					"SPENDING_TRACKER_POSTGRES_DB": "postgres",
-					"SPENDING_TRACKER_POSTGRES_PORT": "5432"
+					"APP_ENV": "development",
 				},
 				"args": []
 			},

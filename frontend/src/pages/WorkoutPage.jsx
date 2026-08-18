@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import  { useState } from 'react';
 import Paper from '@mui/material/Paper';
 import SessionBuilder from '../components/Workouts/SessionBuilder';
 import WorkoutPlayer from '../components/Workouts/WorkoutPlayer';

@@ -1,5 +1,5 @@
 // components/SessionFormModal.jsx
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Button,
   Dialog,
@@ -18,41 +18,68 @@ import CloseIcon from '@mui/icons-material/Close';
 import { workoutsApi } from '../../api';
 import TimerInputRow from './TimerInputRow';
 import TimerList from './TimerList';
+import { timeToSeconds, secondsToTime } from '../../helpers/times';
 
 const DEFAULT_TIMERS = [
   { id: '1', name: 'Workout', duration: 30, color: '#ef4444' },
   { id: '2', name: 'Rest', duration: 15, color: '#10b981' },
 ];
 
+const getInitialFormValues = (initialData) => {
+  if (initialData) {
+    return {
+      sessionName: initialData.name || '',
+      rounds: initialData.rounds ?? 3,
+      cycles: initialData.cycles ?? 1,
+      cycleRest: secondsToTime(initialData.CycleRestDuration ?? 60),
+      roundPrepare: secondsToTime(initialData.roundPrepareDuration ?? 15),
+      customTimers: initialData.timers?.length ? initialData.timers : [...DEFAULT_TIMERS],
+    };
+  }
+  return {
+    sessionName: '',
+    rounds: 3,
+    cycles: 1,
+    cycleRest: '01:00',
+    roundPrepare: '00:15',
+    customTimers: [...DEFAULT_TIMERS],
+  };
+};
+
 export default function SessionFormModal({ open, onClose, onSaveSession, initialData = null }) {
-  const [sessionName, setSessionName] = useState('');
-  const [rounds, setRounds] = useState(3);
-  const [cycles, setCycles] = useState(1);
-  const [cycleRest, setCycleRest] = useState(60);
-  const [roundPrepare, setRoundPrepare] = useState(15);
-  const [customTimers, setCustomTimers] = useState([...DEFAULT_TIMERS]);
+  // Use a ref to track the previous open state and initialData
+  const prevOpenRef = useRef(open);
+  const prevInitialDataRef = useRef(initialData);
+  
+  // Initialize state with derived values
+  const initialValues = getInitialFormValues(initialData);
+  const [sessionName, setSessionName] = useState(initialValues.sessionName);
+  const [rounds, setRounds] = useState(initialValues.rounds);
+  const [cycles, setCycles] = useState(initialValues.cycles);
+  const [cycleRest, setCycleRest] = useState(initialValues.cycleRest);
+  const [roundPrepare, setRoundPrepare] = useState(initialValues.roundPrepare);
+  const [customTimers, setCustomTimers] = useState(initialValues.customTimers);
   const [saving, setSaving] = useState(false);
 
-  // Synchronize form values whenever modal opens or initialData changes
+  // Reset form when modal opens or initialData changes
   useEffect(() => {
-    if (open) {
-      if (initialData) {
-        setSessionName(initialData.name || '');
-        setRounds(initialData.rounds ?? 3);
-        setCycles(initialData.cycles ?? 1);
-        setCycleRest(initialData.CycleRestDuration ?? 60);
-        setRoundPrepare(initialData.roundPrepareDuration ?? 15);
-        setCustomTimers(initialData.timers?.length ? initialData.timers : [...DEFAULT_TIMERS]);
-      } else {
-        // Reset to default for creation mode
-        setSessionName('');
-        setRounds(3);
-        setCycles(1);
-        setCycleRest(60);
-        setRoundPrepare(15);
-        setCustomTimers([...DEFAULT_TIMERS]);
-      }
+    const shouldReset = 
+      (open && !prevOpenRef.current) || // Modal just opened
+      (open && initialData?.id !== prevInitialDataRef.current?.id); // Different session being edited
+    
+    if (shouldReset) {
+      const values = getInitialFormValues(initialData);
+      setSessionName(values.sessionName);
+      setRounds(values.rounds);
+      setCycles(values.cycles);
+      setCycleRest(values.cycleRest);
+      setRoundPrepare(values.roundPrepare);
+      setCustomTimers(values.customTimers);
     }
+    
+    // Update refs for next comparison
+    prevOpenRef.current = open;
+    prevInitialDataRef.current = initialData;
   }, [open, initialData]);
 
   const handleClose = () => {
@@ -65,12 +92,16 @@ export default function SessionFormModal({ open, onClose, onSaveSession, initial
     const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
 
+    const durationInSeconds = typeof duration === 'string' && duration.includes(':')
+      ? timeToSeconds(duration)
+      : parseInt(duration, 10);
+
     setCustomTimers((prev) => [
       ...prev,
       {
-        id: Date.now().toString(),
+        id: Date.now().toString(), // This is in an event handler, not during render ✅
         name,
-        duration: parseInt(duration, 10),
+        duration: durationInSeconds,
         color: randomColor,
       },
     ]);
@@ -86,8 +117,8 @@ export default function SessionFormModal({ open, onClose, onSaveSession, initial
         name: sessionName.trim(),
         rounds: Number(rounds),
         cycles: Number(cycles),
-        CycleRestDuration: Number(cycleRest),
-        roundPrepareDuration: Number(roundPrepare),
+        CycleRestDuration: timeToSeconds(cycleRest),
+        roundPrepareDuration: timeToSeconds(roundPrepare),
         timers: customTimers.map((t) => ({
           name: t.name,
           duration: t.duration,
@@ -97,10 +128,8 @@ export default function SessionFormModal({ open, onClose, onSaveSession, initial
 
       let resultSession;
       if (initialData?.id) {
-        // API Update call if editing
         resultSession = await workoutsApi.updateSession(initialData.id, payload);
       } else {
-        // API Create call if creating new
         resultSession = await workoutsApi.createSession(payload);
       }
 
@@ -115,7 +144,12 @@ export default function SessionFormModal({ open, onClose, onSaveSession, initial
   const isEditing = Boolean(initialData?.id);
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <Dialog 
+      open={open} 
+      onClose={handleClose} 
+      maxWidth="sm" 
+      fullWidth
+    >
       <DialogTitle sx={{ m: 0, p: 2, pr: 6, fontWeight: 'bold' }}>
         {isEditing ? 'Edit Session' : 'Create Custom Session'}
         <IconButton
@@ -154,6 +188,7 @@ export default function SessionFormModal({ open, onClose, onSaveSession, initial
                 onChange={(e) => setRounds(e.target.value)}
                 size="small"
                 fullWidth
+                inputProps={{ min: 1 }}
               />
             </Grid>
             <Grid item xs={4}>
@@ -164,26 +199,29 @@ export default function SessionFormModal({ open, onClose, onSaveSession, initial
                 onChange={(e) => setCycles(e.target.value)}
                 size="small"
                 fullWidth
+                inputProps={{ min: 1 }}
               />
             </Grid>
             <Grid item xs={4}>
               <TextField
-                label="Cycle Rest (s)"
-                type="number"
+                label="Cycle Rest (MM:SS)"
                 value={cycleRest}
                 onChange={(e) => setCycleRest(e.target.value)}
                 size="small"
                 fullWidth
+                placeholder="01:00"
+                inputProps={{ pattern: '[0-9]{2}:[0-9]{2}' }}
               />
             </Grid>
             <Grid item xs={4}>
               <TextField
-                label="Round Prepare (s)"
-                type="number"
+                label="Round Prepare (MM:SS)"
                 value={roundPrepare}
                 onChange={(e) => setRoundPrepare(e.target.value)}
                 size="small"
                 fullWidth
+                placeholder="00:15"
+                inputProps={{ pattern: '[0-9]{2}:[0-9]{2}' }}
               />
             </Grid>
           </Grid>

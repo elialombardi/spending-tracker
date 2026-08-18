@@ -6,6 +6,7 @@ import (
 
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/auth"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/di"
+	"github.com/joho/godotenv"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -13,6 +14,14 @@ import (
 )
 
 func main() {
+	if os.Getenv("APP_ENV") == "development" {
+		log.Println("Loading .env.local file...")
+		err := godotenv.Load(".env.local")
+		if err != nil {
+			log.Fatal("Error loading .env.local file")
+		}
+	}
+
 	auth.ConfigureUsers()
 	auth.ConfigureJwt()
 

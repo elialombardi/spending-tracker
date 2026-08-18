@@ -47,30 +47,30 @@ func (s *TransactionService) FetchTransactions(from, to *time.Time, direction, c
 	query := s.db.Model(&Transaction{})
 
 	if from != nil {
-		query = query.Where("BookingDate >= ?", from.Format(dateLayout))
+		query = query.Where("booking_date >= ?", from.Format(dateLayout))
 	}
 	if to != nil {
-		query = query.Where("BookingDate <= ?", to.Format(dateLayout))
+		query = query.Where("booking_date <= ?", to.Format(dateLayout))
 	}
 	if direction != "" {
 		if strings.EqualFold(direction, "income") {
-			query = query.Where("Amount > ?", 0)
+			query = query.Where("amount > ?", 0)
 		} else {
-			query = query.Where("Amount < ?", 0)
+			query = query.Where("amount < ?", 0)
 		}
 	}
 	if hasNeedsReview {
-		query = query.Where("NeedsReview = ?", needsReview)
+		query = query.Where("needs_review = ?", needsReview)
 	}
 	if category != "" {
 		if strings.EqualFold(category, "uncategorized") {
-			query = query.Where("Category IS NULL OR TRIM(Category) = ''")
+			query = query.Where("category IS NULL OR TRIM(category) = ''")
 		} else {
-			query = query.Where("Category = ?", category)
+			query = query.Where("category = ?", category)
 		}
 	}
 
-	query = query.Order("BookingDate DESC, ImportedAtUtc DESC")
+	query = query.Order("booking_date DESC, imported_at_utc DESC")
 
 	var transactions []Transaction
 	if err := query.Find(&transactions).Error; err != nil {
@@ -80,21 +80,21 @@ func (s *TransactionService) FetchTransactions(from, to *time.Time, direction, c
 }
 
 type CategorySummary struct {
-	Category *string `gorm:"column:Category"`
-	Amount   float64 `gorm:"column:Amount"`
+	Category *string `gorm:"column:category"`
+	Amount   float64 `gorm:"column:amount"`
 }
 
 func (s *TransactionService) FetchCategorySummary(from, to *time.Time) ([]CategorySummary, error) {
 	query := s.db.Model(&Transaction{}).
-		Select("Category, SUM(ABS(Amount)) AS Amount").
-		Where("Amount < ? AND ExcludeFromCalculations = ?", 0, false).
-		Group("Category")
+		Select("category, SUM(ABS(amount)) AS amount").
+		Where("amount < ? AND exclude_from_calculations = ?", 0, false).
+		Group("category")
 
 	if from != nil {
-		query = query.Where("BookingDate >= ?", from.Format(dateLayout))
+		query = query.Where("booking_date >= ?", from.Format(dateLayout))
 	}
 	if to != nil {
-		query = query.Where("BookingDate <= ?", to.Format(dateLayout))
+		query = query.Where("booking_date <= ?", to.Format(dateLayout))
 	}
 
 	var results []CategorySummary
@@ -105,16 +105,16 @@ func (s *TransactionService) FetchCategorySummary(from, to *time.Time) ([]Catego
 }
 
 type CategoryCount struct {
-	Category string `gorm:"column:Category"`
-	Count    int    `gorm:"column:Count"`
+	Category string `gorm:"column:category"`
+	Count    int    `gorm:"column:count"`
 }
 
 func (s *TransactionService) FetchCategoryRuleCounts() ([]CategoryCount, error) {
 	var rows []CategoryCount
 	err := s.db.Model(&CategoryRule{}).
-		Select("Category, COUNT(1) AS Count").
-		Where("Behavior = ? AND TRIM(Category) <> ''", merchantRuleBehaviorAutoApply).
-		Group("Category").
+		Select("category, COUNT(1) AS count").
+		Where("behavior = ? AND TRIM(category) <> ''", merchantRuleBehaviorAutoApply).
+		Group("category").
 		Scan(&rows).Error
 	return rows, err
 }
@@ -122,9 +122,9 @@ func (s *TransactionService) FetchCategoryRuleCounts() ([]CategoryCount, error) 
 func (s *TransactionService) FetchTransactionCategoryCounts() ([]CategoryCount, error) {
 	var rows []CategoryCount
 	err := s.db.Model(&Transaction{}).
-		Select("Category, COUNT(1) AS Count").
-		Where("ExcludeFromCalculations = ? AND Category IS NOT NULL AND TRIM(Category) <> ''", false).
-		Group("Category").
+		Select("category, COUNT(1) AS count").
+		Where("exclude_from_calculations = ? AND category IS NOT NULL AND TRIM(category) <> ''", false).
+		Group("category").
 		Scan(&rows).Error
 	return rows, err
 }
@@ -132,16 +132,16 @@ func (s *TransactionService) FetchTransactionCategoryCounts() ([]CategoryCount, 
 func (s *TransactionService) FetchCycleIncomeCategoryCounts() ([]CategoryCount, error) {
 	var rows []CategoryCount
 	err := s.db.Model(&Transaction{}).
-		Select("Category, COUNT(1) AS Count").
-		Where("Amount > ? AND ExcludeFromCalculations = ? AND Category IS NOT NULL AND TRIM(Category) <> ''", 0, false).
-		Group("Category").
+		Select("category, COUNT(1) AS count").
+		Where("amount > ? AND exclude_from_calculations = ? AND category IS NOT NULL AND TRIM(category) <> ''", 0, false).
+		Group("category").
 		Scan(&rows).Error
 	return rows, err
 }
 
 func (s *TransactionService) FetchCategoryMappings() ([]CategoryRule, error) {
 	var rules []CategoryRule
-	if err := s.db.Order("MerchantKey ASC").Find(&rules).Error; err != nil {
+	if err := s.db.Order("merchant_key ASC").Find(&rules).Error; err != nil {
 		return nil, err
 	}
 	return rules, nil
@@ -149,13 +149,13 @@ func (s *TransactionService) FetchCategoryMappings() ([]CategoryRule, error) {
 
 func (s *TransactionService) FetchTransactionByID(transactionID string) (Transaction, error) {
 	var txRow Transaction
-	err := s.db.Where("Id = ?", transactionID).First(&txRow).Error
+	err := s.db.Where("id = ?", transactionID).First(&txRow).Error
 	return txRow, err
 }
 
 func (s *TransactionService) GetMerchantRuleBehavior(merchantKey string) (string, error) {
 	var rule CategoryRule
-	err := s.db.Where("MerchantKey = ?", merchantKey).First(&rule).Error
+	err := s.db.Where("merchant_key = ?", merchantKey).First(&rule).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return defaultRuleBehavior(merchantKey), nil
 	}
@@ -170,7 +170,7 @@ func (s *TransactionService) SaveCategoryMapping(mappingID, behavior, category s
 
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		var existing CategoryRule
-		if err := tx.Where("Id = ?", mappingID).First(&existing).Error; err != nil {
+		if err := tx.Where("id = ?", mappingID).First(&existing).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return gorm.ErrRecordNotFound
 			}
@@ -192,7 +192,7 @@ func (s *TransactionService) SaveCategoryMapping(mappingID, behavior, category s
 
 		now := time.Now().UTC().Format(time.RFC3339)
 		if err := tx.Model(&CategoryRule{}).
-			Where("Id = ?", mappingID).
+			Where("id = ?", mappingID).
 			Updates(map[string]any{
 				"Category":     storedCategory,
 				"Behavior":     behavior,
@@ -202,7 +202,7 @@ func (s *TransactionService) SaveCategoryMapping(mappingID, behavior, category s
 			return err
 		}
 
-		return tx.Where("Id = ?", mappingID).First(&updated).Error
+		return tx.Where("id = ?", mappingID).First(&updated).Error
 	})
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -215,7 +215,7 @@ func (s *TransactionService) SaveCategoryMapping(mappingID, behavior, category s
 }
 
 func (s *TransactionService) RemoveCategoryMapping(mappingID string) (bool, error) {
-	result := s.db.Where("Id = ?", mappingID).Delete(&CategoryRule{})
+	result := s.db.Where("id = ?", mappingID).Delete(&CategoryRule{})
 	if result.Error != nil {
 		return false, result.Error
 	}
@@ -227,7 +227,7 @@ func (s *TransactionService) ApplyCategorization(transactionID string, request C
 
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		var row Transaction
-		if err := tx.Where("Id = ?", transactionID).First(&row).Error; err != nil {
+		if err := tx.Where("id = ?", transactionID).First(&row).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return gorm.ErrRecordNotFound
 			}
@@ -245,7 +245,7 @@ func (s *TransactionService) ApplyCategorization(transactionID string, request C
 		}
 
 		if err := tx.Model(&Transaction{}).
-			Where("Id = ?", transactionID).
+			Where("id = ?", transactionID).
 			Updates(map[string]any{
 				"Category":                category,
 				"MerchantKey":             merchantKey,
@@ -265,7 +265,7 @@ func (s *TransactionService) ApplyCategorization(transactionID string, request C
 			}
 			if behavior == merchantRuleBehaviorAutoApply {
 				if err := tx.Model(&Transaction{}).
-					Where("MerchantKey = ?", merchantKey).
+					Where("merchant_key = ?", merchantKey).
 					Updates(map[string]any{
 						"Category":             category,
 						"MerchantKey":          merchantKey,
@@ -310,7 +310,7 @@ func (s *TransactionService) UpsertCategoryRule(merchantKey, category, behavior 
 	}
 
 	var rule CategoryRule
-	if err := s.db.Where("MerchantKey = ?", merchantKey).First(&rule).Error; err != nil {
+	if err := s.db.Where("merchant_key = ?", merchantKey).First(&rule).Error; err != nil {
 		return CategoryRule{}, err
 	}
 	return rule, nil
@@ -320,7 +320,7 @@ func (s *TransactionService) upsertCategoryRuleTx(tx *gorm.DB, merchantKey, cate
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	var existing CategoryRule
-	err := tx.Where("MerchantKey = ?", merchantKey).First(&existing).Error
+	err := tx.Where("merchant_key = ?", merchantKey).First(&existing).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		storedCategory := ""
 		if behavior == merchantRuleBehaviorAutoApply {
@@ -347,7 +347,7 @@ func (s *TransactionService) upsertCategoryRuleTx(tx *gorm.DB, merchantKey, cate
 	}
 
 	return tx.Model(&CategoryRule{}).
-		Where("Id = ?", existing.ID).
+		Where("id = ?", existing.ID).
 		Updates(map[string]any{
 			"Category":     storedCategory,
 			"Behavior":     behavior,
@@ -358,7 +358,7 @@ func (s *TransactionService) upsertCategoryRuleTx(tx *gorm.DB, merchantKey, cate
 
 func (s *TransactionService) applyCategoryToMerchantTransactionsTx(tx *gorm.DB, merchantKey, category string) (int, error) {
 	result := tx.Model(&Transaction{}).
-		Where("MerchantKey = ? AND Amount < ?", merchantKey, 0).
+		Where("merchant_key = ? AND Amount < ?", merchantKey, 0).
 		Updates(map[string]any{
 			"Category":             category,
 			"NeedsReview":          false,
@@ -386,7 +386,7 @@ func (s *TransactionService) SendTransactions(ids []string, isSending bool) (int
 		return 0, nil
 	}
 	res := s.db.Model(&Transaction{}).
-		Where("Id IN ?", cleanIDs).
+		Where("id IN ?", cleanIDs).
 		Updates(map[string]any{"IsSending": isSending})
 	if res.Error != nil {
 		return 0, res.Error
@@ -396,7 +396,7 @@ func (s *TransactionService) SendTransactions(ids []string, isSending bool) (int
 
 func (s *TransactionService) getMerchantRuleBehaviorTx(tx *gorm.DB, merchantKey string) (string, error) {
 	var rule CategoryRule
-	err := tx.Where("MerchantKey = ?", merchantKey).First(&rule).Error
+	err := tx.Where("merchant_key = ?", merchantKey).First(&rule).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return defaultRuleBehavior(merchantKey), nil
 	}
@@ -409,7 +409,7 @@ func (s *TransactionService) getMerchantRuleBehaviorTx(tx *gorm.DB, merchantKey 
 func (s *TransactionService) CountMatchingTransactions(merchantKey string) (int, error) {
 	var count int64
 	err := s.db.Model(&Transaction{}).
-		Where("MerchantKey = ? AND Amount < ? AND ExcludeFromCalculations = ?", merchantKey, 0, false).
+		Where("merchant_key = ? AND amount < ? AND exclude_from_calculations = ?", merchantKey, 0, false).
 		Count(&count).Error
 	return int(count), err
 }
@@ -423,7 +423,7 @@ func (s *TransactionService) ResolveMerchantRuleBehavior(merchantKey string, loo
 
 func (s *TransactionService) FetchRuleBehaviorLookup() (map[string]string, error) {
 	var rules []CategoryRule
-	if err := s.db.Select("MerchantKey", "Behavior").Find(&rules).Error; err != nil {
+	if err := s.db.Select("merchant_key", "behavior").Find(&rules).Error; err != nil {
 		return nil, err
 	}
 
@@ -479,7 +479,7 @@ func (s *TransactionService) FetchCycleIncomeCategories() (CycleIncomeCategories
 	for _, category := range configured {
 		var count int64
 		if err := s.db.Model(&Transaction{}).
-			Where("Amount > ? AND ExcludeFromCalculations = ? AND Category = ?", 0, false, category).
+			Where("amount > ? AND exclude_from_calculations = ? AND category = ?", 0, false, category).
 			Count(&count).Error; err != nil {
 			return CycleIncomeCategoriesResponse{}, err
 		}
@@ -526,7 +526,7 @@ func (s *TransactionService) UpdateTransactionAmount(transactionID string, amoun
 
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		var current Transaction
-		if err := tx.Where("Id = ?", transactionID).First(&current).Error; err != nil {
+		if err := tx.Where("id = ?", transactionID).First(&current).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return gorm.ErrRecordNotFound
 			}
@@ -542,7 +542,7 @@ func (s *TransactionService) UpdateTransactionAmount(transactionID string, amoun
 		}
 
 		if err := tx.Model(&Transaction{}).
-			Where("Id = ?", transactionID).
+			Where("id = ?", transactionID).
 			Updates(map[string]any{
 				"Amount":       amount,
 				"DebitAmount":  debit,
@@ -576,51 +576,27 @@ func (s *TransactionService) UpdateTransactionAmount(transactionID string, amoun
 }
 
 func (s *TransactionService) ImportParsedTransactions(accountNumber string, fileName string, transactions []ParsedTransaction) (ImportResultResponse, error) {
-	sqlDB, err := s.sqlDB()
-	if err != nil {
-		return ImportResultResponse{}, err
-	}
-	return importParsedTransactions(sqlDB, accountNumber, fileName, transactions)
+	return importParsedTransactions(s.db, accountNumber, fileName, transactions)
 }
 
 func (s *TransactionService) FetchCycleOptions() ([]CycleOptionResponse, error) {
-	sqlDB, err := s.sqlDB()
-	if err != nil {
-		return nil, err
-	}
-	return fetchCycleOptions(sqlDB)
+	return fetchCycleOptions(s.db)
 }
 
 func (s *TransactionService) FetchCycleReport(cycleStart string) (MonthlyReportResponse, bool, error) {
-	sqlDB, err := s.sqlDB()
-	if err != nil {
-		return MonthlyReportResponse{}, false, err
-	}
-	return buildCycleReport(sqlDB, cycleStart)
+	return buildCycleReport(s.db, cycleStart)
 }
 
 func (s *TransactionService) ExportCycleReport(cycleStart string, format string) ([]byte, string, string, bool, error) {
-	sqlDB, err := s.sqlDB()
-	if err != nil {
-		return nil, "", "", false, err
-	}
-	return exportCycleReportData(sqlDB, cycleStart, format)
+	return exportCycleReportData(s.db, cycleStart, format)
 }
 
 func (s *TransactionService) FetchMonthlyReport(year int, month int) (MonthlyReportResponse, error) {
-	sqlDB, err := s.sqlDB()
-	if err != nil {
-		return MonthlyReportResponse{}, err
-	}
-	return buildMonthlyReportByMonth(sqlDB, year, month)
+	return buildMonthlyReportByMonth(s.db, year, month)
 }
 
 func (s *TransactionService) ExportMonthlyReport(year int, month int, format string) ([]byte, string, string, error) {
-	sqlDB, err := s.sqlDB()
-	if err != nil {
-		return nil, "", "", err
-	}
-	return exportMonthlyReportData(sqlDB, year, month, format)
+	return exportMonthlyReportData(s.db, year, month, format)
 }
 
 func (s *TransactionService) fetchConfiguredCycleIncomeCategories() ([]string, error) {
@@ -637,18 +613,18 @@ func (s *TransactionService) fetchConfiguredCycleIncomeCategories() ([]string, e
 
 func (s *TransactionService) fetchCycleAnchorDates(configured []string) ([]string, error) {
 	query := s.db.Model(&Transaction{}).
-		Select("DISTINCT BookingDate").
-		Where("Amount > ? AND ExcludeFromCalculations = ?", 0, false)
+		Select("DISTINCT booking_date").
+		Where("amount > ? AND exclude_from_calculations = ?", 0, false)
 
 	if len(configured) > 0 {
 		query = query.Where("Category IN ?", configured)
 	}
 
 	type row struct {
-		BookingDate string `gorm:"column:BookingDate"`
+		BookingDate string `gorm:"column:booking_date"`
 	}
 	var rows []row
-	if err := query.Order("BookingDate ASC").Scan(&rows).Error; err != nil {
+	if err := query.Order("booking_date ASC").Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 

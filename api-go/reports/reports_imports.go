@@ -2,16 +2,17 @@ package reports
 
 import (
 	"bytes"
-	"database/sql"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/xuri/excelize/v2"
+	"gorm.io/gorm"
 )
 
 var accountNumberRegex = regexp.MustCompile(`(?i)Conto\s+BancoPosta\s+n\.:\s*(\S+)`)
@@ -96,31 +97,23 @@ func parsePosteItalianeWorkbook(reader multipart.File) (parsedWorkbook, error) {
 	return parsedWorkbook{accountNumber: accountNumber, transactions: transactions}, nil
 }
 
-func importParsedTransactions(database *sql.DB, accountNumber string, fileName string, transactions []ParsedTransaction) (ImportResultResponse, error) {
+func importParsedTransactions(database *gorm.DB, accountNumber string, fileName string, transactions []ParsedTransaction) (ImportResultResponse, error) {
 	known := map[string]struct{}{}
 	if len(transactions) > 0 {
-		placeholders := make([]string, 0, len(transactions))
-		args := make([]any, 0, len(transactions))
+		fingerprints := make([]string, 0, len(transactions))
 		for _, tx := range transactions {
-			placeholders = append(placeholders, "?")
-			args = append(args, tx.SourceFingerprint)
+			fingerprints = append(fingerprints, tx.SourceFingerprint)
 		}
-		rows, err := database.Query(`SELECT SourceFingerprint FROM Transactions WHERE SourceFingerprint IN (`+strings.Join(placeholders, ",")+`)`, args...)
-		if err != nil {
+		var existing []string
+		if err := database.Model(&Transaction{}).
+			Where("source_fingerprint IN ?", fingerprints).
+			Distinct("source_fingerprint").
+			Pluck("source_fingerprint", &existing).Error; err != nil {
 			return ImportResultResponse{}, err
 		}
-		if rows.Err() != nil {
-			return ImportResultResponse{}, rows.Err()
-		}
-		for rows.Next() {
-			var fingerprint string
-			if err := rows.Scan(&fingerprint); err != nil {
-				rows.Close()
-				return ImportResultResponse{}, err
-			}
+		for _, fingerprint := range existing {
 			known[fingerprint] = struct{}{}
 		}
-		rows.Close()
 	}
 
 	behaviors, err := fetchRuleBehaviorLookup(database)
@@ -137,9 +130,9 @@ func importParsedTransactions(database *sql.DB, accountNumber string, fileName s
 	skipped := 0
 	autoCategorized := 0
 	reviewQueue := []ReviewTransactionResponse{}
-	tx, err := database.Begin()
-	if err != nil {
-		return ImportResultResponse{}, err
+	tx := database.Begin()
+	if tx.Error != nil {
+		return ImportResultResponse{}, tx.Error
 	}
 	defer tx.Rollback()
 
@@ -151,24 +144,49 @@ func importParsedTransactions(database *sql.DB, accountNumber string, fileName s
 		known[parsed.SourceFingerprint] = struct{}{}
 		suggestionCategory, suggestionConfidence, exactMatch, behavior := matchCategory(parsed.MerchantKey, rules)
 		needsReview := parsed.Amount <= 0
-		var category any
-		var suggestedCategory any
-		var suggestionConfidenceValue any
+		var category *string
+		var suggestedCategory *string
+		var suggestionConfidenceValue *float64
 		if parsed.Amount <= 0 {
 			suggestedCategory = suggestionCategory
 			suggestionConfidenceValue = suggestionConfidence
 		}
 		if parsed.Amount <= 0 && exactMatch && suggestionCategory != nil && *suggestionCategory != "" {
-			category = *suggestionCategory
+			category = suggestionCategory
 			needsReview = false
 			suggestedCategory = nil
 			suggestionConfidenceValue = nil
 			autoCategorized++
 		}
 		id := newUUID()
-		_, err := tx.Exec(`INSERT INTO Transactions (Id, AccountNumber, BookingDate, ValueDate, Amount, DebitAmount, CreditAmount, RawDescription, NormalizedDescription, MerchantKey, Category, SuggestedCategory, SuggestionConfidence, NeedsReview, ExcludeFromCalculations, SourceFingerprint, SourceFileName, ImportedAtUtc, IsMonthlyRecurring) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 0);`,
-			id, parsed.AccountNumber, parsed.BookingDate, parsed.ValueDate, parsed.Amount, parsed.DebitAmount, parsed.CreditAmount, parsed.RawDescription, parsed.NormalizedDescription, parsed.MerchantKey, category, suggestedCategory, suggestionConfidenceValue, boolToInt(needsReview), parsed.SourceFingerprint, fileName, now)
-		if err != nil {
+		record := Transaction{
+			ID:                      id,
+			AccountNumber:           parsed.AccountNumber,
+			BookingDate:             parsed.BookingDate,
+			ValueDate:               parsed.ValueDate,
+			Amount:                  parsed.Amount,
+			DebitAmount:             parsed.DebitAmount,
+			CreditAmount:            parsed.CreditAmount,
+			RawDescription:          parsed.RawDescription,
+			NormalizedDescription:   parsed.NormalizedDescription,
+			MerchantKey:             parsed.MerchantKey,
+			NeedsReview:             needsReview,
+			ExcludeFromCalculations: false,
+			SourceFingerprint:       parsed.SourceFingerprint,
+			SourceFileName:          fileName,
+			ImportedAtUtc:           now,
+			IsMonthlyRecurring:      false,
+		}
+		if category != nil {
+			record.Category = *category
+		}
+		if suggestedCategory != nil {
+			record.SuggestedCategory = *suggestedCategory
+		}
+		if suggestionConfidenceValue != nil {
+			record.SuggestionConfidence = *suggestionConfidenceValue
+		}
+		if err := tx.Create(&record).Error; err != nil {
 			return ImportResultResponse{}, err
 		}
 		imported++
@@ -177,7 +195,7 @@ func importParsedTransactions(database *sql.DB, accountNumber string, fileName s
 		}
 		_ = behavior
 	}
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit().Error; err != nil {
 		return ImportResultResponse{}, err
 	}
 	sort.Slice(reviewQueue, func(i, j int) bool { return reviewQueue[i].Amount > reviewQueue[j].Amount })
@@ -190,22 +208,23 @@ type categoryRule struct {
 	Behavior    string
 }
 
-func fetchCategoryRules(database *sql.DB) ([]categoryRule, error) {
-	rows, err := database.Query(`SELECT MerchantKey, Category, Behavior FROM CategoryRules`)
-	if err != nil {
+func fetchCategoryRules(database *gorm.DB) ([]categoryRule, error) {
+	var rules []CategoryRule
+	if err := database.Model(&CategoryRule{}).
+		Select("merchant_key, category, behavior").
+		Scan(&rules).Error; err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	rules := []categoryRule{}
-	for rows.Next() {
-		var rule categoryRule
-		if err := rows.Scan(&rule.MerchantKey, &rule.Category, &rule.Behavior); err != nil {
-			return nil, err
-		}
-		rule.Behavior = normalizeBehavior(rule.Behavior)
-		rules = append(rules, rule)
+
+	result := make([]categoryRule, 0, len(rules))
+	for _, rule := range rules {
+		result = append(result, categoryRule{
+			MerchantKey: rule.MerchantKey,
+			Category:    rule.Category,
+			Behavior:    normalizeBehavior(rule.Behavior),
+		})
 	}
-	return rules, rows.Err()
+	return result, nil
 }
 
 func matchCategory(merchantKey string, rules []categoryRule) (*string, *float64, bool, string) {
@@ -246,8 +265,8 @@ func matchCategory(merchantKey string, rules []categoryRule) (*string, *float64,
 	return bestCategory, &conf, false, merchantRuleBehaviorAutoApply
 }
 
-func fetchCycleOptions(database *sql.DB) ([]CycleOptionResponse, error) {
-	anchors, err := fetchCycleAnchorDates(database)
+func fetchCycleOptions(db *gorm.DB) ([]CycleOptionResponse, error) {
+	anchors, err := fetchCycleAnchorDates(db)
 	if err != nil {
 		return nil, err
 	}
@@ -267,24 +286,24 @@ func fetchCycleOptions(database *sql.DB) ([]CycleOptionResponse, error) {
 	return options, nil
 }
 
-func buildMonthlyReportByMonth(database *sql.DB, year int, month int) (MonthlyReportResponse, error) {
-	from, to, err := getIncomeAnchoredRange(database, year, month)
+func buildMonthlyReportByMonth(db *gorm.DB, year int, month int) (MonthlyReportResponse, error) {
+	from, to, err := getIncomeAnchoredRange(db, year, month)
 	if err != nil {
 		return MonthlyReportResponse{}, err
 	}
-	transactions, err := fetchTransactionsForRange(database, from, to)
+	transactions, err := fetchTransactionsForRange(db, from, to)
 	if err != nil {
 		return MonthlyReportResponse{}, err
 	}
 	return buildMonthlyReportResponse(year, month, from, to, transactions), nil
 }
 
-func buildCycleReport(database *sql.DB, cycleStart string) (MonthlyReportResponse, bool, error) {
-	from, to, found, err := getCycleRange(database, cycleStart)
+func buildCycleReport(db *gorm.DB, cycleStart string) (MonthlyReportResponse, bool, error) {
+	from, to, found, err := getCycleRange(db, cycleStart)
 	if err != nil || !found {
 		return MonthlyReportResponse{}, found, err
 	}
-	transactions, err := fetchTransactionsForRange(database, from, to)
+	transactions, err := fetchTransactionsForRange(db, from, to)
 	if err != nil {
 		return MonthlyReportResponse{}, false, err
 	}
@@ -292,24 +311,24 @@ func buildCycleReport(database *sql.DB, cycleStart string) (MonthlyReportRespons
 	return buildMonthlyReportResponse(parsed.Year(), int(parsed.Month()), from, to, transactions), true, nil
 }
 
-func exportMonthlyReportData(database *sql.DB, year int, month int, format string) ([]byte, string, string, error) {
-	report, err := buildMonthlyReportByMonth(database, year, month)
+func exportMonthlyReportData(db *gorm.DB, year int, month int, format string) ([]byte, string, string, error) {
+	report, err := buildMonthlyReportByMonth(db, year, month)
 	if err != nil {
 		return nil, "", "", err
 	}
-	transactions, err := fetchTransactionsForRange(database, report.From, report.To)
+	transactions, err := fetchTransactionsForRange(db, report.From, report.To)
 	if err != nil {
 		return nil, "", "", err
 	}
 	return buildReportExport(report, transactions, format)
 }
 
-func exportCycleReportData(database *sql.DB, cycleStart string, format string) ([]byte, string, string, bool, error) {
-	report, found, err := buildCycleReport(database, cycleStart)
+func exportCycleReportData(db *gorm.DB, cycleStart string, format string) ([]byte, string, string, bool, error) {
+	report, found, err := buildCycleReport(db, cycleStart)
 	if err != nil || !found {
 		return nil, "", "", found, err
 	}
-	transactions, err := fetchTransactionsForRange(database, report.From, report.To)
+	transactions, err := fetchTransactionsForRange(db, report.From, report.To)
 	if err != nil {
 		return nil, "", "", false, err
 	}
@@ -317,21 +336,16 @@ func exportCycleReportData(database *sql.DB, cycleStart string, format string) (
 	return content, contentType, fileName, true, err
 }
 
-func fetchTransactionsForRange(database *sql.DB, from string, to string) ([]transactionRow, error) {
-	rows, err := database.Query(`SELECT Id, AccountNumber, BookingDate, ValueDate, Amount, RawDescription, MerchantKey, Category, SuggestedCategory, SuggestionConfidence, NeedsReview, ExcludeFromCalculations, ImportedAtUtc, IsMonthlyRecurring FROM Transactions WHERE BookingDate >= ? AND BookingDate <= ? AND ExcludeFromCalculations = 0 ORDER BY BookingDate DESC, ImportedAtUtc DESC`, from, to)
-	if err != nil {
+func fetchTransactionsForRange(db *gorm.DB, from string, to string) ([]transactionRow, error) {
+	var transactions []transactionRow
+	if err := db.Model(&Transaction{}).
+		Select("id, account_number, booking_date, value_date, amount, raw_description, merchant_key, category, suggested_category, suggestion_confidence, needs_review, exclude_from_calculations, imported_at_utc, is_monthly_recurring").
+		Where("booking_date >= ? AND booking_date <= ? AND exclude_from_calculations = ?", from, to, false).
+		Order("booking_date DESC, imported_at_utc DESC").
+		Scan(&transactions).Error; err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	transactions := []transactionRow{}
-	for rows.Next() {
-		row, err := scanTransactionRow(rows)
-		if err != nil {
-			return nil, err
-		}
-		transactions = append(transactions, row)
-	}
-	return transactions, rows.Err()
+	return transactions, nil
 }
 
 func buildMonthlyReportResponse(year int, month int, from string, to string, transactions []transactionRow) MonthlyReportResponse {
@@ -505,59 +519,54 @@ func buildReportExport(report MonthlyReportResponse, transactions []transactionR
 	return content, "text/csv", fmt.Sprintf("spending-report-%s_to_%s.csv", report.From, report.To), nil
 }
 
-func fetchCycleAnchorDates(database *sql.DB) ([]string, error) {
-	configured, err := fetchConfiguredCycleIncomeCategories(database)
+func fetchCycleAnchorDates(db *gorm.DB) ([]string, error) {
+	configured, err := fetchConfiguredCycleIncomeCategories(db)
 	if err != nil {
 		return nil, err
 	}
-	query := `SELECT DISTINCT BookingDate FROM Transactions WHERE Amount > 0 AND ExcludeFromCalculations = 0`
-	args := []any{}
+
+	query := db.Model(&Transaction{}).
+		Select("DISTINCT booking_date").
+		Where("amount > 0 AND exclude_from_calculations = ?", false)
+
 	if len(configured) > 0 {
-		placeholders := make([]string, 0, len(configured))
-		for _, category := range configured {
-			placeholders = append(placeholders, "?")
-			args = append(args, category)
-		}
-		query += ` AND Category IN (` + strings.Join(placeholders, ",") + `)`
+		query = query.Where("category IN ?", configured)
 	}
-	query += ` ORDER BY BookingDate`
-	rows, err := database.Query(query, args...)
-	if err != nil {
+
+	type row struct {
+		BookingDate string `gorm:"column:booking_date"`
+	}
+	var rows []row
+	if err := query.Order("booking_date ASC").Scan(&rows).Error; err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	anchors := []string{}
-	for rows.Next() {
-		var date string
-		if err := rows.Scan(&date); err != nil {
-			return nil, err
-		}
-		anchors = append(anchors, date)
+
+	anchors := make([]string, 0, len(rows))
+	for _, r := range rows {
+		anchors = append(anchors, r.BookingDate)
 	}
-	return anchors, rows.Err()
+	return anchors, nil
 }
 
-func fetchConfiguredCycleIncomeCategories(database *sql.DB) ([]string, error) {
-	rows, err := database.Query(`SELECT Category FROM CycleIncomeCategories ORDER BY Category`)
-	if err != nil {
+func fetchConfiguredCycleIncomeCategories(db *gorm.DB) ([]string, error) {
+	type row struct {
+		Category string `gorm:"column:category"`
+	}
+	var rows []row
+	if err := db.Model(&CycleIncomeCategory{}).Order("category").Scan(&rows).Error; err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	result := []string{}
-	for rows.Next() {
-		var category string
-		if err := rows.Scan(&category); err != nil {
-			return nil, err
-		}
-		result = append(result, category)
+	result := make([]string, 0, len(rows))
+	for _, r := range rows {
+		result = append(result, r.Category)
 	}
-	return result, rows.Err()
+	return result, nil
 }
 
-func getIncomeAnchoredRange(database *sql.DB, year int, month int) (string, string, error) {
+func getIncomeAnchoredRange(db *gorm.DB, year int, month int) (string, string, error) {
 	calendarStart := fmt.Sprintf("%04d-%02d-01", year, month)
 	calendarEnd := addMonthsMinusDay(calendarStart, 1)
-	anchors, err := fetchCycleAnchorDates(database)
+	anchors, err := fetchCycleAnchorDates(db)
 	if err != nil {
 		return "", "", err
 	}
@@ -582,18 +591,13 @@ func getIncomeAnchoredRange(database *sql.DB, year int, month int) (string, stri
 	return cycleStart, cycleEnd, nil
 }
 
-func getCycleRange(database *sql.DB, cycleStart string) (string, string, bool, error) {
-	anchors, err := fetchCycleAnchorDates(database)
+func getCycleRange(db *gorm.DB, cycleStart string) (string, string, bool, error) {
+	anchors, err := fetchCycleAnchorDates(db)
 	if err != nil {
 		return "", "", false, err
 	}
-	found := false
-	for _, anchor := range anchors {
-		if anchor == cycleStart {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(anchors, cycleStart)
+
 	if !found {
 		return "", "", false, nil
 	}

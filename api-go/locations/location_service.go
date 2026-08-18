@@ -19,16 +19,16 @@ func NewLocationService(database *gorm.DB) *LocationService {
 func (s *LocationService) ListLocations() ([]db.LocationEntity, error) {
 	var locations []db.LocationEntity
 	err := s.db.Preload("Tags", func(tx *gorm.DB) *gorm.DB {
-		return tx.Order("Name ASC")
-	}).Order("Id ASC").Find(&locations).Error
+		return tx.Order("name ASC")
+	}).Order("id ASC").Find(&locations).Error
 	return locations, err
 }
 
 func (s *LocationService) GetLocation(id int) (db.LocationEntity, error) {
 	var location db.LocationEntity
 	err := s.db.Preload("Tags", func(tx *gorm.DB) *gorm.DB {
-		return tx.Order("Name ASC")
-	}).First(&location, "Id = ?", id).Error
+		return tx.Order("name ASC")
+	}).First(&location, "id = ?", id).Error
 	return location, err
 }
 
@@ -43,8 +43,8 @@ func (s *LocationService) CreateLocation(payload db.LocationEntity, tags []strin
 			return err
 		}
 		return tx.Preload("Tags", func(q *gorm.DB) *gorm.DB {
-			return q.Order("Name ASC")
-		}).First(&created, "Id = ?", payload.ID).Error
+			return q.Order("name ASC")
+		}).First(&created, "id = ?", payload.ID).Error
 	})
 	return created, err
 }
@@ -53,7 +53,7 @@ func (s *LocationService) UpdateLocation(id int, payload db.LocationEntity, tags
 	var updated db.LocationEntity
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		var existing db.LocationEntity
-		if err := tx.First(&existing, "Id = ?", id).Error; err != nil {
+		if err := tx.First(&existing, "id = ?", id).Error; err != nil {
 			return err
 		}
 		existing.Title = payload.Title
@@ -64,21 +64,21 @@ func (s *LocationService) UpdateLocation(id int, payload db.LocationEntity, tags
 		if err := tx.Save(&existing).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("LocationId = ?", id).Delete(&db.LocationTagEntity{}).Error; err != nil {
+		if err := tx.Where("location_id = ?", id).Delete(&db.LocationTagEntity{}).Error; err != nil {
 			return err
 		}
 		if err := s.replaceLocationTagsTx(tx, id, tags); err != nil {
 			return err
 		}
 		return tx.Preload("Tags", func(q *gorm.DB) *gorm.DB {
-			return q.Order("Name ASC")
-		}).First(&updated, "Id = ?", id).Error
+			return q.Order("name ASC")
+		}).First(&updated, "id = ?", id).Error
 	})
 	return updated, err
 }
 
 func (s *LocationService) DeleteLocation(id int) (bool, error) {
-	result := s.db.Delete(&db.LocationEntity{}, "Id = ?", id)
+	result := s.db.Delete(&db.LocationEntity{}, "id = ?", id)
 	if result.Error != nil {
 		return false, result.Error
 	}
@@ -88,7 +88,7 @@ func (s *LocationService) DeleteLocation(id int) (bool, error) {
 func (s *LocationService) ToggleLocationTag(id int, tagName string, present bool) (db.LocationEntity, error) {
 	var location db.LocationEntity
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.First(&db.LocationEntity{}, "Id = ?", id).Error; err != nil {
+		if err := tx.First(&db.LocationEntity{}, "id = ?", id).Error; err != nil {
 			return err
 		}
 		tag, err := s.ensureTagTx(tx, tagName)
@@ -101,20 +101,20 @@ func (s *LocationService) ToggleLocationTag(id int, tagName string, present bool
 				return err
 			}
 		} else {
-			if err := tx.Where("LocationId = ? AND TagId = ?", id, tag.ID).Delete(&db.LocationTagEntity{}).Error; err != nil {
+			if err := tx.Where("location_id = ? AND tag_id = ?", id, tag.ID).Delete(&db.LocationTagEntity{}).Error; err != nil {
 				return err
 			}
 		}
 		return tx.Preload("Tags", func(q *gorm.DB) *gorm.DB {
-			return q.Order("Name ASC")
-		}).First(&location, "Id = ?", id).Error
+			return q.Order("name ASC")
+		}).First(&location, "id = ?", id).Error
 	})
 	return location, err
 }
 
 func (s *LocationService) ListTags() ([]db.TagEntity, error) {
 	var tags []db.TagEntity
-	err := s.db.Order("Name ASC").Find(&tags).Error
+	err := s.db.Order("name ASC").Find(&tags).Error
 	return tags, err
 }
 
@@ -123,7 +123,7 @@ func (s *LocationService) CreateTag(name string) error {
 }
 
 func (s *LocationService) RenameTag(oldName, newName string) (bool, error) {
-	result := s.db.Model(&db.TagEntity{}).Where("Name = ?", oldName).Update("Name", newName)
+	result := s.db.Model(&db.TagEntity{}).Where("name = ?", oldName).Update("name", newName)
 	if result.Error != nil {
 		return false, result.Error
 	}
@@ -131,7 +131,7 @@ func (s *LocationService) RenameTag(oldName, newName string) (bool, error) {
 }
 
 func (s *LocationService) DeleteTag(name string) (bool, error) {
-	result := s.db.Where("Name = ?", name).Delete(&db.TagEntity{})
+	result := s.db.Where("name = ?", name).Delete(&db.TagEntity{})
 	if result.Error != nil {
 		return false, result.Error
 	}
@@ -155,7 +155,7 @@ func (s *LocationService) replaceLocationTagsTx(tx *gorm.DB, locationID int, tag
 
 func (s *LocationService) ensureTagTx(tx *gorm.DB, name string) (db.TagEntity, error) {
 	var tag db.TagEntity
-	err := tx.Where("Name = ?", name).First(&tag).Error
+	err := tx.Where("name = ?", name).First(&tag).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		tag = db.TagEntity{Name: name}
 		if err := tx.Create(&tag).Error; err != nil {

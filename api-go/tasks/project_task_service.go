@@ -20,13 +20,13 @@ func NewProjectTaskService(database *gorm.DB) *ProjectTaskService {
 
 func (s *ProjectTaskService) ListProjects() ([]db.ProjectEntity, error) {
 	var projects []db.ProjectEntity
-	err := s.db.Order("Name ASC, Id ASC").Find(&projects).Error
+	err := s.db.Order("name ASC, id ASC").Find(&projects).Error
 	return projects, err
 }
 
 func (s *ProjectTaskService) GetProject(id int) (db.ProjectEntity, error) {
 	var project db.ProjectEntity
-	err := s.db.First(&project, "Id = ?", id).Error
+	err := s.db.First(&project, "id = ?", id).Error
 	return project, err
 }
 
@@ -40,7 +40,7 @@ func (s *ProjectTaskService) CreateProject(payload db.ProjectEntity) (db.Project
 
 func (s *ProjectTaskService) UpdateProject(id int, payload db.ProjectEntity) (db.ProjectEntity, error) {
 	var existing db.ProjectEntity
-	if err := s.db.First(&existing, "Id = ?", id).Error; err != nil {
+	if err := s.db.First(&existing, "id = ?", id).Error; err != nil {
 		return db.ProjectEntity{}, err
 	}
 	existing.Name = payload.Name
@@ -52,7 +52,7 @@ func (s *ProjectTaskService) UpdateProject(id int, payload db.ProjectEntity) (db
 }
 
 func (s *ProjectTaskService) DeleteProject(id int) (bool, error) {
-	result := s.db.Delete(&db.ProjectEntity{}, "Id = ?", id)
+	result := s.db.Delete(&db.ProjectEntity{}, "id = ?", id)
 	if result.Error != nil {
 		return false, result.Error
 	}
@@ -61,7 +61,7 @@ func (s *ProjectTaskService) DeleteProject(id int) (bool, error) {
 
 func (s *ProjectTaskService) ListTasks() ([]TaskWithProject, error) {
 	var tasks []db.TaskEntity
-	err := s.db.Preload("Project").Order("TaskDate DESC, Id DESC").Find(&tasks).Error
+	err := s.db.Preload("Project").Order("task_date DESC, id DESC").Find(&tasks).Error
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (s *ProjectTaskService) ListTasks() ([]TaskWithProject, error) {
 
 func (s *ProjectTaskService) GetTask(id int) (TaskWithProject, error) {
 	var task db.TaskEntity
-	if err := s.db.Preload("Project").First(&task, "Id = ?", id).Error; err != nil {
+	if err := s.db.Preload("Project").First(&task, "id = ?", id).Error; err != nil {
 		return TaskWithProject{}, err
 	}
 	return TaskWithProject{Task: task, Project: task.Project}, nil
@@ -90,7 +90,7 @@ func (s *ProjectTaskService) CreateTask(payload db.TaskEntity) (TaskWithProject,
 
 func (s *ProjectTaskService) UpdateTask(id int, payload db.TaskEntity) (TaskWithProject, error) {
 	var existing db.TaskEntity
-	if err := s.db.First(&existing, "Id = ?", id).Error; err != nil {
+	if err := s.db.First(&existing, "id = ?", id).Error; err != nil {
 		return TaskWithProject{}, err
 	}
 	existing.ProjectID = payload.ProjectID
@@ -106,7 +106,7 @@ func (s *ProjectTaskService) UpdateTask(id int, payload db.TaskEntity) (TaskWith
 }
 
 func (s *ProjectTaskService) DeleteTask(id int) (bool, error) {
-	result := s.db.Delete(&db.TaskEntity{}, "Id = ?", id)
+	result := s.db.Delete(&db.TaskEntity{}, "id = ?", id)
 	if result.Error != nil {
 		return false, result.Error
 	}

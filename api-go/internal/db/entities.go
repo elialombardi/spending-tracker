@@ -1,57 +1,57 @@
 package db
 
 type LocationEntity struct {
-	ID          int         `gorm:"column:Id;primaryKey;autoIncrement"`
-	Title       string      `gorm:"column:Title;not null"`
-	URL         *string     `gorm:"column:Url"`
-	Lat         float64     `gorm:"column:Lat;not null"`
-	Lng         float64     `gorm:"column:Lng;not null"`
-	Description *string     `gorm:"column:Description"`
-	Tags        []TagEntity `gorm:"many2many:LocationTag;joinForeignKey:LocationId;joinReferences:TagId"`
+	ID          int         `gorm:"column:id;primaryKey;autoIncrement"`
+	Title       string      `gorm:"column:title;not null"`
+	URL         *string     `gorm:"column:url"`
+	Lat         float64     `gorm:"column:lat;not null"`
+	Lng         float64     `gorm:"column:lng;not null"`
+	Description *string     `gorm:"column:description"`
+	Tags        []TagEntity `gorm:"many2many:location_tag;joinForeignKey:location_id;joinReferences:tag_id"`
 }
 
-func (LocationEntity) TableName() string { return "Locations" }
+func (LocationEntity) TableName() string { return "locations" }
 
 type TagEntity struct {
-	ID   int    `gorm:"column:Id;primaryKey;autoIncrement"`
-	Name string `gorm:"column:Name;uniqueIndex;not null"`
+	ID   int    `gorm:"column:id;primaryKey;autoIncrement"`
+	Name string `gorm:"column:name;uniqueIndex;not null"`
 }
 
-func (TagEntity) TableName() string { return "Tags" }
+func (TagEntity) TableName() string { return "tags" }
 
 type LocationTagEntity struct {
-	LocationID int `gorm:"column:LocationId;primaryKey"`
-	TagID      int `gorm:"column:TagId;primaryKey"`
+	LocationID int `gorm:"column:location_id;primaryKey"`
+	TagID      int `gorm:"column:tag_id;primaryKey"`
 }
 
-func (LocationTagEntity) TableName() string { return "LocationTag" }
+func (LocationTagEntity) TableName() string { return "location_tag" }
 
 type ProjectEntity struct {
-	ID          int     `gorm:"column:Id;primaryKey;autoIncrement"`
-	Name        string  `gorm:"column:Name;uniqueIndex;not null"`
-	Description *string `gorm:"column:Description"`
+	ID          int     `gorm:"column:id;primaryKey;autoIncrement"`
+	Name        string  `gorm:"column:name;uniqueIndex;not null"`
+	Description *string `gorm:"column:description"`
 }
 
-func (ProjectEntity) TableName() string { return "Projects" }
+func (ProjectEntity) TableName() string { return "projects" }
 
 type TaskEntity struct {
-	ID          int           `gorm:"column:Id;primaryKey;autoIncrement"`
-	ProjectID   *int          `gorm:"column:ProjectId;index:IX_Tasks_ProjectId_TaskDate,priority:1"`
-	Name        string        `gorm:"column:Name;not null"`
-	Cost        float64       `gorm:"column:Cost;not null"`
-	TaskDate    string        `gorm:"column:TaskDate;not null;index:IX_Tasks_ProjectId_TaskDate,priority:2"`
-	SentOn      *string       `gorm:"column:SentOn"`
-	Description *string       `gorm:"column:Description"`
+	ID          int           `gorm:"column:id;primaryKey;autoIncrement"`
+	ProjectID   *int          `gorm:"column:project_id;index:IX_Tasks_ProjectId_TaskDate,priority:1"`
+	Name        string        `gorm:"column:name;not null"`
+	Cost        float64       `gorm:"column:cost;not null"`
+	TaskDate    string        `gorm:"column:task_date;not null;index:IX_Tasks_ProjectId_TaskDate,priority:2"`
+	SentOn      *string       `gorm:"column:sent_on"`
+	Description *string       `gorm:"column:description"`
 	Project     ProjectEntity `gorm:"foreignKey:ProjectID;references:ID;constraint:OnDelete:RESTRICT"`
 }
 
-func (TaskEntity) TableName() string { return "Tasks" }
+func (TaskEntity) TableName() string { return "tasks" }
 
 type CycleIncomeCategoryEntity struct {
-	ID           string `gorm:"column:Id;primaryKey"`
-	Category     string `gorm:"column:Category;uniqueIndex;not null"`
-	CreatedAtUTC string `gorm:"column:CreatedAtUtc;not null"`
-	UpdatedAtUTC string `gorm:"column:UpdatedAtUtc;not null"`
+	ID           string `gorm:"column:id;primaryKey"`
+	Category     string `gorm:"column:category;uniqueIndex;not null"`
+	CreatedAtUTC string `gorm:"column:created_at_utc;not null"`
+	UpdatedAtUTC string `gorm:"column:updated_at_utc;not null"`
 }
 
-func (CycleIncomeCategoryEntity) TableName() string { return "CycleIncomeCategories" }
+func (CycleIncomeCategoryEntity) TableName() string { return "cycle_income_categories" }

@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 func parseOptionalDate(value string) (*time.Time, error) {
@@ -406,21 +408,19 @@ func scanTransactionRow(rows *sql.Rows) (transactionRow, error) {
 	return tr, nil
 }
 
-func fetchRuleBehaviorLookup(database *sql.DB) (map[string]string, error) {
-	rows, err := database.Query(`SELECT MerchantKey, Behavior FROM CategoryRules`)
-	if err != nil {
+func fetchRuleBehaviorLookup(database *gorm.DB) (map[string]string, error) {
+	var rules []CategoryRule
+	if err := database.Model(&CategoryRule{}).
+		Select("merchant_key", "behavior").
+		Scan(&rules).Error; err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+
 	lookup := map[string]string{}
-	for rows.Next() {
-		var merchant, behavior string
-		if err := rows.Scan(&merchant, &behavior); err != nil {
-			return nil, err
-		}
-		lookup[merchant] = normalizeBehavior(behavior)
+	for _, rule := range rules {
+		lookup[rule.MerchantKey] = normalizeBehavior(rule.Behavior)
 	}
-	return lookup, rows.Err()
+	return lookup, nil
 }
 
 func resolveMerchantRuleBehavior(merchantKey string, lookup map[string]string) string {

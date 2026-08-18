@@ -66,63 +66,6 @@ func OpenDatabase() (*sql.DB, error) {
 	return database, nil
 }
 
-func backfillLegacyTaskColumns(database *sql.DB) error {
-	var projectID int
-	err := database.QueryRow(`SELECT Id FROM Projects ORDER BY Id LIMIT 1;`).Scan(&projectID)
-	if err != nil {
-		if err != sql.ErrNoRows {
-			return err
-		}
-
-		result, insertErr := database.Exec(`INSERT INTO Projects (Name, Description) VALUES (?, ?);`, "General", nil)
-		if insertErr != nil {
-			return insertErr
-		}
-		id64, idErr := result.LastInsertId()
-		if idErr != nil {
-			return idErr
-		}
-		projectID = int(id64)
-	}
-
-	if _, err := database.Exec(`UPDATE Tasks SET ProjectId = ? WHERE ProjectId IS NULL OR ProjectId = 0;`, projectID); err != nil {
-		return err
-	}
-	if _, err := database.Exec(`UPDATE Tasks SET Cost = 0 WHERE Cost IS NULL;`); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func ensureColumn(database *sql.DB, tableName, columnName, alterStatement string) error {
-	rows, err := database.Query(`PRAGMA table_info(` + tableName + `);`)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var cid int
-		var name string
-		var dataType string
-		var notNull int
-		var defaultValue sql.NullString
-		var pk int
-		if err := rows.Scan(&cid, &name, &dataType, &notNull, &defaultValue, &pk); err != nil {
-			return err
-		}
-		if strings.EqualFold(name, columnName) {
-			return rows.Err()
-		}
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-	_, err = database.Exec(alterStatement)
-	return err
-}
-
 func IsUniqueConstraint(err error) bool {
 	if err == nil {
 		return false

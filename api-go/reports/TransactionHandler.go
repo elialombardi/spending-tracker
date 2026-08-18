@@ -142,6 +142,7 @@ func (h *TransactionHandler) sendTransactions(c *fiber.Ctx) error {
 
 	affected, err := h.transactionService.SendTransactions(request.TransactionIDs, request.IsSending)
 	if err != nil {
+		log.Printf("Error sending transactions: %v", err)
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	if affected == 0 {
@@ -154,6 +155,7 @@ func (h *TransactionHandler) sendTransactions(c *fiber.Ctx) error {
 func (h *TransactionHandler) listCategories(c *fiber.Ctx) error {
 	responses, err := h.transactionService.FetchCategories()
 	if err != nil {
+		log.Printf("Error fetching categories: %v", err)
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	return c.JSON(responses)
@@ -162,6 +164,7 @@ func (h *TransactionHandler) listCategories(c *fiber.Ctx) error {
 func (h *TransactionHandler) getCycleIncomeCategories(c *fiber.Ctx) error {
 	response, err := h.transactionService.FetchCycleIncomeCategories()
 	if err != nil {
+		log.Printf("Error fetching cycle income categories: %v", err)
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	return c.JSON(response)
@@ -175,6 +178,7 @@ func (h *TransactionHandler) updateCycleIncomeCategories(c *fiber.Ctx) error {
 
 	response, err := h.transactionService.SaveCycleIncomeCategories(request.Categories)
 	if err != nil {
+		log.Printf("Error updating cycle income categories: %v", err)
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	return c.JSON(response)
@@ -196,6 +200,7 @@ func (h *TransactionHandler) updateCategoryMapping(c *fiber.Ctx) error {
 
 	response, found, err := h.transactionService.SaveCategoryMapping(mappingID, behavior, collapseWhitespace(derefString(request.Category)))
 	if err != nil {
+		log.Printf("Error updating category mapping: %v", err)
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	if !found {
@@ -216,6 +221,7 @@ func (h *TransactionHandler) updateTransactionAmount(c *fiber.Ctx) error {
 
 	updatedRow, behavior, found, err := h.transactionService.UpdateTransactionAmount(transactionID, req.Amount)
 	if err != nil {
+		log.Printf("Error updating transaction amount: %v", err)
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	if !found {
@@ -252,6 +258,7 @@ func (h *TransactionHandler) mapTransaction(transaction Transaction, behavior st
 func (h *TransactionHandler) deleteCategoryMapping(c *fiber.Ctx) error {
 	deleted, err := h.transactionService.RemoveCategoryMapping(strings.TrimSpace(c.Params("mappingId")))
 	if err != nil {
+		log.Printf("Error deleting category mapping: %v", err)
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	if !deleted {
@@ -271,17 +278,20 @@ func (h *TransactionHandler) importPosteItaliane(c *fiber.Ctx) error {
 
 	file, err := fileHeader.Open()
 	if err != nil {
+		log.Printf("Error opening uploaded file: %v", err)
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	defer file.Close()
 
 	parsed, err := parsePosteItalianeWorkbook(file)
 	if err != nil {
+		log.Printf("Error parsing Poste Italiane workbook: %v", err)
 		return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 	}
 
 	result, err := h.transactionService.ImportParsedTransactions(parsed.accountNumber, fileHeader.Filename, parsed.transactions)
 	if err != nil {
+		log.Printf("Error importing transactions: %v", err)
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	return c.JSON(result)
@@ -290,6 +300,7 @@ func (h *TransactionHandler) importPosteItaliane(c *fiber.Ctx) error {
 func (h *TransactionHandler) getReportCycles(c *fiber.Ctx) error {
 	cycles, err := h.transactionService.FetchCycleOptions()
 	if err != nil {
+		log.Printf("Error fetching cycle options: %v", err)
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	return c.JSON(cycles)

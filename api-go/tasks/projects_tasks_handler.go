@@ -174,7 +174,7 @@ func (h *ProjectTaskHandler) createTask(c *fiber.Ctx) error {
 	}
 
 	task, err := h.service.CreateTask(db.TaskEntity{
-		ProjectID:   payload.ProjectID,
+		ProjectID:   &payload.ProjectID,
 		Name:        strings.TrimSpace(payload.Name),
 		Cost:        payload.Cost,
 		TaskDate:    strings.TrimSpace(payload.Date),
@@ -206,7 +206,7 @@ func (h *ProjectTaskHandler) updateTask(c *fiber.Ctx) error {
 	}
 
 	task, err := h.service.UpdateTask(id, db.TaskEntity{
-		ProjectID:   payload.ProjectID,
+		ProjectID:   &payload.ProjectID,
 		Name:        strings.TrimSpace(payload.Name),
 		Cost:        payload.Cost,
 		TaskDate:    strings.TrimSpace(payload.Date),
@@ -253,9 +253,14 @@ func mapProjectEntity(project db.ProjectEntity) Project {
 }
 
 func mapTaskWithProject(task TaskWithProject) TaskDetails {
+	var projectID int
+	if task.Task.ProjectID != nil {
+		projectID = *task.Task.ProjectID
+	}
+
 	response := TaskDetails{
 		ID:          task.Task.ID,
-		ProjectID:   task.Task.ProjectID,
+		ProjectID:   projectID,
 		ProjectName: task.Project.Name,
 		Name:        task.Task.Name,
 		Cost:        task.Task.Cost,

@@ -12,23 +12,13 @@ import (
 )
 
 func NewDatabase() (*gorm.DB, error) {
-	// Update these with your actual PostgreSQL credentials
-	host := os.Getenv("SPENDING_TRACKER_POSTGRES_HOST")
-	user := os.Getenv("SPENDING_TRACKER_POSTGRES_USER")
-	password := os.Getenv("SPENDING_TRACKER_POSTGRES_PASSWORD")
-	dbname := os.Getenv("SPENDING_TRACKER_POSTGRES_DB")
-	if host == "" || user == "" || password == "" || dbname == "" {
-		log.Fatal("PostgreSQL environment variables are not set properly.")
-	}
-	port := os.Getenv("SPENDING_TRACKER_POSTGRES_PORT")
-	if port == "" {
-		port = "5432" // Default PostgreSQL port
+	databaseURL := os.Getenv("SPENDING_TRACKER_CONNECTION_STRING")
+	if databaseURL == "" {
+		log.Fatal("SPENDING_TRACKER_CONNECTION_STRING environment variable is not set.")
 	}
 
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
-		host, user, password, dbname, port)
-
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	// Open the connection using GORM and the connection string
+	db, err := gorm.Open(postgres.Open(databaseURL), &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL: %w", err)
 	}

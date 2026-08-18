@@ -187,7 +187,7 @@ func (s *workoutService) CreateWorkout(req *dto.CreateWorkoutRequest) (*dto.Work
 func (s *workoutService) GetWorkoutByID(id uint) (*dto.WorkoutResponse, error) {
 	var workout Workout
 	if err := s.db.Preload("Sessions", func(db *gorm.DB) *gorm.DB {
-		return db.Order(`"WorkoutSession"."order" ASC`)
+		return db.Order(`"workout_sessions"."order" ASC`)
 	}).Preload("Sessions.Session").Preload("Sessions.Session.Timers").First(&workout, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("workout not found")
@@ -211,7 +211,7 @@ func (s *workoutService) ListWorkouts(query *dto.PaginationQuery) (*dto.Paginate
 
 	offset := (query.Page - 1) * query.Limit
 	err := dbQuery.Preload("Sessions", func(db *gorm.DB) *gorm.DB {
-		return db.Order(`"WorkoutSession"."order" ASC`)
+		return db.Order(`"workout_sessions"."order" ASC`)
 	}).Preload("Sessions.Session").Preload("Sessions.Session.Timers").
 		Offset(offset).Limit(query.Limit).Find(&workouts).Error
 

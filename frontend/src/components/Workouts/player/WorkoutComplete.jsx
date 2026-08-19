@@ -1,4 +1,3 @@
-// components/WorkoutComplete.jsx
 import { Container, Typography, Button } from '@mui/material';
 
 export function WorkoutComplete({ onFinish }) {

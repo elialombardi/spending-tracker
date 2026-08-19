@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/auth"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/di"
 	"github.com/joho/godotenv"
 
@@ -22,9 +21,6 @@ func main() {
 		}
 	}
 
-	auth.ConfigureUsers()
-	auth.ConfigureJwt()
-
 	log.Println("Setting up application container...")
 	container, err := di.InitializeApp()
 	if err != nil {
@@ -36,14 +32,18 @@ func main() {
 	}
 	defer sqlDB.Close()
 
+	if err := container.UserService.SeedDefaultUsers(); err != nil {
+		log.Fatal(err)
+	}
+
 	app := fiber.New()
 	app.Use(cors.New())
 
-	app.Post("/api/auth/token", auth.HandleToken)
-	container.TransactionHandler.RegisterRoutes(app)
-	container.ProjectTaskHandler.RegisterRoutes(app)
-	container.LocationTagHandler.RegisterRoutes(app)
-	container.WorkoutHandler.RegisterRoutes(app)
+	container.TransactionHandler.RegisterRoutes(app, container.AuthMiddleware)
+	container.ProjectTaskHandler.RegisterRoutes(app, container.AuthMiddleware)
+	container.LocationTagHandler.RegisterRoutes(app, container.AuthMiddleware)
+	container.WorkoutHandler.RegisterRoutes(app, container.AuthMiddleware)
+	container.UserHandler.SetupRoutes(app, container.AuthMiddleware)
 
 	app.Get("/api/version", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{

@@ -9,30 +9,39 @@ export const endpoints = {
   sendTransactions: { method: 'POST', path: '/api/transactions/send' },
 
   // Locations
-  listLocations: { method: 'GET', path: '/locations' },
-  getLocation: { method: 'GET', path: '/locations/:id' },
-  createLocation: { method: 'POST', path: '/locations' },
-  updateLocation: { method: 'PUT', path: '/locations/:id' },
-  deleteLocation: { method: 'DELETE', path: '/locations/:id' },
+  listLocations: { method: 'GET', path: '/api/locations' },
+  getLocation: { method: 'GET', path: '/api/locations/:id' },
+  createLocation: { method: 'POST', path: '/api/locations' },
+  updateLocation: { method: 'PUT', path: '/api/locations/:id' },
+  deleteLocation: { method: 'DELETE', path: '/api/locations/:id' },
 
   // Tags
-  listTags: { method: 'GET', path: '/tags' },
-  createTag: { method: 'POST', path: '/tags' },
-  renameTag: { method: 'PATCH', path: '/tags/:name' },
-  deleteTag: { method: 'DELETE', path: '/tags/:name' },
-  toggleLocationTag: { method: 'POST', path: '/locations/:id/tags' },
+  listTags: { method: 'GET', path: '/api/tags' },
+  createTag: { method: 'POST', path: '/api/tags' },
+  renameTag: { method: 'PATCH', path: '/api/tags/:name' },
+  deleteTag: { method: 'DELETE', path: '/api/tags/:name' },
+  toggleLocationTag: { method: 'POST', path: '/api/locations/:id/tags' },
 
-  // Sessions (NEW)
+  // Sessions
   listSessions: { method: 'GET', path: '/api/sessions' },
   getSession: { method: 'GET', path: '/api/sessions/:id' },
   createSession: { method: 'POST', path: '/api/sessions' },
   updateSession: { method: 'PUT', path: '/api/sessions/:id' },
   deleteSession: { method: 'DELETE', path: '/api/sessions/:id' },
 
-  // Workouts (NEW)
+  // Workouts
   listWorkouts: { method: 'GET', path: '/api/workouts' },
   getWorkout: { method: 'GET', path: '/api/workouts/:id' },
   createWorkout: { method: 'POST', path: '/api/workouts' },
   updateWorkout: { method: 'PUT', path: '/api/workouts/:id' },
   deleteWorkout: { method: 'DELETE', path: '/api/workouts/:id' },
+
+  // Users
+  listUsers: { method: 'GET', path: '/api/users' },
+  getUser: { method: 'GET', path: '/api/users/:id' },
+  getUserByUsername: { method: 'GET', path: '/api/users/username/:username' },
+  createUser: { method: 'POST', path: '/api/users' },
+  updateUser: { method: 'PUT', path: '/api/users/:id' },
+  deleteUser: { method: 'DELETE', path: '/api/users/:id' },
+  login: { method: 'POST', path: '/api/auth/login' },
 };

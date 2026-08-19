@@ -4,18 +4,14 @@ import Avatar from '@mui/material/Avatar'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import IconButton from '@mui/material/IconButton'
 import InputAdornment from '@mui/material/InputAdornment'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import Checkbox from '@mui/material/Checkbox'
 import Visibility from '@mui/icons-material/Visibility'
 import VisibilityOff from '@mui/icons-material/VisibilityOff'
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
-
 
 const appVersion = import.meta.env.VITE_APP_VERSION
 
@@ -23,7 +19,6 @@ export default function LoginScreen({ errorMessage, isBusy, isDevelopment, onSub
     const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
-    const [rememberMe, setRememberMe] = useState(false)
 
     async function handleSubmit(event) {
         event.preventDefault()
@@ -68,7 +63,11 @@ export default function LoginScreen({ errorMessage, isBusy, isDevelopment, onSub
                                 required
                                 value={username}
                                 fullWidth
-                                inputProps={{ 'aria-label': 'username' }}
+                                slotProps={{
+                                    htmlInput: {
+                                        'aria-label': 'username'
+                                    }
+                                }}
                             />
                             <TextField
                                 autoComplete="current-password"
@@ -78,23 +77,25 @@ export default function LoginScreen({ errorMessage, isBusy, isDevelopment, onSub
                                 type={showPassword ? 'text' : 'password'}
                                 value={password}
                                 fullWidth
-                                inputProps={{ 'aria-label': 'password' }}
-                                InputProps={{
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <IconButton
-                                                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                                                onClick={() => setShowPassword((s) => !s)}
-                                                edge="end"
-                                            >
-                                                {showPassword ? <VisibilityOff /> : <Visibility />}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    ),
+                                slotProps={{
+                                    htmlInput: {
+                                        'aria-label': 'password'
+                                    },
+                                    input: {
+                                        endAdornment: (
+                                            <InputAdornment position="end">
+                                                <IconButton
+                                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                                    onClick={() => setShowPassword((s) => !s)}
+                                                    edge="end"
+                                                >
+                                                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                                                </IconButton>
+                                            </InputAdornment>
+                                        ),
+                                    }
                                 }}
                             />
-
-
 
                             <Button disabled={isBusy} type="submit" variant="contained" size="large">
                                 {isBusy ? 'Signing in…' : 'Sign in'}

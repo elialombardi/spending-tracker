@@ -17,6 +17,7 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage'));
 const CognitiveTraining = lazy(() => import('./pages/CognitiveTraining'));
 const TasksPage = lazy(() => import('./pages/TasksPage'));
 const WorkoutPage = lazy(() => import('./pages/WorkoutPage'));
+const UsersPage = lazy(() => import('./pages/UsersPage'));
 
 const defaultLocations = [
   {
@@ -55,9 +56,6 @@ function App({ themeName, setThemeName }) {
     return saved ? JSON.parse(saved) : defaultTags;
   });
 
-  const [filter, setFilter] = useState('all');
-  // routing will handle views
-
 
   const [appError, setAppError] = useState('');
 
@@ -65,12 +63,14 @@ function App({ themeName, setThemeName }) {
   const isAdminUser = isAdmin(session);
 
   useEffect(() => {
+    // Check for session expiration
     if (session && isSessionExpired(session)) {
+      console.warn('Session expired, logging out in app.jsx useEffect');
       logout('Your session expired. Please sign in again.', false);
+      return; // Exit early if session expired
     }
-  }, [session]);
 
-  useEffect(() => {
+    // Bootstrap development session if no session and in development
     if (!session && isDevelopmentEnv) {
       bootstrapDevelopmentSession().catch((error) => {
         console.warn('Development auth bootstrap failed', error);
@@ -124,13 +124,6 @@ function App({ themeName, setThemeName }) {
     setAppError(err instanceof Error ? err.message : fallbackMessage);
   }
 
-
-
-  const filteredLocations = locations.filter((loc) => {
-    if (filter === 'all') return true;
-    return (loc.tags || []).includes(filter);
-  });
-
   const routeFallback = <Box sx={{ p: 3 }}>Loading…</Box>;
 
   async function handleLogin(credentials) {
@@ -162,6 +155,7 @@ function App({ themeName, setThemeName }) {
               <Route path="/workout" element={<WorkoutPage />} />
               {isAdminUser ? (
                 <>
+                  <Route path="/users" element={<UsersPage />} />
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/tasks" element={<TasksPage />} />
                   <Route path="/admin/tags" element={

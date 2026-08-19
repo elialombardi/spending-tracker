@@ -1,4 +1,3 @@
-// components/WorkoutDisplay.jsx
 import { Box, Typography, Stack, Paper, IconButton } from '@mui/material';
 import PauseIcon from '@mui/icons-material/Pause';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';

@@ -33,7 +33,7 @@ export async function fetchApiResponse(path, opts = {}) {
 
   if (!opts.allowAnonymous) {
     const session = await ensureAuthenticated();
-    headers.set('Authorization', `Bearer ${session.accessToken}`);
+    headers.set('Authorization', `Bearer ${session.access_token}`);
   }
 
   const response = await fetch(url, { ...opts, headers });

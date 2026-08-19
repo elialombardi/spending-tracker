@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/auth"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -20,24 +20,39 @@ func NewTransactionHandler(transactionService *TransactionService) *TransactionH
 	return &TransactionHandler{transactionService: transactionService}
 }
 
-func (h *TransactionHandler) RegisterRoutes(app *fiber.App) {
-	app.Get("/api/transactions", auth.AuthRequired(h.listTransactions, []string{"Reader", "Writer", "Admin"}))
-	app.Post("/api/imports/poste-italiane", auth.AuthRequired(h.importPosteItaliane, []string{"Writer", "Admin"}))
-	app.Get("/api/transactions/summary", auth.AuthRequired(h.getTransactionsSummary, []string{"Reader", "Writer", "Admin"}))
-	app.Post("/api/transactions/:transactionId/categorize", auth.AuthRequired(h.categorizeTransaction, []string{"Writer", "Admin"}))
-	app.Post("/api/transactions/send", auth.AuthRequired(h.sendTransactions, []string{"Writer", "Admin"}))
-	app.Put("/api/transactions/:transactionId/amount", auth.AuthRequired(h.updateTransactionAmount, []string{"Writer", "Admin"}))
-	app.Get("/api/categories", auth.AuthRequired(h.listCategories, []string{"Reader", "Writer", "Admin"}))
-	app.Get("/api/categories/cycle-income", auth.AuthRequired(h.getCycleIncomeCategories, []string{"Reader", "Writer", "Admin"}))
-	app.Put("/api/categories/cycle-income", auth.AuthRequired(h.updateCycleIncomeCategories, []string{"Writer", "Admin"}))
-	app.Get("/api/categories/mappings", auth.AuthRequired(h.listCategoryMappings, []string{"Reader", "Writer", "Admin"}))
-	app.Put("/api/categories/mappings/:mappingId", auth.AuthRequired(h.updateCategoryMapping, []string{"Writer", "Admin"}))
-	app.Delete("/api/categories/mappings/:mappingId", auth.AuthRequired(h.deleteCategoryMapping, []string{"Writer", "Admin"}))
-	app.Get("/api/reports/cycles", auth.AuthRequired(h.getReportCycles, []string{"Reader", "Writer", "Admin"}))
-	app.Get("/api/reports/cycle", auth.AuthRequired(h.getCycleReport, []string{"Reader", "Writer", "Admin"}))
-	app.Get("/api/reports/cycle/export", auth.AuthRequired(h.exportCycleReport, []string{"Reader", "Writer", "Admin"}))
-	app.Get("/api/reports/monthly", auth.AuthRequired(h.getMonthlyReport, []string{"Reader", "Writer", "Admin"}))
-	app.Get("/api/reports/monthly/export", auth.AuthRequired(h.exportMonthlyReport, []string{"Reader", "Writer", "Admin"}))
+func (h *TransactionHandler) RegisterRoutes(app *fiber.App, authMiddleware *user.AuthMiddleware) {
+	api := app.Group("/api")
+
+	transactionRoutes := api.Group("/transactions", authMiddleware.Authenticate, authMiddleware.Authorize("Admin"))
+	{
+		transactionRoutes.Get("/", h.listTransactions)
+		transactionRoutes.Post("/imports/poste-italiane", h.importPosteItaliane)
+		transactionRoutes.Get("/summary", h.getTransactionsSummary)
+		transactionRoutes.Post("/:transactionId/categorize", h.categorizeTransaction)
+		transactionRoutes.Post("/send", h.sendTransactions)
+		transactionRoutes.Put("/:transactionId/amount", h.updateTransactionAmount)
+
+	}
+
+	categoriesRoutes := api.Group("/categories", authMiddleware.Authenticate, authMiddleware.Authorize("Admin"))
+	{
+		categoriesRoutes.Get("/", h.listCategories)
+		categoriesRoutes.Get("/cycle-income", h.getCycleIncomeCategories)
+		categoriesRoutes.Put("/cycle-income", h.updateCycleIncomeCategories)
+		categoriesRoutes.Get("/mappings", h.listCategoryMappings)
+		categoriesRoutes.Put("/mappings/:mappingId", h.updateCategoryMapping)
+		categoriesRoutes.Delete("/mappings/:mappingId", h.deleteCategoryMapping)
+	}
+
+	reportsRoutes := api.Group("/reports", authMiddleware.Authenticate, authMiddleware.Authorize("Admin"))
+	{
+		reportsRoutes.Get("/cycles", h.getReportCycles)
+		reportsRoutes.Get("/cycle", h.getCycleReport)
+		reportsRoutes.Get("/cycle/export", h.exportCycleReport)
+		reportsRoutes.Get("/monthly", h.getMonthlyReport)
+		reportsRoutes.Get("/monthly/export", h.exportMonthlyReport)
+	}
+
 }
 
 func (h *TransactionHandler) listCategoryMappings(c *fiber.Ctx) error {

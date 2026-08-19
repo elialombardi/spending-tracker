@@ -1,4 +1,3 @@
-// components/WorkoutHeader.jsx
 import { Box, Button, Typography } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 

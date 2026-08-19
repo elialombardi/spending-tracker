@@ -13,11 +13,11 @@ function createAuthError(message, code, status) {
 }
 
 export function isSessionExpired(session) {
-    if (!session?.expiresAt) {
+    if (!session?.expires_at) {
         return true
     }
 
-    return Date.parse(session.expiresAt) <= Date.now()
+    return Date.parse(session.expires_at) <= Date.now()
 }
 
 function persistSession(session) {
@@ -117,7 +117,7 @@ export function clearAuthMessage() {
 
 function setAuthenticatedSession(session) {
     persistSession(session)
-    try { if (typeof window !== 'undefined') window.sessionStorage.removeItem(MANUAL_LOGOUT_KEY) } catch (_) { }
+    try { if (typeof window !== 'undefined') window.sessionStorage.removeItem(MANUAL_LOGOUT_KEY) } catch (e) { console.error('Failed to remove manual logout flag', e) }
     setAuthState({
         message: '',
         session,
@@ -128,7 +128,7 @@ function setAuthenticatedSession(session) {
 
 export function logout(message = '', manual = true) {
     if (typeof window !== 'undefined' && manual) {
-        try { window.sessionStorage.setItem(MANUAL_LOGOUT_KEY, '1') } catch (_) { }
+        try { window.sessionStorage.setItem(MANUAL_LOGOUT_KEY, '1') } catch (e) { console.error('Failed to set manual logout flag', e) }
     }
     persistSession(null)
     setAuthState({
@@ -139,7 +139,7 @@ export function logout(message = '', manual = true) {
 }
 
 async function requestToken({ username, password }) {
-    const response = await fetch(`${API_BASE}/api/auth/token`, {
+    const response = await fetch(`${API_BASE}/api/auth/login`, {
         body: JSON.stringify({ username, password }),
         headers: {
             Accept: 'application/json',
@@ -186,11 +186,11 @@ export async function bootstrapDevelopmentSession() {
     if (typeof window !== 'undefined') {
         try {
             if (window.sessionStorage.getItem(MANUAL_LOGOUT_KEY)) {
+                console.warn('Manual logout flag is set, skipping development bootstrap')
                 return null
             }
-        } catch (_) { }
+        } catch (e) { console.error('Failed to read manual logout flag', e) }
     }
-
     if (authState.session && !isSessionExpired(authState.session)) {
         return authState.session
     }
@@ -223,6 +223,7 @@ export async function ensureAuthenticated() {
     }
 
     if (authState.session) {
+        console.warn('Session expired, logging out')
         logout('Your session expired. Please sign in again.', false)
     }
 

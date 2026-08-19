@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/auth"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
@@ -19,17 +19,27 @@ func NewLocationTagHandler(service *LocationService) *LocationTagHandler {
 	return &LocationTagHandler{service: service}
 }
 
-func (h *LocationTagHandler) RegisterRoutes(app *fiber.App) {
-	app.Get("/locations", auth.AuthRequired(h.listLocations, []string{"Reader", "Writer", "Admin"}))
-	app.Get("/locations/:id", auth.AuthRequired(h.getLocation, []string{"Reader", "Writer", "Admin"}))
-	app.Post("/locations", auth.AuthRequired(h.createLocation, []string{"Writer", "Admin"}))
-	app.Put("/locations/:id", auth.AuthRequired(h.updateLocation, []string{"Writer", "Admin"}))
-	app.Delete("/locations/:id", auth.AuthRequired(h.deleteLocation, []string{"Writer", "Admin"}))
-	app.Post("/locations/:id/tags", auth.AuthRequired(h.toggleLocationTag, []string{"Writer", "Admin"}))
-	app.Get("/tags", auth.AuthRequired(h.listTags, []string{"Reader", "Writer", "Admin"}))
-	app.Post("/tags", auth.AuthRequired(h.createTag, []string{"Writer", "Admin"}))
-	app.Patch("/tags/:name", auth.AuthRequired(h.renameTag, []string{"Writer", "Admin"}))
-	app.Delete("/tags/:name", auth.AuthRequired(h.deleteTag, []string{"Writer", "Admin"}))
+func (h *LocationTagHandler) RegisterRoutes(app *fiber.App, authMiddleware *user.AuthMiddleware) {
+
+	api := app.Group("/api")
+	locationRoutes := api.Group("/locations", authMiddleware.Authenticate)
+	{
+		locationRoutes.Get("/", h.listLocations)
+		locationRoutes.Get("/:id", h.getLocation)
+		locationRoutes.Post("/", h.createLocation)
+		locationRoutes.Put("/:id", h.updateLocation)
+		locationRoutes.Delete("/:id", h.deleteLocation)
+		locationRoutes.Post("/:id/tags", h.toggleLocationTag)
+	}
+
+	tagsRoutes := api.Group("/tags", authMiddleware.Authenticate)
+	{
+		tagsRoutes.Get("/", h.listTags)
+		tagsRoutes.Post("/", h.createTag)
+		tagsRoutes.Patch("/:name", h.renameTag)
+		tagsRoutes.Delete("/:name", h.deleteTag)
+	}
+
 }
 
 func (h *LocationTagHandler) listLocations(c *fiber.Ctx) error {

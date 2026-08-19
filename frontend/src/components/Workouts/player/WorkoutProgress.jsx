@@ -1,4 +1,3 @@
-// components/WorkoutProgress.jsx
 import { Box, Typography, LinearProgress } from '@mui/material';
 
 export function WorkoutProgress({ currentStepIdx, totalSteps, progress }) {

@@ -1,4 +1,3 @@
-// components/WorkoutAssembly.jsx
 import { useMemo, useState } from 'react';
 import {
   IconButton,

@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/reports"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/workouts"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -27,6 +28,7 @@ func NewDatabase() (*gorm.DB, error) {
 
 	log.Printf("Running AutoMigrate...")
 	if err := db.AutoMigrate(
+		&user.User{},
 		&reports.Transaction{},
 		&reports.CategoryRule{},
 		&reports.CycleIncomeCategory{},

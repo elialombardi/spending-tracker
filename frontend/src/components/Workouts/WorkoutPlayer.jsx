@@ -1,4 +1,3 @@
-// components/WorkoutPlayer.jsx
 import { useReducer } from 'react';
 import { Box } from '@mui/material';
 import { initialState, workoutReducer } from './player/workoutReducer';

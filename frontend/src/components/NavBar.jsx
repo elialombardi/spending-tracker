@@ -72,6 +72,9 @@ function NavBar({ canWrite, onLogout, session, themeName, setThemeName }) {
                                 <Button component={NavLink} to="/tasks" variant={path === '/tasks' ? 'contained' : 'text'} sx={{ ml: 1 }}>
                                     Tasks
                                 </Button>
+                                <Button component={NavLink} to="/users" variant={path === '/users' ? 'contained' : 'text'} sx={{ ml: 1 }}>
+                                    Users
+                                </Button>
                             </>
                         ) : null}
                     </Box>
@@ -133,6 +136,11 @@ function NavBar({ canWrite, onLogout, session, themeName, setThemeName }) {
                                     <ListItem>
                                         <ListItemButton component={NavLink} to="/tasks">
                                             <ListItemText primary="Tasks" />
+                                        </ListItemButton>
+                                    </ListItem>
+                                    <ListItem>
+                                        <ListItemButton component={NavLink} to="/users">
+                                            <ListItemText primary="Users" />
                                         </ListItemButton>
                                     </ListItem>
                                 </>

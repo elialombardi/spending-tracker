@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/auth"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -21,17 +21,26 @@ func NewProjectTaskHandler(service *ProjectTaskService) *ProjectTaskHandler {
 	return &ProjectTaskHandler{service: service}
 }
 
-func (h *ProjectTaskHandler) RegisterRoutes(app *fiber.App) {
-	app.Get("/api/projects", auth.AuthRequired(h.listProjects, []string{"Reader", "Writer", "Admin"}))
-	app.Get("/api/projects/:id", auth.AuthRequired(h.getProject, []string{"Reader", "Writer", "Admin"}))
-	app.Post("/api/projects", auth.AuthRequired(h.createProject, []string{"Writer", "Admin"}))
-	app.Put("/api/projects/:id", auth.AuthRequired(h.updateProject, []string{"Writer", "Admin"}))
-	app.Delete("/api/projects/:id", auth.AuthRequired(h.deleteProject, []string{"Writer", "Admin"}))
-	app.Get("/api/tasks", auth.AuthRequired(h.listTasks, []string{"Reader", "Writer", "Admin"}))
-	app.Get("/api/tasks/:id", auth.AuthRequired(h.getTask, []string{"Reader", "Writer", "Admin"}))
-	app.Post("/api/tasks", auth.AuthRequired(h.createTask, []string{"Writer", "Admin"}))
-	app.Put("/api/tasks/:id", auth.AuthRequired(h.updateTask, []string{"Writer", "Admin"}))
-	app.Delete("/api/tasks/:id", auth.AuthRequired(h.deleteTask, []string{"Writer", "Admin"}))
+func (h *ProjectTaskHandler) RegisterRoutes(app *fiber.App, authMiddleware *user.AuthMiddleware) {
+	api := app.Group("/api")
+
+	projectRoutes := api.Group("/projects", authMiddleware.Authenticate)
+	{
+		projectRoutes.Get("/", h.listProjects)
+		projectRoutes.Get("/:id", h.getProject)
+		projectRoutes.Post("/", h.createProject)
+		projectRoutes.Put("/:id", h.updateProject)
+		projectRoutes.Delete("/:id", h.deleteProject)
+
+	}
+	taskRoutes := api.Group("/tasks", authMiddleware.Authenticate)
+	{
+		taskRoutes.Get("/", h.listTasks)
+		taskRoutes.Get("/:id", h.getTask)
+		taskRoutes.Post("/", h.createTask)
+		taskRoutes.Put("/:id", h.updateTask)
+		taskRoutes.Delete("/:id", h.deleteTask)
+	}
 }
 
 func (h *ProjectTaskHandler) listProjects(c *fiber.Ctx) error {

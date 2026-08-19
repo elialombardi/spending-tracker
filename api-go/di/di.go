@@ -8,6 +8,7 @@ import (
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/locations"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/reports"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/tasks"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/workouts"
 )
 
@@ -21,6 +22,9 @@ type AppContainer struct {
 	WorkoutHandler     *workouts.WorkoutHandler
 	TransactionService *reports.TransactionService
 	TransactionHandler *reports.TransactionHandler
+	UserService        user.UserService
+	UserHandler        *user.UserHandler
+	AuthMiddleware     *user.AuthMiddleware
 }
 
 // InitializeApp sets up the dependency graph using samber/do
@@ -30,6 +34,25 @@ func InitializeApp() (*AppContainer, error) {
 	// 1. Register providers in the injector container
 	do.Provide(injector, func(i do.Injector) (*gorm.DB, error) {
 		return db.NewDatabase()
+	})
+	do.Provide(injector, func(i do.Injector) (user.UserService, error) {
+		dbConn := do.MustInvoke[*gorm.DB](i)
+		return user.NewUserService(dbConn), nil
+	})
+	do.Provide(injector, func(i do.Injector) (user.AuthService, error) {
+		userService := do.MustInvoke[user.UserService](i)
+		return user.NewAuthService(userService), nil
+	})
+
+	do.Provide(injector, func(i do.Injector) (*user.UserHandler, error) {
+		userService := do.MustInvoke[user.UserService](i)
+		authService := do.MustInvoke[user.AuthService](i)
+		return user.NewUserHandler(userService, authService), nil
+	})
+
+	do.Provide(injector, func(i do.Injector) (*user.AuthMiddleware, error) {
+		authService := do.MustInvoke[user.AuthService](i)
+		return user.NewAuthMiddleware(authService), nil
 	})
 
 	do.Provide(injector, func(i do.Injector) (*tasks.ProjectTaskService, error) {
@@ -82,5 +105,8 @@ func InitializeApp() (*AppContainer, error) {
 		WorkoutHandler:     do.MustInvoke[*workouts.WorkoutHandler](injector),
 		TransactionService: do.MustInvoke[*reports.TransactionService](injector),
 		TransactionHandler: do.MustInvoke[*reports.TransactionHandler](injector),
+		UserService:        do.MustInvoke[user.UserService](injector),
+		UserHandler:        do.MustInvoke[*user.UserHandler](injector),
+		AuthMiddleware:     do.MustInvoke[*user.AuthMiddleware](injector),
 	}, nil
 }

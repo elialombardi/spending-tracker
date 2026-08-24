@@ -456,7 +456,7 @@ export function useDashboard() {
             const formData = new FormData()
             formData.append('file', file)
 
-            const response = await fetchApiResponse('/api/imports/poste-italiane', {
+            const response = await fetchApiResponse('/api/transactions/imports/poste-italiane', {
                 method: 'POST',
                 body: formData,
             })

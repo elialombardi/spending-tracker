@@ -18,22 +18,6 @@
 		"version": "2.0.0",
 		"tasks": [
 			{
-				"label": "build_be",
-				"type": "shell",
-				"command": "dotnet",
-				"args": [
-					"build",
-					"${workspaceFolder:api}/SpendingTracker.Api/SpendingTracker.Api.csproj"
-				],
-				"group": {
-					"kind": "build",
-					"isDefault": true
-				},
-				"problemMatcher": [
-					"$msCompile"
-				]
-			},
-			{
 				"label": "fe_dev",
 				"type": "shell",
 				"command": "npm",
@@ -65,28 +49,9 @@
 				"env": {
 					"ALLOW_ORIGINS": "http://localhost:5173",
 					"PORT": "7004",
-					"DB_FILE_PATH": "${workspaceFolder:root}/spending-tracker.db"
+					"APP_ENV": "development",
 				},
 				"args": []
-			},
-			{
-				"name": "API",
-				"type": "coreclr",
-				"request": "launch",
-				"preLaunchTask": "build_be",
-				"program": "${workspaceFolder:api}/SpendingTracker.Api/bin/Debug/net9.0/SpendingTracker.Api.dll",
-				"args": [],
-				"cwd": "${workspaceFolder:api}/SpendingTracker.Api",
-				"stopAtEntry": false,
-				// "serverReadyAction": {
-				//     "action": "openExternally",
-				//     "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
-				//     "uriFormat": "%s/swagger/index.html"
-				// },
-				"env": {
-					"ASPNETCORE_ENVIRONMENT": "Development"
-				},
-				"console": "internalConsole"
 			}
 		],
 		"compounds": []

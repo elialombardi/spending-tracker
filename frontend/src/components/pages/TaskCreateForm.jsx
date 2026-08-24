@@ -20,7 +20,7 @@ export default function TaskCreateForm({ isBusy = false, projects = [], onCreate
     const [projectId, setProjectId] = useState('');
     const [name, setName] = useState('');
     const [cost, setCost] = useState('');
-    const [date, setDate] = useState(getTodayValue);
+    const [date, setDate] = useState(getTodayValue());
     const [sentOn, setSentOn] = useState('');
     const [description, setDescription] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
@@ -61,7 +61,7 @@ export default function TaskCreateForm({ isBusy = false, projects = [], onCreate
 
         try {
             const payload = {
-                projectId: Number(projectId),
+                projectId: projectId,
                 name: name.trim(),
                 cost: Number(cost),
                 date,

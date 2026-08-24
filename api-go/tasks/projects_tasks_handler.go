@@ -2,7 +2,6 @@ package tasks
 
 import (
 	"errors"
-	"strconv"
 	"strings"
 	"time"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -49,7 +49,7 @@ func (h *ProjectTaskHandler) listProjects(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	response := make([]Project, 0, len(projects))
+	response := make([]ProjectDTO, 0, len(projects))
 	for _, project := range projects {
 		response = append(response, mapProjectEntity(project))
 	}
@@ -57,7 +57,7 @@ func (h *ProjectTaskHandler) listProjects(c *fiber.Ctx) error {
 }
 
 func (h *ProjectTaskHandler) getProject(c *fiber.Ctx) error {
-	id, err := strconv.Atoi(c.Params("id"))
+	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return fiber.ErrBadRequest
 	}
@@ -73,7 +73,7 @@ func (h *ProjectTaskHandler) getProject(c *fiber.Ctx) error {
 }
 
 func (h *ProjectTaskHandler) createProject(c *fiber.Ctx) error {
-	var payload Project
+	var payload ProjectDTO
 	if err := c.BodyParser(&payload); err != nil {
 		return fiber.ErrBadRequest
 	}
@@ -91,17 +91,17 @@ func (h *ProjectTaskHandler) createProject(c *fiber.Ctx) error {
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-	c.Location("/api/projects/" + strconv.Itoa(project.ID))
+	c.Location("/api/projects/" + project.ID.String())
 	return c.Status(fiber.StatusCreated).JSON(mapProjectEntity(project))
 }
 
 func (h *ProjectTaskHandler) updateProject(c *fiber.Ctx) error {
-	id, err := strconv.Atoi(c.Params("id"))
+	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return fiber.ErrBadRequest
 	}
 
-	var payload Project
+	var payload ProjectDTO
 	if err := c.BodyParser(&payload); err != nil {
 		return fiber.ErrBadRequest
 	}
@@ -126,7 +126,7 @@ func (h *ProjectTaskHandler) updateProject(c *fiber.Ctx) error {
 }
 
 func (h *ProjectTaskHandler) deleteProject(c *fiber.Ctx) error {
-	id, err := strconv.Atoi(c.Params("id"))
+	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return fiber.ErrBadRequest
 	}
@@ -158,7 +158,7 @@ func (h *ProjectTaskHandler) listTasks(c *fiber.Ctx) error {
 }
 
 func (h *ProjectTaskHandler) getTask(c *fiber.Ctx) error {
-	id, err := strconv.Atoi(c.Params("id"))
+	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return fiber.ErrBadRequest
 	}
@@ -174,7 +174,7 @@ func (h *ProjectTaskHandler) getTask(c *fiber.Ctx) error {
 }
 
 func (h *ProjectTaskHandler) createTask(c *fiber.Ctx) error {
-	var payload Task
+	var payload TaskDTO
 	if err := c.BodyParser(&payload); err != nil {
 		return fiber.ErrBadRequest
 	}
@@ -183,7 +183,7 @@ func (h *ProjectTaskHandler) createTask(c *fiber.Ctx) error {
 	}
 
 	task, err := h.service.CreateTask(db.TaskEntity{
-		ProjectID:   &payload.ProjectID,
+		ProjectID:   nullableUUIDPointer(payload.ProjectID),
 		Name:        strings.TrimSpace(payload.Name),
 		Cost:        payload.Cost,
 		TaskDate:    strings.TrimSpace(payload.Date),
@@ -196,17 +196,17 @@ func (h *ProjectTaskHandler) createTask(c *fiber.Ctx) error {
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-	c.Location("/api/tasks/" + strconv.Itoa(task.Task.ID))
+	c.Location("/api/tasks/" + task.Task.ID.String())
 	return c.Status(fiber.StatusCreated).JSON(mapTaskWithProject(task))
 }
 
 func (h *ProjectTaskHandler) updateTask(c *fiber.Ctx) error {
-	id, err := strconv.Atoi(c.Params("id"))
+	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return fiber.ErrBadRequest
 	}
 
-	var payload Task
+	var payload TaskDTO
 	if err := c.BodyParser(&payload); err != nil {
 		return fiber.ErrBadRequest
 	}
@@ -215,7 +215,7 @@ func (h *ProjectTaskHandler) updateTask(c *fiber.Ctx) error {
 	}
 
 	task, err := h.service.UpdateTask(id, db.TaskEntity{
-		ProjectID:   &payload.ProjectID,
+		ProjectID:   nullableUUIDPointer(payload.ProjectID),
 		Name:        strings.TrimSpace(payload.Name),
 		Cost:        payload.Cost,
 		TaskDate:    strings.TrimSpace(payload.Date),
@@ -235,7 +235,7 @@ func (h *ProjectTaskHandler) updateTask(c *fiber.Ctx) error {
 }
 
 func (h *ProjectTaskHandler) deleteTask(c *fiber.Ctx) error {
-	id, err := strconv.Atoi(c.Params("id"))
+	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return fiber.ErrBadRequest
 	}
@@ -250,9 +250,9 @@ func (h *ProjectTaskHandler) deleteTask(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"success": true})
 }
 
-func mapProjectEntity(project db.ProjectEntity) Project {
-	response := Project{
-		ID:   project.ID,
+func mapProjectEntity(project db.ProjectEntity) ProjectDTO {
+	response := ProjectDTO{
+		ID:   project.ID.String(),
 		Name: project.Name,
 	}
 	if project.Description != nil {
@@ -262,13 +262,13 @@ func mapProjectEntity(project db.ProjectEntity) Project {
 }
 
 func mapTaskWithProject(task TaskWithProject) TaskDetails {
-	var projectID int
+	var projectID string
 	if task.Task.ProjectID != nil {
-		projectID = *task.Task.ProjectID
+		projectID = task.Task.ProjectID.String()
 	}
 
 	response := TaskDetails{
-		ID:          task.Task.ID,
+		ID:          task.Task.ID.String(),
 		ProjectID:   projectID,
 		ProjectName: task.Project.Name,
 		Name:        task.Task.Name,
@@ -284,8 +284,8 @@ func mapTaskWithProject(task TaskWithProject) TaskDetails {
 	return response
 }
 
-func validateTaskPayload(payload Task) error {
-	if payload.ProjectID <= 0 {
+func validateTaskPayload(payload TaskDTO) error {
+	if payload.ProjectID == "" {
 		return errors.New("ProjectId required")
 	}
 	if strings.TrimSpace(payload.Name) == "" {
@@ -311,4 +311,16 @@ func nullableStringPointer(value string) *string {
 		return nil
 	}
 	return &trimmed
+}
+
+func nullableUUIDPointer(value string) *uuid.UUID {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+	parsed, err := uuid.Parse(trimmed)
+	if err != nil {
+		return nil
+	}
+	return &parsed
 }

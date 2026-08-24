@@ -1,5 +1,9 @@
 package db
 
+import (
+	"github.com/google/uuid"
+)
+
 type LocationEntity struct {
 	ID          int         `gorm:"column:id;primaryKey;autoIncrement"`
 	Title       string      `gorm:"column:title;not null"`
@@ -27,16 +31,17 @@ type LocationTagEntity struct {
 func (LocationTagEntity) TableName() string { return "location_tag" }
 
 type ProjectEntity struct {
-	ID          int     `gorm:"column:id;primaryKey;autoIncrement"`
-	Name        string  `gorm:"column:name;uniqueIndex;not null"`
-	Description *string `gorm:"column:description"`
+	// ID          int     `gorm:"column:id;primaryKey;autoIncrement"`
+	ID          uuid.UUID `gorm:"column:id;type:uuid;primaryKey;default:gen_random_uuid()"`
+	Name        string    `gorm:"column:name;uniqueIndex;not null"`
+	Description *string   `gorm:"column:description"`
 }
 
 func (ProjectEntity) TableName() string { return "projects" }
 
 type TaskEntity struct {
-	ID          int           `gorm:"column:id;primaryKey;autoIncrement"`
-	ProjectID   *int          `gorm:"column:project_id;index:IX_Tasks_ProjectId_TaskDate,priority:1"`
+	ID          uuid.UUID     `gorm:"column:id;type:uuid;primaryKey;default:gen_random_uuid()"`
+	ProjectID   *uuid.UUID    `gorm:"column:project_id;index:IX_Tasks_ProjectId_TaskDate,priority:1"`
 	Name        string        `gorm:"column:name;not null"`
 	Cost        float64       `gorm:"column:cost;not null"`
 	TaskDate    string        `gorm:"column:task_date;not null;index:IX_Tasks_ProjectId_TaskDate,priority:2"`

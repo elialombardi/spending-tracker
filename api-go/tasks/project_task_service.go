@@ -1,6 +1,8 @@
 package tasks
 
 import (
+	"github.com/google/uuid"
+
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"
 	"gorm.io/gorm"
 )
@@ -24,21 +26,21 @@ func (s *ProjectTaskService) ListProjects() ([]db.ProjectEntity, error) {
 	return projects, err
 }
 
-func (s *ProjectTaskService) GetProject(id int) (db.ProjectEntity, error) {
+func (s *ProjectTaskService) GetProject(id uuid.UUID) (db.ProjectEntity, error) {
 	var project db.ProjectEntity
 	err := s.db.First(&project, "id = ?", id).Error
 	return project, err
 }
 
 func (s *ProjectTaskService) CreateProject(payload db.ProjectEntity) (db.ProjectEntity, error) {
-	payload.ID = 0
+	payload.ID = uuid.UUID{}
 	if err := s.db.Create(&payload).Error; err != nil {
 		return db.ProjectEntity{}, err
 	}
 	return payload, nil
 }
 
-func (s *ProjectTaskService) UpdateProject(id int, payload db.ProjectEntity) (db.ProjectEntity, error) {
+func (s *ProjectTaskService) UpdateProject(id uuid.UUID, payload db.ProjectEntity) (db.ProjectEntity, error) {
 	var existing db.ProjectEntity
 	if err := s.db.First(&existing, "id = ?", id).Error; err != nil {
 		return db.ProjectEntity{}, err
@@ -51,7 +53,7 @@ func (s *ProjectTaskService) UpdateProject(id int, payload db.ProjectEntity) (db
 	return existing, nil
 }
 
-func (s *ProjectTaskService) DeleteProject(id int) (bool, error) {
+func (s *ProjectTaskService) DeleteProject(id uuid.UUID) (bool, error) {
 	result := s.db.Delete(&db.ProjectEntity{}, "id = ?", id)
 	if result.Error != nil {
 		return false, result.Error
@@ -72,7 +74,7 @@ func (s *ProjectTaskService) ListTasks() ([]TaskWithProject, error) {
 	return result, nil
 }
 
-func (s *ProjectTaskService) GetTask(id int) (TaskWithProject, error) {
+func (s *ProjectTaskService) GetTask(id uuid.UUID) (TaskWithProject, error) {
 	var task db.TaskEntity
 	if err := s.db.Preload("Project").First(&task, "id = ?", id).Error; err != nil {
 		return TaskWithProject{}, err
@@ -83,13 +85,13 @@ func (s *ProjectTaskService) GetTask(id int) (TaskWithProject, error) {
 func (s *ProjectTaskService) CreateTask(payload db.TaskEntity) (TaskWithProject, error) {
 	// Don't set ID, let GORM handle it
 	// payload.ID = 0
-	if err := s.db.Omit("ID").Create(&payload).Error; err != nil {
+	if err := s.db.Create(&payload).Error; err != nil {
 		return TaskWithProject{}, err
 	}
 	return s.GetTask(payload.ID)
 }
 
-func (s *ProjectTaskService) UpdateTask(id int, payload db.TaskEntity) (TaskWithProject, error) {
+func (s *ProjectTaskService) UpdateTask(id uuid.UUID, payload db.TaskEntity) (TaskWithProject, error) {
 	var existing db.TaskEntity
 	if err := s.db.First(&existing, "id = ?", id).Error; err != nil {
 		return TaskWithProject{}, err
@@ -106,7 +108,7 @@ func (s *ProjectTaskService) UpdateTask(id int, payload db.TaskEntity) (TaskWith
 	return s.GetTask(id)
 }
 
-func (s *ProjectTaskService) DeleteTask(id int) (bool, error) {
+func (s *ProjectTaskService) DeleteTask(id uuid.UUID) (bool, error) {
 	result := s.db.Delete(&db.TaskEntity{}, "id = ?", id)
 	if result.Error != nil {
 		return false, result.Error

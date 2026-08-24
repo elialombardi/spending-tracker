@@ -1,14 +1,14 @@
 package tasks
 
-type Project struct {
-	ID          int    `json:"id"`
+type ProjectDTO struct {
+	ID          string `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
 }
 
-type Task struct {
-	ID          int     `json:"id"`
-	ProjectID   int     `json:"projectId"`
+type TaskDTO struct {
+	ID          string  `json:"id"`
+	ProjectID   string  `json:"projectId"`
 	Name        string  `json:"name"`
 	Cost        float64 `json:"cost"`
 	Date        string  `json:"date"`
@@ -17,8 +17,8 @@ type Task struct {
 }
 
 type TaskDetails struct {
-	ID          int     `json:"id"`
-	ProjectID   int     `json:"projectId"`
+	ID          string  `json:"id"`
+	ProjectID   string  `json:"projectId"`
 	ProjectName string  `json:"projectName"`
 	Name        string  `json:"name"`
 	Cost        float64 `json:"cost"`

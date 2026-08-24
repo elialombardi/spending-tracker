@@ -81,8 +81,9 @@ func (s *ProjectTaskService) GetTask(id int) (TaskWithProject, error) {
 }
 
 func (s *ProjectTaskService) CreateTask(payload db.TaskEntity) (TaskWithProject, error) {
-	payload.ID = 0
-	if err := s.db.Create(&payload).Error; err != nil {
+	// Don't set ID, let GORM handle it
+	// payload.ID = 0
+	if err := s.db.Omit("ID").Create(&payload).Error; err != nil {
 		return TaskWithProject{}, err
 	}
 	return s.GetTask(payload.ID)

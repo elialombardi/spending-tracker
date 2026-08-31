@@ -7,6 +7,7 @@ import { tasksApi } from './domains/tasks';
 import { transactionsApi } from './domains/transactions';
 import { locationsApi } from './domains/locations';
 import { workoutsApi } from './domains/workouts';
+import { notesApi } from './domains/notes';
 
 // Aggregated client object preserving previous backward compatibility
 const api = {
@@ -17,6 +18,7 @@ const api = {
   ...transactionsApi,
   ...locationsApi,
   ...workoutsApi,
+  ...notesApi,
 };
 
 export default api;
@@ -34,4 +36,5 @@ export {
   transactionsApi,
   locationsApi,
   workoutsApi,
+  notesApi,
 };

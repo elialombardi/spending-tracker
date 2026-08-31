@@ -6,6 +6,7 @@ import (
 
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/locations"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/notes"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/reports"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/tasks"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
@@ -20,6 +21,8 @@ type AppContainer struct {
 	LocationTagHandler *locations.LocationTagHandler
 	WorkoutService     workouts.WorkoutService
 	WorkoutHandler     *workouts.WorkoutHandler
+	NotesService       notes.NotesService
+	NotesHandler       *notes.NotesHandler
 	TransactionService *reports.TransactionService
 	TransactionHandler *reports.TransactionHandler
 	UserService        user.UserService
@@ -83,6 +86,14 @@ func InitializeApp() (*AppContainer, error) {
 		wService := do.MustInvoke[workouts.WorkoutService](i)
 		return workouts.NewWorkoutHandler(wService), nil
 	})
+	do.Provide(injector, func(i do.Injector) (notes.NotesService, error) {
+		dbConn := do.MustInvoke[*gorm.DB](i)
+		return notes.NewNotesService(dbConn), nil
+	})
+	do.Provide(injector, func(i do.Injector) (*notes.NotesHandler, error) {
+		nService := do.MustInvoke[notes.NotesService](i)
+		return notes.NewNotesHandler(nService), nil
+	})
 
 	do.Provide(injector, func(i do.Injector) (*reports.TransactionService, error) {
 		dbConn := do.MustInvoke[*gorm.DB](i)
@@ -103,6 +114,8 @@ func InitializeApp() (*AppContainer, error) {
 		LocationTagHandler: do.MustInvoke[*locations.LocationTagHandler](injector),
 		WorkoutService:     do.MustInvoke[workouts.WorkoutService](injector),
 		WorkoutHandler:     do.MustInvoke[*workouts.WorkoutHandler](injector),
+		NotesService:       do.MustInvoke[notes.NotesService](injector),
+		NotesHandler:       do.MustInvoke[*notes.NotesHandler](injector),
 		TransactionService: do.MustInvoke[*reports.TransactionService](injector),
 		TransactionHandler: do.MustInvoke[*reports.TransactionHandler](injector),
 		UserService:        do.MustInvoke[user.UserService](injector),

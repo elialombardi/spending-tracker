@@ -41,6 +41,8 @@ func NewDatabaseSQLite() (*gorm.DB, error) {
 		&LocationTagEntity{},
 		&ProjectEntity{},
 		&TaskEntity{},
+		&NoteFolderEntity{},
+		&NoteEntity{},
 		&workouts.Session{},
 		&workouts.Timer{},
 		&workouts.Workout{},

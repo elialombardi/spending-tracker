@@ -44,4 +44,13 @@ export const endpoints = {
   updateUser: { method: 'PUT', path: '/api/users/:id' },
   deleteUser: { method: 'DELETE', path: '/api/users/:id' },
   login: { method: 'POST', path: '/api/auth/login' },
+
+  // Notes
+  listNotesTree: { method: 'GET', path: '/api/note-folders/tree' },
+  createNoteFolder: { method: 'POST', path: '/api/note-folders' },
+  updateNoteFolder: { method: 'PUT', path: '/api/note-folders/:id' },
+  deleteNoteFolder: { method: 'DELETE', path: '/api/note-folders/:id' },
+  createNote: { method: 'POST', path: '/api/notes' },
+  updateNote: { method: 'PUT', path: '/api/notes/:id' },
+  deleteNote: { method: 'DELETE', path: '/api/notes/:id' },
 };

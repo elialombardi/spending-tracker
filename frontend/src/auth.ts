@@ -1,18 +1,26 @@
 import { useSyncExternalStore } from 'react'
 import { API_BASE, DEV_AUTH_PASSWORD, DEV_AUTH_USERNAME, isDevelopmentEnv } from './config'
+import type { ApiError, AuthSession, UserCredentials } from './types/domain'
 
 const STORAGE_KEY = 'spending-tracker.auth-session'
-const listeners = new Set()
+const listeners = new Set<() => void>()
 const MANUAL_LOGOUT_KEY = 'spending-tracker.manual-logout'
 
-function createAuthError(message, code, status) {
-    const error = new Error(message)
+type AuthStatus = 'idle' | 'authenticating' | 'authenticated' | 'anonymous'
+type AuthState = {
+    message: string
+    session: AuthSession | null
+    status: AuthStatus
+}
+
+function createAuthError(message: string, code: ApiError['code'], status: number): ApiError {
+    const error: ApiError = new Error(message)
     error.code = code
     error.status = status
     return error
 }
 
-export function isSessionExpired(session) {
+export function isSessionExpired(session: AuthSession | null | undefined) {
     if (!session?.expires_at) {
         return true
     }
@@ -20,7 +28,7 @@ export function isSessionExpired(session) {
     return Date.parse(session.expires_at) <= Date.now()
 }
 
-function persistSession(session) {
+function persistSession(session: AuthSession | null) {
     if (typeof window === 'undefined') {
         return
     }
@@ -33,7 +41,7 @@ function persistSession(session) {
     window.sessionStorage.removeItem(STORAGE_KEY)
 }
 
-function loadStoredSession() {
+function loadStoredSession(): AuthSession | null {
     if (typeof window === 'undefined') {
         return null
     }
@@ -57,7 +65,7 @@ function loadStoredSession() {
     }
 }
 
-let authState = {
+let authState: AuthState = {
     message: '',
     session: loadStoredSession(),
     status: 'idle',
@@ -72,12 +80,12 @@ function emitChange() {
     listeners.forEach((listener) => listener())
 }
 
-function setAuthState(nextState) {
+function setAuthState(nextState: AuthState) {
     authState = nextState
     emitChange()
 }
 
-function updateAuthState(partialState) {
+function updateAuthState(partialState: Partial<AuthState>) {
     setAuthState({
         ...authState,
         ...partialState,
@@ -88,7 +96,7 @@ export function getAuthState() {
     return authState
 }
 
-export function subscribeToAuth(listener) {
+export function subscribeToAuth(listener: () => void) {
     listeners.add(listener)
     return () => {
         listeners.delete(listener)
@@ -99,11 +107,11 @@ export function useAuthSession() {
     return useSyncExternalStore(subscribeToAuth, getAuthState, getAuthState)
 }
 
-export function canWrite(session) {
+export function canWrite(session: AuthSession | null | undefined) {
     return session?.role === 'Writer' || session?.role === 'Admin'
 }
 
-export function isAdmin(session) {
+export function isAdmin(session: AuthSession | null | undefined) {
     return session?.role === 'Admin'
 }
 
@@ -115,7 +123,7 @@ export function clearAuthMessage() {
     updateAuthState({ message: '' })
 }
 
-function setAuthenticatedSession(session) {
+function setAuthenticatedSession(session: AuthSession) {
     persistSession(session)
     try { if (typeof window !== 'undefined') window.sessionStorage.removeItem(MANUAL_LOGOUT_KEY) } catch (e) { console.error('Failed to remove manual logout flag', e) }
     setAuthState({
@@ -138,7 +146,7 @@ export function logout(message = '', manual = true) {
     })
 }
 
-async function requestToken({ username, password }) {
+async function requestToken({ username, password }: UserCredentials) {
     const response = await fetch(`${API_BASE}/api/auth/login`, {
         body: JSON.stringify({ username, password }),
         headers: {
@@ -175,7 +183,7 @@ export async function login(credentials) {
     }
 }
 
-let bootstrapPromise = null
+let bootstrapPromise: Promise<AuthSession> | null = null
 
 export async function bootstrapDevelopmentSession() {
     if (!isDevelopmentEnv) {

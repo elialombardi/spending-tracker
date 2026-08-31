@@ -91,7 +91,7 @@ export default function NotesWorkspace({ canWrite }: Props) {
     void reloadTree();
   }, []);
 
-  async function reloadTree(noteToReselect?: number) {
+  async function reloadTree(noteToReselect?: number, forceFolderReset = false) {
     setIsLoading(true);
     setErrorMessage('');
     try {
@@ -99,7 +99,7 @@ export default function NotesWorkspace({ canWrite }: Props) {
       const nextTree = Array.isArray(response) ? response : [];
       setTree(nextTree);
 
-      if (!selectedFolderID && nextTree.length > 0) {
+      if ((forceFolderReset || !selectedFolderID) && nextTree.length > 0) {
         setSelectedFolderID(nextTree[0].id);
       }
       if (noteToReselect) {
@@ -180,7 +180,7 @@ export default function NotesWorkspace({ canWrite }: Props) {
       await api.deleteNoteFolder(selectedFolderID);
       startNewNote();
       setSelectedFolderID(null);
-      await reloadTree();
+      await reloadTree(undefined, true);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to delete folder.');
     } finally {

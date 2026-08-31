@@ -1,3 +1,5 @@
+import type { Location, LocationPayload, Session, Timer, Workout } from '../types/domain';
+
 export const schemas = {
   Location: {
     example: {
@@ -8,7 +10,7 @@ export const schemas = {
       lat: 40.7829,
       lng: -73.9654,
       description: 'Great for kids',
-    },
+    } as Location,
   },
   CreateLocation: {
     example: {
@@ -18,7 +20,7 @@ export const schemas = {
       lat: 40.7308,
       lng: -73.9973,
       description: 'Classic NY slice',
-    },
+    } as LocationPayload,
   },
   UpdateLocation: {
     example: {
@@ -44,7 +46,7 @@ export const schemas = {
       color: '#FF0000',
       createdAt: '2026-08-16T10:00:00Z',
       updatedAt: '2026-08-16T10:00:00Z'
-    }
+    } as Timer & { createdAt: string; updatedAt: string }
   },
   Session: {
     example: {
@@ -59,7 +61,7 @@ export const schemas = {
       ],
       createdAt: '2026-08-16T10:00:00Z',
       updatedAt: '2026-08-16T10:00:00Z'
-    }
+    } as Session & { createdAt: string; updatedAt: string }
   },
   CreateSession: {
     example: {
@@ -71,7 +73,7 @@ export const schemas = {
         { name: 'Sprint', duration: 30, color: '#FF0000' },
         { name: 'Rest', duration: 15, color: '#00FF00' }
       ]
-    }
+    } as Session
   },
   Workout: {
     example: {
@@ -82,7 +84,7 @@ export const schemas = {
       ],
       createdAt: '2026-08-16T10:00:00Z',
       updatedAt: '2026-08-16T10:00:00Z'
-    }
+    } as Workout & { createdAt: string; updatedAt: string }
   },
   CreateWorkout: {
     example: {

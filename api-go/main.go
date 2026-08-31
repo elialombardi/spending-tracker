@@ -43,6 +43,7 @@ func main() {
 	container.ProjectTaskHandler.RegisterRoutes(app, container.AuthMiddleware)
 	container.LocationTagHandler.RegisterRoutes(app, container.AuthMiddleware)
 	container.WorkoutHandler.RegisterRoutes(app, container.AuthMiddleware)
+	container.NotesHandler.RegisterRoutes(app, container.AuthMiddleware)
 	container.UserHandler.SetupRoutes(app, container.AuthMiddleware)
 
 	app.Get("/api/version", func(c *fiber.Ctx) error {

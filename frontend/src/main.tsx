@@ -2,12 +2,12 @@
 import { StrictMode, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import App from './App.jsx'
+import App from './App'
 import { BrowserRouter } from 'react-router-dom'
 
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
-import { getTheme } from './theme.js'
+import { getTheme } from './theme'
 
 // avoid fast-refresh warning for files without exports
 export { }
@@ -29,7 +29,7 @@ function AppWithTheme() {
   )
 }
 
-createRoot(document.getElementById('root')).render(
+createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppWithTheme />
   </StrictMode>,

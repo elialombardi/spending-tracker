@@ -18,6 +18,7 @@ const CognitiveTraining = lazy(() => import('./pages/CognitiveTraining'));
 const TasksPage = lazy(() => import('./pages/TasksPage'));
 const WorkoutPage = lazy(() => import('./pages/WorkoutPage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
+const NotesPage = lazy(() => import('./pages/NotesPage'));
 
 const defaultLocations = [
   {
@@ -153,6 +154,7 @@ function App({ themeName, setThemeName }) {
               <Route path="/" element={<MapPage />} />
               <Route path="/cognitive" element={<CognitiveTraining />} />
               <Route path="/workout" element={<WorkoutPage />} />
+              <Route path="/notes" element={<NotesPage canWrite={canModify} />} />
               {isAdminUser ? (
                 <>
                   <Route path="/users" element={<UsersPage />} />

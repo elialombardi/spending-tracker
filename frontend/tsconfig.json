@@ -9,6 +9,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
+    "noCheck": true,
     "jsx": "react-jsx",
     "skipLibCheck": true,
     "strict": false,

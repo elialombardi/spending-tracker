@@ -23,7 +23,7 @@ export interface Location {
   description?: string
 }
 
-export interface LocationPayload extends Omit<Location, 'id'> {}
+export type LocationPayload = Omit<Location, 'id'>
 
 export interface Timer {
   id?: number

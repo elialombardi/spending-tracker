@@ -45,6 +45,7 @@ func main() {
 	container.WorkoutHandler.RegisterRoutes(app, container.AuthMiddleware)
 	container.NotesHandler.RegisterRoutes(app, container.AuthMiddleware)
 	container.UserHandler.SetupRoutes(app, container.AuthMiddleware)
+	container.DiaryHandler.RegisterRoutes(app, container.AuthMiddleware)
 
 	app.Get("/api/version", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{

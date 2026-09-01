@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
+import DiaryPage from './pages/Diary/DiaryPage';
 import Alert from '@mui/material/Alert';
 import NavBar from './components/NavBar';
 import LoginScreen from './components/LoginScreen';
@@ -73,6 +74,7 @@ function App({ themeName, setThemeName }) {
 
     // Bootstrap development session if no session and in development
     if (!session && isDevelopmentEnv) {
+      console.log('Bootstrapping development session...');
       bootstrapDevelopmentSession().catch((error) => {
         console.warn('Development auth bootstrap failed', error);
       });
@@ -155,6 +157,7 @@ function App({ themeName, setThemeName }) {
               <Route path="/cognitive" element={<CognitiveTraining />} />
               <Route path="/workout" element={<WorkoutPage />} />
               <Route path="/notes" element={<NotesPage canWrite={canModify} />} />
+              <Route path="/diary" element={<DiaryPage />} />
               {isAdminUser ? (
                 <>
                   <Route path="/users" element={<UsersPage />} />

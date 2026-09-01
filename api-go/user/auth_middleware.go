@@ -19,23 +19,42 @@ func NewAuthMiddleware(authService AuthService) *AuthMiddleware {
 	}
 }
 
+const (
+	// Header keys
+	HeaderAuthorization = "Authorization"
+
+	// Authentication prefix
+	BearerPrefix    = "Bearer "
+	BearerPrefixLen = len(BearerPrefix) // optional, for trim without alloc
+
+	// Context local keys (used with c.Locals)
+	UserIDKey   = "user_id"
+	UsernameKey = "username"
+	RoleKey     = "role"
+
+	AdminRole  = "Admin"
+	WriterRole = "Writer"
+)
+
 // Authenticate validates the JWT token and sets user in context
 func (m *AuthMiddleware) Authenticate(c *fiber.Ctx) error {
-	authorization := c.Get("Authorization")
-	if !strings.HasPrefix(authorization, "Bearer ") {
+	// Use constant for header name
+	authorization := c.Get(HeaderAuthorization)
+	if !strings.HasPrefix(authorization, BearerPrefix) {
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
 
-	tokenString := strings.TrimPrefix(authorization, "Bearer ")
+	// Trim using the constant
+	tokenString := strings.TrimPrefix(authorization, BearerPrefix)
 	user, err := m.authService.ValidateToken(tokenString)
 	if err != nil {
 		return c.SendStatus(fiber.StatusUnauthorized)
 	}
 
-	// Store user info in context
-	c.Locals("user_id", user.ID)
-	c.Locals("username", user.Username)
-	c.Locals("role", user.Role)
+	// Store user info with constants as keys
+	c.Locals(UserIDKey, user.ID)
+	c.Locals(UsernameKey, user.Username)
+	c.Locals(RoleKey, user.Role)
 
 	return c.Next()
 }
@@ -43,7 +62,7 @@ func (m *AuthMiddleware) Authenticate(c *fiber.Ctx) error {
 // Authorize checks if the user has the required role
 func (m *AuthMiddleware) Authorize(allowedRoles ...string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		role, ok := c.Locals("role").(string)
+		role, ok := c.Locals(RoleKey).(string)
 		if !ok {
 			return c.SendStatus(fiber.StatusUnauthorized)
 		}

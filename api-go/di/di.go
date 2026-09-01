@@ -4,6 +4,7 @@ import (
 	"github.com/samber/do/v2"
 	"gorm.io/gorm"
 
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/diary"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/locations"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/notes"
@@ -28,6 +29,8 @@ type AppContainer struct {
 	UserService        user.UserService
 	UserHandler        *user.UserHandler
 	AuthMiddleware     *user.AuthMiddleware
+	DiaryService       diary.Service
+	DiaryHandler       *diary.Handler
 }
 
 // InitializeApp sets up the dependency graph using samber/do
@@ -105,6 +108,16 @@ func InitializeApp() (*AppContainer, error) {
 		return reports.NewTransactionHandler(txService), nil
 	})
 
+	do.Provide(injector, func(i do.Injector) (diary.Service, error) {
+		db := do.MustInvoke[*gorm.DB](i)
+		return diary.NewService(db), nil
+	})
+
+	do.Provide(injector, func(i do.Injector) (*diary.Handler, error) {
+		service := do.MustInvoke[diary.Service](i)
+		return diary.NewHandler(service), nil
+	})
+
 	// 2. Resolve dependencies into your AppContainer struct
 	return &AppContainer{
 		DB:                 do.MustInvoke[*gorm.DB](injector),
@@ -121,5 +134,7 @@ func InitializeApp() (*AppContainer, error) {
 		UserService:        do.MustInvoke[user.UserService](injector),
 		UserHandler:        do.MustInvoke[*user.UserHandler](injector),
 		AuthMiddleware:     do.MustInvoke[*user.AuthMiddleware](injector),
+		DiaryService:       do.MustInvoke[diary.Service](injector),
+		DiaryHandler:       do.MustInvoke[*diary.Handler](injector),
 	}, nil
 }

@@ -1,18 +1,21 @@
-import { NavLink } from 'react-router';
-import { useState } from 'react';
+import Button from '@mui/material/Button';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
-import Button from '@mui/material/Button';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'; // Add this import
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import { useState } from 'react';
+import { NavLink } from 'react-router-dom';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import { NavItem } from './types';
 
-type NavMenuProps = {
+interface NavMenuProps {
   menuText: string;
-  items: { path: string; label: string; icon: React.ElementType }[];
-};
+  items: NavItem[];
+}
 
 function NavMenu({ menuText, items }: NavMenuProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const menuOpen = Boolean(anchorEl);
+  const open = Boolean(anchorEl);
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -26,23 +29,35 @@ function NavMenu({ menuText, items }: NavMenuProps) {
     <>
       <Button
         onClick={handleClick}
-        endIcon={<KeyboardArrowDownIcon />} // Add dropdown icon at the end
+        endIcon={<ArrowDropDownIcon />}
+        size="small"
         sx={{
-          color: 'inherit',
           textTransform: 'none',
           fontWeight: 500,
+          fontSize: '0.85rem',
+          px: 2,
+          py: 0.6,
+          borderRadius: 2,
+          color: 'text.primary',
+          '&:hover': {
+            bgcolor: 'action.hover',
+          },
         }}
       >
         {menuText}
       </Button>
-
       <Menu
         anchorEl={anchorEl}
-        open={menuOpen}
+        open={open}
         onClose={handleClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'left' }}
-        sx={{ mt: 1 }}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'left',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
       >
         {items.map((item) => (
           <MenuItem
@@ -50,19 +65,12 @@ function NavMenu({ menuText, items }: NavMenuProps) {
             component={NavLink}
             to={item.path}
             onClick={handleClose}
-            selected={window.location.pathname === item.path}
-            sx={{
-              gap: 1.5,
-              minWidth: 180,
-              '&.Mui-selected': {
-                bgcolor: 'primary.main',
-                color: 'primary.contrastText',
-                '&:hover': { bgcolor: 'primary.dark' },
-              },
-            }}
+            sx={{ minWidth: 200 }}
           >
-            <item.icon fontSize="small" />
-            {item.label}
+            <ListItemIcon>
+              <item.icon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>{item.label}</ListItemText>
           </MenuItem>
         ))}
       </Menu>

@@ -40,6 +40,7 @@ func (h *ProjectTaskHandler) RegisterRoutes(app *fiber.App, authMiddleware *user
 		taskRoutes.Post("/", h.createTask)
 		taskRoutes.Put("/:id", h.updateTask)
 		taskRoutes.Delete("/:id", h.deleteTask)
+		taskRoutes.Post("/assign-project", h.assignProjectToTasks)
 	}
 }
 
@@ -245,6 +246,38 @@ func (h *ProjectTaskHandler) deleteTask(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	if !deleted {
+		return c.SendStatus(fiber.StatusNotFound)
+	}
+	return c.JSON(fiber.Map{"success": true})
+}
+
+func (h *ProjectTaskHandler) assignProjectToTasks(c *fiber.Ctx) error {
+	var payload AssignProjectToTasksDTO
+	if err := c.BodyParser(&payload); err != nil {
+		return fiber.ErrBadRequest
+	}
+	projectID := uuid.UUID{}
+	if payload.ProjectID != "" {
+		var err error
+		projectID, err = uuid.Parse(payload.ProjectID)
+		if err != nil {
+			return fiber.ErrBadRequest
+		}
+	}
+	taskIDs := make([]uuid.UUID, 0, len(payload.TaskIDs))
+	for _, taskIDStr := range payload.TaskIDs {
+		taskID, err := uuid.Parse(taskIDStr)
+		if err != nil {
+			return fiber.ErrBadRequest
+		}
+		taskIDs = append(taskIDs, taskID)
+	}
+
+	updated, err := h.service.AssignProjectToTasks(projectID, taskIDs)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
+	if !updated {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
 	return c.JSON(fiber.Map{"success": true})

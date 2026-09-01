@@ -115,3 +115,11 @@ func (s *ProjectTaskService) DeleteTask(id uuid.UUID) (bool, error) {
 	}
 	return result.RowsAffected > 0, nil
 }
+
+func (s *ProjectTaskService) AssignProjectToTasks(projectId uuid.UUID, taskIds []uuid.UUID) (bool, error) {
+	result := s.db.Model(&db.TaskEntity{}).Where("id IN ?", taskIds).Update("project_id", projectId)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
+}

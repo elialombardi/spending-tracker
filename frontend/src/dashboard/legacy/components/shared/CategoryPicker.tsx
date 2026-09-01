@@ -57,12 +57,24 @@ export default function CategoryPicker({ categories = [], disabled, name, placeh
                     )
                 }}
                 renderOption={(props, option) => {
-                    const { item, ...liProps } = props || {}
+                    // Extract only DOM-safe props, explicitly remove internal MUI props
+                    const { key, className, style, onClick, onMouseEnter, onMouseLeave, ...rest } = props || {}
+
+                    // Ensure we don't spread internal props onto the <li>
+                    const safeProps = {
+                        className: `category-picker-option ${className || ''}`,
+                        style,
+                        onClick,
+                        onMouseEnter,
+                        onMouseLeave,
+                        // Add any other safe DOM attributes you need
+                    }
+
                     const cat = categories.find((c) => c.name === option)
                     const meta = cat ? buildCategoryMeta(cat) : ''
 
                     return (
-                        <li {...liProps} key={option} className="category-picker-option">
+                        <li key={key || option} {...safeProps}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                                 <span className="category-picker-option-copy">
                                     <span className="category-picker-option-title">{option}</span>

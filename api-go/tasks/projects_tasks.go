@@ -26,3 +26,8 @@ type TaskDetails struct {
 	SentOn      string  `json:"sentOn,omitempty"`
 	Description string  `json:"description,omitempty"`
 }
+
+type AssignProjectToTasksDTO struct {
+	ProjectID string   `json:"projectId"`
+	TaskIDs   []string `json:"taskIds"`
+}

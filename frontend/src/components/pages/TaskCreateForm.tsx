@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -15,28 +15,33 @@ function getTodayValue() {
     return new Date().toISOString().slice(0, 10);
 }
 
-export default function TaskCreateForm({ isBusy = false, projects = [], onCreate, initialTask = null, onSave }) {
+const getInitialFormState = (task = null) => ({
+    projectId: task ? String(task.projectId || '') : '',
+    name: task ? task.name || '' : '',
+    cost: task && task.cost != null ? String(task.cost) : '',
+    date: task ? task.date || getTodayValue() : getTodayValue(),
+    sentOn: task ? task.sentOn || '' : '',
+    description: task ? task.description || '' : '',
+});
+
+// This component handles the form logic without useEffect
+function TaskCreateFormContent({
+    isBusy = false,
+    projects = [],
+    onCreate,
+    initialTask = null,
+    onSave,
+    onSuccess // optional callback after successful submit
+}) {
     const projectOptions = useMemo(() => [...projects].sort((left, right) => left.name.localeCompare(right.name)), [projects]);
-    const [projectId, setProjectId] = useState('');
-    const [name, setName] = useState('');
-    const [cost, setCost] = useState('');
-    const [date, setDate] = useState(getTodayValue());
-    const [sentOn, setSentOn] = useState('');
-    const [description, setDescription] = useState('');
+    const [formState, setFormState] = useState(() => getInitialFormState(initialTask));
     const [errorMessage, setErrorMessage] = useState('');
 
-    // when editing an existing task, populate the form
-    useEffect(() => {
-        if (initialTask) {
-            setProjectId(String(initialTask.projectId || ''));
-            setName(initialTask.name || '');
-            setCost(initialTask.cost != null ? String(initialTask.cost) : '');
-            setDate(initialTask.date || getTodayValue());
-            setSentOn(initialTask.sentOn || '');
-            setDescription(initialTask.description || '');
-            setErrorMessage('');
-        }
-    }, [initialTask]);
+    const { projectId, name, cost, date, sentOn, description } = formState;
+
+    const updateField = (field) => (value) => {
+        setFormState(prev => ({ ...prev, [field]: value }));
+    };
 
     async function handleSubmit(event) {
         event.preventDefault();
@@ -73,11 +78,9 @@ export default function TaskCreateForm({ isBusy = false, projects = [], onCreate
             } else {
                 await onCreate?.(payload);
             }
-            setName('');
-            setCost('');
-            setDate(getTodayValue());
-            setSentOn('');
-            setDescription('');
+            // Reset form to empty state after successful submission
+            setFormState(getInitialFormState(null));
+            onSuccess?.(); // Notify parent if needed
         } catch (error) {
             setErrorMessage(error instanceof Error ? error.message : 'Failed to create the task.');
         }
@@ -113,7 +116,7 @@ export default function TaskCreateForm({ isBusy = false, projects = [], onCreate
                         select
                         label="Project"
                         value={projectId}
-                        onChange={(event) => setProjectId(event.target.value)}
+                        onChange={(event) => updateField('projectId')(event.target.value)}
                         disabled={isBusy || projectOptions.length === 0}
                         helperText={projectOptions.length === 0 ? 'Create a project with the form above first.' : 'Select the owning project.'}
                     >
@@ -129,7 +132,7 @@ export default function TaskCreateForm({ isBusy = false, projects = [], onCreate
                         fullWidth
                         label="Task name"
                         value={name}
-                        onChange={(event) => setName(event.target.value)}
+                        onChange={(event) => updateField('name')(event.target.value)}
                         disabled={isBusy}
                     />
                 </Stack>
@@ -141,26 +144,34 @@ export default function TaskCreateForm({ isBusy = false, projects = [], onCreate
                         label="Cost"
                         type="number"
                         value={cost}
-                        onChange={(event) => setCost(event.target.value)}
+                        onChange={(event) => updateField('cost')(event.target.value)}
                         disabled={isBusy}
-                        inputProps={{ min: 0, step: '0.01' }}
                     />
 
                     <LocalizationProvider dateAdapter={AdapterDateFns}>
                         <DatePicker
                             label="Date"
                             value={date ? new Date(date) : null}
-                            onChange={(newValue) => setDate(newValue ? newValue.toISOString().slice(0, 10) : '')}
+                            onChange={(newValue) => updateField('date')(newValue ? newValue.toISOString().slice(0, 10) : '')}
                             disabled={isBusy}
-                            renderInput={(params) => <TextField {...params} required fullWidth />}
+                            slotProps={{
+                                textField: {
+                                    required: true,
+                                    fullWidth: true,
+                                }
+                            }}
                         />
 
                         <DatePicker
                             label="Sent on"
                             value={sentOn ? new Date(sentOn) : null}
-                            onChange={(newValue) => setSentOn(newValue ? newValue.toISOString().slice(0, 10) : '')}
+                            onChange={(newValue) => updateField('sentOn')(newValue ? newValue.toISOString().slice(0, 10) : '')}
                             disabled={isBusy}
-                            renderInput={(params) => <TextField {...params} fullWidth />}
+                            slotProps={{
+                                textField: {
+                                    fullWidth: true,
+                                }
+                            }}
                         />
                     </LocalizationProvider>
                 </Stack>
@@ -171,11 +182,11 @@ export default function TaskCreateForm({ isBusy = false, projects = [], onCreate
                     multiline
                     minRows={2}
                     value={description}
-                    onChange={(event) => setDescription(event.target.value)}
+                    onChange={(event) => updateField('description')(event.target.value)}
                     disabled={isBusy}
                 />
 
-                <Stack alignItems={{ xs: 'stretch', md: 'center' }} direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={2}>
+                <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
                     <Typography color="text.secondary" variant="body2">
                         Leave sentOn empty to keep the task in the pending workflow.
                     </Typography>
@@ -186,4 +197,13 @@ export default function TaskCreateForm({ isBusy = false, projects = [], onCreate
             </Stack>
         </Paper>
     );
+}
+
+// Main export - uses key to reset the form when initialTask changes
+export default function TaskCreateForm(props) {
+    // Use a key that changes when initialTask changes
+    // This forces React to unmount and remount the form with new initial values
+    const key = props.initialTask ? `task-${props.initialTask.id}` : 'new-task';
+
+    return <TaskCreateFormContent key={key} {...props} />;
 }

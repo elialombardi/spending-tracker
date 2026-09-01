@@ -4,6 +4,7 @@ export const endpoints = {
   createTask: { method: "POST", path: "/api/tasks" },
   listProjects: { method: "GET", path: "/api/projects" },
   createProject: { method: "POST", path: "/api/projects" },
+  assignProjectToTasks: { method: "POST", path: "/api/tasks/assign-project" },
 
   // Transactions
   sendTransactions: { method: "POST", path: "/api/transactions/send" },
@@ -55,7 +56,7 @@ export const endpoints = {
   deleteNote: { method: "DELETE", path: "/api/notes/:id" },
 
   diary: {
-    entries: '/api/diary/entries',
+    entries: "/api/diary/entries",
     entry: (date: string) => `/api/diary/entries/${date}`,
   },
 };

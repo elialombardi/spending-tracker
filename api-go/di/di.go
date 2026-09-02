@@ -4,6 +4,7 @@ import (
 	"github.com/samber/do/v2"
 	"gorm.io/gorm"
 
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/boxing_events"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/locations"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/reports"
@@ -25,6 +26,8 @@ type AppContainer struct {
 	UserService        user.UserService
 	UserHandler        *user.UserHandler
 	AuthMiddleware     *user.AuthMiddleware
+	BoxingEventService boxing_events.Service
+	BoxingEventHandler *boxing_events.Handler
 }
 
 // InitializeApp sets up the dependency graph using samber/do
@@ -94,6 +97,15 @@ func InitializeApp() (*AppContainer, error) {
 		return reports.NewTransactionHandler(txService), nil
 	})
 
+	do.Provide(injector, func(i do.Injector) (boxing_events.Service, error) {
+		dbConn := do.MustInvoke[*gorm.DB](i)
+		return boxing_events.NewService(dbConn), nil
+	})
+	do.Provide(injector, func(i do.Injector) (*boxing_events.Handler, error) {
+		beService := do.MustInvoke[boxing_events.Service](i)
+		return boxing_events.NewHandler(beService), nil
+	})
+
 	// 2. Resolve dependencies into your AppContainer struct
 	return &AppContainer{
 		DB:                 do.MustInvoke[*gorm.DB](injector),
@@ -105,6 +117,8 @@ func InitializeApp() (*AppContainer, error) {
 		WorkoutHandler:     do.MustInvoke[*workouts.WorkoutHandler](injector),
 		TransactionService: do.MustInvoke[*reports.TransactionService](injector),
 		TransactionHandler: do.MustInvoke[*reports.TransactionHandler](injector),
+		BoxingEventService: do.MustInvoke[boxing_events.Service](injector),
+		BoxingEventHandler: do.MustInvoke[*boxing_events.Handler](injector),
 		UserService:        do.MustInvoke[user.UserService](injector),
 		UserHandler:        do.MustInvoke[*user.UserHandler](injector),
 		AuthMiddleware:     do.MustInvoke[*user.AuthMiddleware](injector),

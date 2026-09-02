@@ -34,6 +34,7 @@ type AppContainer struct {
 	DiaryHandler       *diary.Handler
 	BoxingEventService boxing_events.Service
 	BoxingEventHandler *boxing_events.Handler
+	PinnacleClient     *boxing_events.PinnacleClient
 }
 
 // InitializeApp sets up the dependency graph using samber/do
@@ -113,7 +114,8 @@ func InitializeApp() (*AppContainer, error) {
 
 	do.Provide(injector, func(i do.Injector) (boxing_events.Service, error) {
 		dbConn := do.MustInvoke[*gorm.DB](i)
-		return boxing_events.NewService(dbConn), nil
+		pinnacleClient := do.MustInvoke[*boxing_events.PinnacleClient](i)
+		return boxing_events.NewService(dbConn, pinnacleClient), nil
 	})
 	do.Provide(injector, func(i do.Injector) (*boxing_events.Handler, error) {
 		beService := do.MustInvoke[boxing_events.Service](i)
@@ -128,6 +130,10 @@ func InitializeApp() (*AppContainer, error) {
 	do.Provide(injector, func(i do.Injector) (*diary.Handler, error) {
 		service := do.MustInvoke[diary.Service](i)
 		return diary.NewHandler(service), nil
+	})
+	do.Provide(injector, func(i do.Injector) (*boxing_events.PinnacleClient, error) {
+
+		return boxing_events.NewPinnacleClient(), nil
 	})
 
 	// 2. Resolve dependencies into your AppContainer struct

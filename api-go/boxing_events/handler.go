@@ -6,7 +6,6 @@ import (
 
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 type Handler struct {
@@ -18,25 +17,31 @@ func NewHandler(service Service) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(app fiber.Router, authMiddleware *user.AuthMiddleware) {
-	group := app.Group("/boxing-events", authMiddleware.Authenticate)
+	group := app.Group("/api/boxing-events", authMiddleware.Authenticate)
 	group.Get("/", h.List)
 	group.Post("/", h.Create)
 	group.Get("/:id", h.Get)
 	group.Put("/:id", h.Update)
 	group.Delete("/:id", h.Delete)
 	group.Get("/export", h.Export)
+	group.Post("/sync", h.Sync)
 }
 
 // Helper to get user ID from context (JWT)
-func getUserID(c *fiber.Ctx) uint {
-	user := c.Locals("user").(*jwt.Token)
-	claims := user.Claims.(jwt.MapClaims)
-	// adjust based on your JWT claim key
-	return uint(claims["sub"].(float64))
+func (h *Handler) getUserID(c *fiber.Ctx) (uint, error) {
+	userID, ok := c.Locals(user.UserIDKey).(uint)
+	if !ok {
+		return 0, fiber.ErrUnauthorized
+	}
+	return userID, nil
 }
 
 func (h *Handler) List(c *fiber.Ctx) error {
-	userID := getUserID(c)
+	userID, err := h.getUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
 	filter := Filter{
 		Title:    c.Query("title"),
 		Location: c.Query("location"),
@@ -68,7 +73,10 @@ func (h *Handler) List(c *fiber.Ctx) error {
 }
 
 func (h *Handler) Get(c *fiber.Ctx) error {
-	userID := getUserID(c)
+	userID, err := h.getUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid ID"})
@@ -84,7 +92,10 @@ func (h *Handler) Get(c *fiber.Ctx) error {
 }
 
 func (h *Handler) Create(c *fiber.Ctx) error {
-	userID := getUserID(c)
+	userID, err := h.getUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
 	var req CreateEventRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request"})
@@ -97,7 +108,10 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 }
 
 func (h *Handler) Update(c *fiber.Ctx) error {
-	userID := getUserID(c)
+	userID, err := h.getUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid ID"})
@@ -117,7 +131,10 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 }
 
 func (h *Handler) Delete(c *fiber.Ctx) error {
-	userID := getUserID(c)
+	userID, err := h.getUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid ID"})
@@ -135,7 +152,10 @@ func (h *Handler) Delete(c *fiber.Ctx) error {
 // Delete: service.Delete.
 
 func (h *Handler) Export(c *fiber.Ctx) error {
-	userID := getUserID(c)
+	userID, err := h.getUserID(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
 	filter := Filter{
 		Title:    c.Query("title"),
 		Location: c.Query("location"),
@@ -161,4 +181,20 @@ func (h *Handler) Export(c *fiber.Ctx) error {
 		c.Set("Content-Type", "text/csv")
 	}
 	return c.Send(data)
+}
+func (h *Handler) Sync(c *fiber.Ctx) error {
+	// Authorization check: only admins can sync (optional)
+	// user := c.Locals("user")
+	// if !isAdmin(user) { return c.Status(403).JSON(...) }
+
+	count, err := h.service.SyncFromPinnacle(c.Context())
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+	return c.JSON(fiber.Map{
+		"synced":  count,
+		"message": "Sync completed",
+	})
 }

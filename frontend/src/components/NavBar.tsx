@@ -8,11 +8,12 @@ import DesktopNav from './NavBar/DesktopNav';
 import MobileNav from './NavBar/MobileNav';
 import UserMenu from './NavBar/UserMenu';
 import { NAV_SECTIONS } from './NavBar/navigationConfig';
+import { AuthSession } from '../types/domain';
 
 interface NavBarProps {
     canWrite: boolean;
     onLogout: () => void;
-    session: UserSession | null;
+    session: AuthSession | null;
     themeName: string;
     setThemeName: (theme: string) => void;
 }

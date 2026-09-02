@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/boxing_events"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/diary"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/reports"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
@@ -45,6 +46,7 @@ func NewDatabase() (*gorm.DB, error) {
 		&workouts.Workout{},
 		&workouts.WorkoutSession{},
 		&diary.DiaryEntry{},
+		&boxing_events.BoxingEvent{},
 	); err != nil {
 		return nil, err
 	}

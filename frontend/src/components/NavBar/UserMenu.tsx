@@ -31,7 +31,6 @@ function UserMenu({
   themeName,
   setThemeName
 }: UserMenuProps) {
-  console.log(session, 'session in UserMenu');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
   const navigate = useNavigate();
@@ -188,11 +187,7 @@ function UserMenu({
                 {session.role}
               </Typography>
             )}
-            {session?.email && (
-              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: 'block' }}>
-                {session.email}
-              </Typography>
-            )}
+
           </Box>
         </Box>
 

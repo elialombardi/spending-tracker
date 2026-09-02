@@ -20,6 +20,7 @@ const TasksPage = lazy(() => import('./pages/TasksPage'));
 const WorkoutPage = lazy(() => import('./pages/WorkoutPage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
 const NotesPage = lazy(() => import('./pages/NotesPage'));
+const BoxingEventsPage = lazy(() => import('./pages/BoxingEvents/BoxingEventsPage'));
 
 const defaultLocations = [
   {
@@ -74,7 +75,6 @@ function App({ themeName, setThemeName }) {
 
     // Bootstrap development session if no session and in development
     if (!session && isDevelopmentEnv) {
-      console.log('Bootstrapping development session...');
       bootstrapDevelopmentSession().catch((error) => {
         console.warn('Development auth bootstrap failed', error);
       });
@@ -158,6 +158,7 @@ function App({ themeName, setThemeName }) {
               <Route path="/workout" element={<WorkoutPage />} />
               <Route path="/notes" element={<NotesPage canWrite={canModify} />} />
               <Route path="/diary" element={<DiaryPage />} />
+              <Route path="/boxing-events" element={<BoxingEventsPage />} />
               {isAdminUser ? (
                 <>
                   <Route path="/users" element={<UsersPage />} />

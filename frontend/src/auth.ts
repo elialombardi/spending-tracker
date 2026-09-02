@@ -225,7 +225,7 @@ export async function bootstrapDevelopmentSession() {
     return bootstrapPromise
 }
 
-export async function ensureAuthenticated() {
+export async function ensureAuthenticated(): Promise<AuthSession> {
     if (authState.session && !isSessionExpired(authState.session)) {
         return authState.session
     }

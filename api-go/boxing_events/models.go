@@ -14,6 +14,9 @@ type BoxingEvent struct {
 	EndDate     *time.Time `json:"end_date,omitempty"`
 	Location    string     `json:"location"`
 	Description string     `json:"description"`
+	// New fields for imported events
+	ExternalID string `gorm:"uniqueIndex" json:"-"`      // Pinnacle event_id
+	Source     string `gorm:"default:'manual'" json:"-"` // "pinnacle" or "manual"
 }
 
 // DTOs
@@ -40,6 +43,7 @@ type EventResponse struct {
 	EndDate     *time.Time `json:"end_date"`
 	Location    string     `json:"location"`
 	Description string     `json:"description"`
+	ExternalID  string     `json:"external_id"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
 }

@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App'
 import { BrowserRouter } from 'react-router-dom'
+import SnackbarProvider from './components/SnackbarProvider'
 
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
@@ -22,7 +23,9 @@ function AppWithTheme() {
       <CssBaseline />
       <div className="app-root">
         <BrowserRouter>
-          <App themeName={themeName} setThemeName={setThemeName} />
+          <SnackbarProvider>
+            <App themeName={themeName} setThemeName={setThemeName} />
+          </SnackbarProvider>
         </BrowserRouter>
       </div>
     </ThemeProvider>

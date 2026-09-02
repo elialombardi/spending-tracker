@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:latest
+    container_name: postgres-spendingtracker
+    environment:
+      POSTGRES_DB: spendingtracker
+      POSTGRES_USER: spendingtracker_user
+      POSTGRES_PASSWORD: SecurePass123!
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+volumes:
+  postgres_data:

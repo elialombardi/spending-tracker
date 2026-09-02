@@ -6,8 +6,9 @@ import {
   CalendarToday,
   Assignment,
   Euro,
+  SportsMma,
 } from "@mui/icons-material";
-import { NavSection } from "./types";
+import { NavSection } from "../../types/navigation";
 
 export const NAV_SECTIONS: NavSection[] = [
   {
@@ -36,6 +37,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { path: "/diary", label: "Diary", icon: CalendarToday },
       { path: "/notes", label: "Notes", icon: Note },
+      { path: "/boxing-events", label: "Boxing Events", icon: SportsMma },
     ],
     roles: ["Admin"],
   },

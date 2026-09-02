@@ -1,7 +1,7 @@
 export type UserRole = "Admin" | "Writer" | "Reader";
 
 export interface AuthSession {
-  token: string;
+  access_token: string;
   role: UserRole;
   expires_at: string;
   username?: string;
@@ -9,11 +9,11 @@ export interface AuthSession {
 
 export interface ApiError extends Error {
   code?:
-    | "AUTH_REQUIRED"
-    | "FORBIDDEN"
-    | "API_ERROR"
-    | "AUTH_INVALID"
-    | "AUTH_LOGIN_FAILED";
+  | "AUTH_REQUIRED"
+  | "FORBIDDEN"
+  | "API_ERROR"
+  | "AUTH_INVALID"
+  | "AUTH_LOGIN_FAILED";
   status?: number;
   body?: string;
 }

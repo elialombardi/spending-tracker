@@ -59,4 +59,6 @@ export const endpoints = {
     entries: "/api/diary/entries",
     entry: (date: string) => `/api/diary/entries/${date}`,
   },
+
+  boxingEvents: '/api/boxing-events',
 };

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"sync"
 	"time"
 
 	"gorm.io/gorm"
@@ -16,6 +18,8 @@ type Service interface {
 	Update(ctx context.Context, id, userID uint, req UpdateEventRequest) (*EventResponse, error)
 	Delete(ctx context.Context, id, userID uint) error
 	Export(ctx context.Context, userID uint, filter Filter, format string) ([]byte, string, error) // returns data, filename, error
+	SyncFromPinnacle(ctx context.Context) (int, error)
+	StartBackgroundSync(stopCh <-chan struct{})
 }
 
 type Filter struct {
@@ -29,15 +33,16 @@ type Filter struct {
 }
 
 type service struct {
-	db *gorm.DB
+	db             *gorm.DB
+	pinnacleClient *PinnacleClient
 }
 
-func NewService(db *gorm.DB) Service {
-	return &service{db: db}
+func NewService(db *gorm.DB, pinnacleClient *PinnacleClient) Service {
+	return &service{db: db, pinnacleClient: pinnacleClient}
 }
 
 func (s *service) List(ctx context.Context, userID uint, filter Filter) ([]EventResponse, int64, error) {
-	query := s.db.WithContext(ctx).Model(&BoxingEvent{}).Where("user_id = ?", userID)
+	query := s.db.WithContext(ctx).Model(&BoxingEvent{})
 
 	if filter.Title != "" {
 		query = query.Where("title LIKE ?", "%"+filter.Title+"%")
@@ -189,6 +194,105 @@ func (s *service) Export(ctx context.Context, userID uint, filter Filter, format
 		return nil, "", err
 	}
 	return content, "boxing_events.csv", nil
+}
+
+func (s *service) SyncFromPinnacle(ctx context.Context) (int, error) {
+	events, err := s.pinnacleClient.FetchPrematchBoxingEvents()
+	if err != nil {
+		return 0, err
+	}
+
+	var created, updated int
+	for _, pe := range events {
+		startDate, err := time.Parse(time.RFC3339, pe.Starts)
+		if err != nil {
+			// log and skip
+			continue
+		}
+
+		// Build our model
+		event := BoxingEvent{
+			Title:       fmt.Sprintf("%s vs %s", pe.Home, pe.Away),
+			StartDate:   startDate,
+			EndDate:     nil, // Pinnacle doesn't provide end date
+			Location:    pe.LeagueName,
+			Description: fmt.Sprintf("League: %s", pe.LeagueName),
+			ExternalID:  fmt.Sprintf("%d", pe.EventID),
+			Source:      "pinnacle",
+			UserID:      0, // system user (shared)
+		}
+
+		// Upsert by ExternalID
+		var existing BoxingEvent
+		result := s.db.WithContext(ctx).
+			Where("external_id = ? AND source = ?", event.ExternalID, "pinnacle").
+			First(&existing)
+
+		if result.Error == nil {
+			// Update existing
+			existing.Title = event.Title
+			existing.StartDate = event.StartDate
+			existing.Location = event.Location
+			existing.Description = event.Description
+			// (we keep EndDate as nil)
+			if err := s.db.WithContext(ctx).Save(&existing).Error; err != nil {
+				return 0, err
+			}
+			updated++
+		} else if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			// Create new
+			if err := s.db.WithContext(ctx).Create(&event).Error; err != nil {
+				return 0, err
+			}
+			created++
+		} else {
+			return 0, result.Error
+		}
+	}
+
+	return created + updated, nil
+}
+
+func (s *service) StartBackgroundSync(stopCh <-chan struct{}) {
+	go func() {
+		// Run immediately on start
+		runSync(s)
+
+		ticker := time.NewTicker(6 * time.Hour)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				runSync(s)
+			case <-stopCh:
+				log.Println("Background sync stopped")
+				return
+			}
+		}
+	}()
+}
+
+// Separate function for the actual sync with logging and locking
+var syncMutex sync.Mutex
+
+func runSync(s *service) {
+	// Prevent overlapping runs (if sync takes longer than interval)
+	if !syncMutex.TryLock() {
+		log.Println("Sync already in progress, skipping")
+		return
+	}
+	defer syncMutex.Unlock()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	count, err := s.SyncFromPinnacle(ctx)
+	if err != nil {
+		log.Printf("Background sync failed: %v", err)
+	} else {
+		log.Printf("Background sync completed: %d events processed", count)
+	}
 }
 
 func toResponse(e BoxingEvent) EventResponse {

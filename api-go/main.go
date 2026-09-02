@@ -46,6 +46,11 @@ func main() {
 	container.NotesHandler.RegisterRoutes(app, container.AuthMiddleware)
 	container.UserHandler.SetupRoutes(app, container.AuthMiddleware)
 	container.DiaryHandler.RegisterRoutes(app, container.AuthMiddleware)
+	container.BoxingEventHandler.RegisterRoutes(app, container.AuthMiddleware)
+
+	container.UserService.SeedDefaultUsers()
+
+	container.BoxingEventService.StartBackgroundSync(make(chan struct{}))
 
 	app.Get("/api/version", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{

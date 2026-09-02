@@ -5,6 +5,7 @@ import type { ApiError } from '../types/domain';
 type ApiFetchOptions = RequestInit & {
   allowAnonymous?: boolean
   fileName?: string
+  params?: Record<string, any>
 }
 
 export function isAbsoluteUrl(path: string) {
@@ -34,12 +35,16 @@ export async function readError(response: Response) {
 }
 
 export async function fetchApiResponse(path: string, opts: ApiFetchOptions = {}) {
-  const url = isAbsoluteUrl(path) ? path : (API_BASE || '') + path;
+  let url = isAbsoluteUrl(path) ? path : (API_BASE || '') + path;
   const headers = new Headers(opts.headers || {});
 
   if (!opts.allowAnonymous) {
     const session = await ensureAuthenticated();
     headers.set('Authorization', `Bearer ${session.access_token}`);
+  }
+
+  if (opts.params) {
+    url += (url.includes('?') ? '&' : '?') + new URLSearchParams(opts.params).toString();
   }
 
   const response = await fetch(url, { ...opts, headers });

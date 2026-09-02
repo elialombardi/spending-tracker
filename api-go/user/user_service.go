@@ -272,15 +272,6 @@ func (s *userService) SeedDefaultUsers() error {
 }
 
 // Helper functions
-func (s *userService) isValidRole(role string) bool {
-	validRoles := map[string]bool{
-		"Admin":  true,
-		"Writer": true,
-		"Reader": true,
-	}
-	return validRoles[role]
-}
-
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value

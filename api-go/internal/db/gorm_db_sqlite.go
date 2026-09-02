@@ -3,6 +3,7 @@ package db
 import (
 	"log"
 
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/diary"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/reports"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/workouts"
 	"gorm.io/driver/sqlite"
@@ -41,10 +42,13 @@ func NewDatabaseSQLite() (*gorm.DB, error) {
 		&LocationTagEntity{},
 		&ProjectEntity{},
 		&TaskEntity{},
+		&NoteFolderEntity{},
+		&NoteEntity{},
 		&workouts.Session{},
 		&workouts.Timer{},
 		&workouts.Workout{},
 		&workouts.WorkoutSession{},
+		&diary.DiaryEntry{},
 	); err != nil {
 		return nil, err
 	}

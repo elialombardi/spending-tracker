@@ -1,6 +1,8 @@
 package db
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 )
 
@@ -51,6 +53,27 @@ type TaskEntity struct {
 }
 
 func (TaskEntity) TableName() string { return "tasks" }
+
+type NoteFolderEntity struct {
+	ID       uint              `gorm:"column:id;primaryKey;autoIncrement"`
+	Name     string            `gorm:"column:name;not null"`
+	ParentID *uint             `gorm:"column:parent_id;index"`
+	Parent   *NoteFolderEntity `gorm:"foreignKey:ParentID;references:ID;constraint:OnDelete:CASCADE"`
+}
+
+func (NoteFolderEntity) TableName() string { return "note_folders" }
+
+type NoteEntity struct {
+	ID        uint      `gorm:"column:id;primaryKey;autoIncrement"`
+	FolderID  uint      `gorm:"column:folder_id;not null;index"`
+	Title     string    `gorm:"column:title;not null"`
+	Content   string    `gorm:"column:content;type:text;not null"`
+	StyleJSON string    `gorm:"column:style_json;type:text;not null;default:'{}'"`
+	CreatedAt time.Time `gorm:"column:created_at"`
+	UpdatedAt time.Time `gorm:"column:updated_at"`
+}
+
+func (NoteEntity) TableName() string { return "notes" }
 
 type CycleIncomeCategoryEntity struct {
 	ID           string `gorm:"column:id;primaryKey"`

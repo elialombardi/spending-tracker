@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/diary"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/reports"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/workouts"
@@ -37,10 +38,13 @@ func NewDatabase() (*gorm.DB, error) {
 		&LocationTagEntity{},
 		&ProjectEntity{},
 		&TaskEntity{},
+		&NoteFolderEntity{},
+		&NoteEntity{},
 		&workouts.Session{},
 		&workouts.Timer{},
 		&workouts.Workout{},
 		&workouts.WorkoutSession{},
+		&diary.DiaryEntry{},
 	); err != nil {
 		return nil, err
 	}

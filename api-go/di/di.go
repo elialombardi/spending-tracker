@@ -5,8 +5,10 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/boxing_events"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/diary"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/locations"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/notes"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/reports"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/tasks"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
@@ -21,11 +23,15 @@ type AppContainer struct {
 	LocationTagHandler *locations.LocationTagHandler
 	WorkoutService     workouts.WorkoutService
 	WorkoutHandler     *workouts.WorkoutHandler
+	NotesService       notes.NotesService
+	NotesHandler       *notes.NotesHandler
 	TransactionService *reports.TransactionService
 	TransactionHandler *reports.TransactionHandler
 	UserService        user.UserService
 	UserHandler        *user.UserHandler
 	AuthMiddleware     *user.AuthMiddleware
+	DiaryService       diary.Service
+	DiaryHandler       *diary.Handler
 	BoxingEventService boxing_events.Service
 	BoxingEventHandler *boxing_events.Handler
 }
@@ -86,6 +92,14 @@ func InitializeApp() (*AppContainer, error) {
 		wService := do.MustInvoke[workouts.WorkoutService](i)
 		return workouts.NewWorkoutHandler(wService), nil
 	})
+	do.Provide(injector, func(i do.Injector) (notes.NotesService, error) {
+		dbConn := do.MustInvoke[*gorm.DB](i)
+		return notes.NewNotesService(dbConn), nil
+	})
+	do.Provide(injector, func(i do.Injector) (*notes.NotesHandler, error) {
+		nService := do.MustInvoke[notes.NotesService](i)
+		return notes.NewNotesHandler(nService), nil
+	})
 
 	do.Provide(injector, func(i do.Injector) (*reports.TransactionService, error) {
 		dbConn := do.MustInvoke[*gorm.DB](i)
@@ -106,6 +120,16 @@ func InitializeApp() (*AppContainer, error) {
 		return boxing_events.NewHandler(beService), nil
 	})
 
+	do.Provide(injector, func(i do.Injector) (diary.Service, error) {
+		db := do.MustInvoke[*gorm.DB](i)
+		return diary.NewService(db), nil
+	})
+
+	do.Provide(injector, func(i do.Injector) (*diary.Handler, error) {
+		service := do.MustInvoke[diary.Service](i)
+		return diary.NewHandler(service), nil
+	})
+
 	// 2. Resolve dependencies into your AppContainer struct
 	return &AppContainer{
 		DB:                 do.MustInvoke[*gorm.DB](injector),
@@ -115,6 +139,8 @@ func InitializeApp() (*AppContainer, error) {
 		LocationTagHandler: do.MustInvoke[*locations.LocationTagHandler](injector),
 		WorkoutService:     do.MustInvoke[workouts.WorkoutService](injector),
 		WorkoutHandler:     do.MustInvoke[*workouts.WorkoutHandler](injector),
+		NotesService:       do.MustInvoke[notes.NotesService](injector),
+		NotesHandler:       do.MustInvoke[*notes.NotesHandler](injector),
 		TransactionService: do.MustInvoke[*reports.TransactionService](injector),
 		TransactionHandler: do.MustInvoke[*reports.TransactionHandler](injector),
 		BoxingEventService: do.MustInvoke[boxing_events.Service](injector),
@@ -122,5 +148,7 @@ func InitializeApp() (*AppContainer, error) {
 		UserService:        do.MustInvoke[user.UserService](injector),
 		UserHandler:        do.MustInvoke[*user.UserHandler](injector),
 		AuthMiddleware:     do.MustInvoke[*user.AuthMiddleware](injector),
+		DiaryService:       do.MustInvoke[diary.Service](injector),
+		DiaryHandler:       do.MustInvoke[*diary.Handler](injector),
 	}, nil
 }

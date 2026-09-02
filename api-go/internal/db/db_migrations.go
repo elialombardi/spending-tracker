@@ -97,6 +97,24 @@ func EnsureSchema(database *sql.DB) error {
             FOREIGN KEY (ProjectId) REFERENCES Projects(Id) ON DELETE RESTRICT
         );`,
 		`CREATE INDEX IF NOT EXISTS IX_Tasks_ProjectId_TaskDate ON Tasks(ProjectId, TaskDate);`,
+		`CREATE TABLE IF NOT EXISTS NoteFolders (
+            Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            Name TEXT NOT NULL,
+            ParentId INTEGER NULL,
+            FOREIGN KEY (ParentId) REFERENCES NoteFolders(Id) ON DELETE CASCADE
+        );`,
+		`CREATE INDEX IF NOT EXISTS IX_NoteFolders_ParentId ON NoteFolders(ParentId);`,
+		`CREATE TABLE IF NOT EXISTS Notes (
+            Id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            FolderId INTEGER NOT NULL,
+            Title TEXT NOT NULL,
+            Content TEXT NOT NULL,
+            StyleJson TEXT NOT NULL DEFAULT '{}',
+            CreatedAt TEXT NULL,
+            UpdatedAt TEXT NULL,
+            FOREIGN KEY (FolderId) REFERENCES NoteFolders(Id) ON DELETE CASCADE
+        );`,
+		`CREATE INDEX IF NOT EXISTS IX_Notes_FolderId ON Notes(FolderId);`,
 
 		// --- Workout Domain Schema (GORM snake_case aligned) ---
 		`CREATE TABLE IF NOT EXISTS Sessions (

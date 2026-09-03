@@ -138,8 +138,6 @@ const DiaryPage: React.FC = () => {
   return (
     <Box
       sx={{
-        p: { xs: 2, md: 4 },
-        maxWidth: 900,
         mx: 'auto',
         minHeight: '100vh',
       }}

@@ -18,13 +18,18 @@ function AppWithTheme() {
   const [themeName, setThemeName] = useState(initial)
   const theme = useMemo(() => getTheme(themeName), [themeName])
 
+  const handleSetThemeName = (name: string) => {
+    setThemeName(name)
+    localStorage.setItem('theme', name)
+  }
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <div className="app-root">
         <BrowserRouter>
           <SnackbarProvider>
-            <App themeName={themeName} setThemeName={setThemeName} />
+            <App themeName={themeName} setThemeName={handleSetThemeName} />
           </SnackbarProvider>
         </BrowserRouter>
       </div>

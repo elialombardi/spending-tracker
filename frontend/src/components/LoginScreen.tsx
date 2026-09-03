@@ -42,7 +42,7 @@ export default function LoginScreen({ errorMessage, isBusy, isDevelopment, onSub
                         <Avatar src="/logo.png" alt="Spending Tracker logo" sx={{ width: 72, height: 72 }} />
                         <Box>
                             <Typography variant="overline">Welcome to</Typography>
-                            <Typography variant="h5">Picci&#39;s</Typography>
+                            <Typography variant="h5">The Picci&#39;s</Typography>
                         </Box>
                     </Box>
 

@@ -1,5 +1,19 @@
-import React, { useRef } from 'react';
-import { Box, Paper, Typography, TextField, Button, CircularProgress, Alert } from '@mui/material';
+import React, { useRef, useState, useEffect } from 'react';
+import {
+  Box,
+  Paper,
+  Typography,
+  TextField,
+  Button,
+  CircularProgress,
+  Alert,
+  IconButton,
+  Tooltip,
+} from '@mui/material';
+import VolumeUpIcon from '@mui/icons-material/VolumeUp';
+import VolumeOffIcon from '@mui/icons-material/VolumeOff';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
 interface EntryEditorProps {
   selectedDate: Date;
@@ -10,24 +24,6 @@ interface EntryEditorProps {
   saving: boolean;
   error: string | null;
 }
-
-// Typewriter sound effect
-// const playTypewriterSound = () => {
-//   try {
-//     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-//     const oscillator = audioCtx.createOscillator();
-//     const gainNode = audioCtx.createGain();
-//     oscillator.connect(gainNode);
-//     gainNode.connect(audioCtx.destination);
-//     oscillator.frequency.value = 800 + Math.random() * 400;
-//     oscillator.type = 'sine';
-//     gainNode.gain.value = 0.03;
-//     oscillator.start();
-//     oscillator.stop(audioCtx.currentTime + 0.02);
-//   } catch (e) {
-//     // Silently fail if audio not supported
-//   }
-// };
 
 export const EntryEditor: React.FC<EntryEditorProps> = ({
   selectedDate,
@@ -40,9 +36,64 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
 }) => {
   const textFieldRef = useRef<HTMLTextAreaElement>(null);
 
+  // Load preferences from localStorage, default to true
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    const stored = localStorage.getItem('diary-sound-enabled');
+    return stored !== null ? stored === 'true' : true;
+  });
+
+  const [textVisible, setTextVisible] = useState(() => {
+    const stored = localStorage.getItem('diary-text-visible');
+    return stored !== null ? stored === 'true' : true;
+  });
+
+  // Persist preferences to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('diary-sound-enabled', String(soundEnabled));
+  }, [soundEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('diary-text-visible', String(textVisible));
+  }, [textVisible]);
+
+  // Realistic typewriter sound using white noise with a short envelope
+  const playTypewriterSound = () => {
+    if (!soundEnabled) return;
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const bufferSize = audioCtx.sampleRate * 0.02; // 20ms of noise
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * 0.15;
+      }
+
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+
+      const gainNode = audioCtx.createGain();
+      gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.03);
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 1200 + Math.random() * 600;
+      filter.Q.value = 1.5;
+
+      source.connect(filter);
+      filter.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      source.start();
+      source.stop(audioCtx.currentTime + 0.04);
+    } catch (e) {
+      // Silently fail if audio not supported
+    }
+  };
+
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onContentChange(e.target.value);
-    // playTypewriterSound();
+    playTypewriterSound();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -57,6 +108,10 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
   };
 
   const wordCount = content.trim() ? content.trim().split(/\s+/).length : 0;
+
+  const displayValue = textVisible
+    ? content
+    : content.split('').map(c => (c === '\n' ? '\n' : '•')).join('');
 
   return (
     <Paper
@@ -76,33 +131,53 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
         </Box>
       ) : (
         <>
-          <Typography
-            variant="subtitle1"
-            gutterBottom
+          <Box
             sx={{
-              fontFamily: '"Courier New", monospace',
-              fontSize: '0.9rem',
-              color: 'text.secondary',
-              letterSpacing: '0.05em',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
               borderBottom: (theme) => `1px dashed ${theme.palette.divider}`,
               pb: 1.5,
               mb: 2,
-              display: 'flex',
-              justifyContent: 'space-between',
-              '& span': {
-                color: 'text.disabled',
-                fontSize: '0.8rem',
-              }
             }}
           >
-            {selectedDate.toLocaleDateString(undefined, {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
-            <span>✎</span>
-          </Typography>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontFamily: '"Courier New", monospace',
+                fontSize: '0.9rem',
+                color: 'text.secondary',
+                letterSpacing: '0.05em',
+              }}
+            >
+              {selectedDate.toLocaleDateString(undefined, {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+              })}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 0.5 }}>
+              <Tooltip title={soundEnabled ? 'Mute typewriter sound' : 'Enable typewriter sound'}>
+                <IconButton
+                  size="small"
+                  onClick={() => setSoundEnabled(!soundEnabled)}
+                  sx={{ color: 'text.secondary' }}
+                >
+                  {soundEnabled ? <VolumeUpIcon fontSize="small" /> : <VolumeOffIcon fontSize="small" />}
+                </IconButton>
+              </Tooltip>
+              <Tooltip title={textVisible ? 'Hide text' : 'Show text'}>
+                <IconButton
+                  size="small"
+                  onClick={() => setTextVisible(!textVisible)}
+                  sx={{ color: 'text.secondary' }}
+                >
+                  {textVisible ? <VisibilityIcon fontSize="small" /> : <VisibilityOffIcon fontSize="small" />}
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
 
           <TextField
             multiline
@@ -110,10 +185,10 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
             fullWidth
             variant="outlined"
             placeholder="Write your diary entry..."
-            value={content}
+            value={displayValue}
             onChange={handleContentChange}
             onKeyDown={handleKeyDown}
-            disabled={saving}
+            disabled={saving || !textVisible}
             inputRef={textFieldRef}
             sx={{
               '& .MuiOutlinedInput-root': {
@@ -129,7 +204,7 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
                     color: 'text.disabled',
                     fontStyle: 'italic',
                     opacity: 0.7,
-                  }
+                  },
                 },
                 '& fieldset': {
                   border: 'none',
@@ -141,8 +216,8 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
                 },
                 '&.Mui-focused fieldset': {
                   borderBottom: (theme) => `2px solid ${theme.palette.primary.main}`,
-                }
-              }
+                },
+              },
             }}
           />
 

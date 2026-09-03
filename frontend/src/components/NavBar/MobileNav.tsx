@@ -7,8 +7,8 @@ import ListItemText from '@mui/material/ListItemText';
 import Divider from '@mui/material/Divider';
 import Typography from '@mui/material/Typography';
 import { NavLink } from 'react-router-dom';
-import { NavSection } from './types';
 import MobileNavMenu from './MobileNavMenu';
+import { NavSection } from '../../types/navigation';
 
 interface MobileNavProps {
   open: boolean;
@@ -32,7 +32,7 @@ function MobileNav({ open, onClose, sections, currentPath }: MobileNavProps) {
             sx={{ height: 36, width: 36, borderRadius: '50%' }}
           />
           <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.main' }}>
-            Picci's App
+            The Picci's App
           </Typography>
         </Box>
         <Divider sx={{ mb: 2 }} />

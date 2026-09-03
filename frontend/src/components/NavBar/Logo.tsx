@@ -40,7 +40,7 @@ function Logo({ onMenuClick }: LogoProps) {
           fontSize: { xs: '1rem', sm: '1.25rem' },
         }}
       >
-        Picci's
+        The Picci's
       </Typography>
     </Box>
   );

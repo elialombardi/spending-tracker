@@ -1,5 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { StrictMode, useMemo, useState } from 'react'
+import { Provider } from 'react-redux'
+import { store } from './api/store'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App'
@@ -27,11 +29,13 @@ function AppWithTheme() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <div className="app-root">
-        <BrowserRouter>
-          <SnackbarProvider>
-            <App themeName={themeName} setThemeName={handleSetThemeName} />
-          </SnackbarProvider>
-        </BrowserRouter>
+        <Provider store={store}>
+          <BrowserRouter>
+            <SnackbarProvider>
+              <App themeName={themeName} setThemeName={handleSetThemeName} />
+            </SnackbarProvider>
+          </BrowserRouter>
+        </Provider>
       </div>
     </ThemeProvider>
   )

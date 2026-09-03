@@ -2,8 +2,10 @@ package locations
 
 import (
 	"errors"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
@@ -40,6 +42,28 @@ func (h *LocationTagHandler) RegisterRoutes(app *fiber.App, authMiddleware *user
 		tagsRoutes.Delete("/:name", h.deleteTag)
 	}
 
+	geoapifyProxyRoutes := api.Group("/geoapify", authMiddleware.Authenticate)
+	geoapifyProxy := NewGeoapifyProxy(&Config{
+		GeoapifyAPIKey: os.Getenv("GEOAPIFY_API_KEY"),
+		Timeout:        30 * time.Second,
+	})
+	{
+		geoapifyProxyRoutes.Get("/v1/geocode/search", func(c *fiber.Ctx) error {
+			return geoapifyProxy.proxyRequest(c, "/v1/geocode/search")
+		})
+		geoapifyProxyRoutes.Get("/v1/geocode/reverse", func(c *fiber.Ctx) error {
+			return geoapifyProxy.proxyRequest(c, "/v1/geocode/reverse")
+		})
+		geoapifyProxyRoutes.Get("/v1/geocode/autocomplete", func(c *fiber.Ctx) error {
+			return geoapifyProxy.proxyRequest(c, "/v1/geocode/autocomplete")
+		})
+		geoapifyProxyRoutes.Get("/v2/places", func(c *fiber.Ctx) error {
+			return geoapifyProxy.proxyRequest(c, "/v2/places")
+		})
+		geoapifyProxyRoutes.Get("/v1/routing", func(c *fiber.Ctx) error {
+			return geoapifyProxy.proxyRequest(c, "/v1/routing")
+		})
+	}
 }
 
 func (h *LocationTagHandler) listLocations(c *fiber.Ctx) error {

@@ -16,11 +16,13 @@
     "@mui/icons-material": "^9.4.0",
     "@mui/material": "^9.4.0",
     "@mui/x-date-pickers": "^9.12.0",
+    "@reduxjs/toolkit": "^2.12.0",
     "date-fns": "^4.4.0",
     "leaflet": "^1.9.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-leaflet": "^5.0.0",
+    "react-redux": "^9.3.0",
     "react-router-dom": "^7.18.3",
     "recharts": "^3.10.1"
   },

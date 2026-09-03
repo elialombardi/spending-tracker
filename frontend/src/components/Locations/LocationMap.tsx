@@ -1,13 +1,36 @@
 import { useEffect } from 'react';
 import { MapContainer, Marker, Popup, TileLayer, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+import L, { LatLngExpression, PointExpression } from 'leaflet';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
-// Ensure Leaflet's default icon URLs are set correctly (Vite bundles images differently)
-delete L.Icon.Default.prototype._getIconUrl;
+// Type definitions
+interface Location {
+    id?: string | number;
+    _id?: string;
+    title?: string;
+    name?: string;
+    description?: string;
+    lat: number;
+    lng: number;
+    tags?: string[];
+    url?: string;
+}
+
+interface LocationMapProps {
+    locations: Location[];
+    center?: LatLngExpression;
+    onMapClick?: (latlng: L.LatLng) => void;
+    draftLocation?: Location | null;
+    highlightedId?: string | number | null;
+    centerZoom?: number;
+    visible?: boolean;
+}
+
+// Fix: Use type assertion for Leaflet Default icon
+delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: markerIcon2x,
     iconUrl: markerIcon,
@@ -36,8 +59,9 @@ const createGoldenIcon = (color = '#F0C330') => {
 const goldenIcon = createGoldenIcon();
 const highlightedIcon = createGoldenIcon('#1976d2');
 
-const defaultCenter = [41.9028, 12.4964];
-function MapClickHandler({ onMapClick }) {
+const defaultCenter: LatLngExpression = [41.9028, 12.4964];
+
+function MapClickHandler({ onMapClick }: { onMapClick?: (latlng: L.LatLng) => void }) {
     useMapEvents({
         click(e) {
             if (onMapClick) onMapClick(e.latlng);
@@ -46,9 +70,8 @@ function MapClickHandler({ onMapClick }) {
     return null;
 }
 
-function MapViewSetter({ center, zoom }) {
+function MapViewSetter({ center, zoom }: { center?: LatLngExpression; zoom?: number }) {
     const map = useMap();
-    // always synchronize center when it changes (used to center on clicked locations)
     useEffect(() => {
         if (center) {
             try {
@@ -65,14 +88,14 @@ function MapViewSetter({ center, zoom }) {
     return null;
 }
 
-function FitBoundsToLocations({ locations, padding = [50, 50] }) {
+function FitBoundsToLocations({ locations, padding = [50, 50] }: { locations: Location[]; padding?: PointExpression }) {
     const map = useMap();
     useEffect(() => {
         if (!map) return;
         if (Array.isArray(locations) && locations.length > 0) {
             const latlngs = locations
                 .filter((l) => typeof l.lat === 'number' && typeof l.lng === 'number')
-                .map((l) => [l.lat, l.lng]);
+                .map((l) => [l.lat, l.lng] as LatLngExpression);
             if (latlngs.length === 0) return;
             const bounds = L.latLngBounds(latlngs);
             map.fitBounds(bounds, { padding });
@@ -81,13 +104,11 @@ function FitBoundsToLocations({ locations, padding = [50, 50] }) {
     return null;
 }
 
-function InvalidateSize({ visible }) {
+function InvalidateSize({ visible }: { visible?: boolean }) {
     const map = useMap();
     useEffect(() => {
         if (!map) return;
-        // when container becomes visible, invalidate size so tiles render correctly
         if (visible) {
-            // slight delay to allow CSS transitions
             const t = setTimeout(() => {
                 try { map.invalidateSize(); } catch (e) { /* ignore */ }
             }, 150);
@@ -97,22 +118,45 @@ function InvalidateSize({ visible }) {
     return null;
 }
 
-function LocationMap({ locations, center = defaultCenter, onMapClick, draftLocation, highlightedId, centerZoom, visible = true }) {
+function LocationMap({
+    locations,
+    center = defaultCenter,
+    onMapClick,
+    draftLocation,
+    highlightedId,
+    centerZoom,
+    visible = true
+}: LocationMapProps) {
+    // Get location ID safely
+    const getLocationId = (loc: Location) => {
+        return loc.id || loc._id || `${loc.lat}-${loc.lng}`;
+    };
+
     return (
         <section className="card" aria-label="map" style={{ height: '100%' }}>
-            <MapContainer key={visible ? 'visible' : 'hidden'} center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
+            <MapContainer
+                key={visible ? 'visible' : 'hidden'}
+                center={center}
+                zoom={13}
+                style={{ height: '100%', width: '100%' }}
+            >
                 <MapViewSetter center={center} zoom={centerZoom} />
                 <InvalidateSize visible={visible} />
-                <FitBoundsToLocations locations={locations} />
+                <FitBoundsToLocations locations={locations} padding={[50, 50] as PointExpression} />
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 <MapClickHandler onMapClick={onMapClick} />
+
                 {locations.map((location) => (
-                    <Marker key={location.id} position={[location.lat, location.lng]} icon={location.id === highlightedId ? highlightedIcon : goldenIcon}>
+                    <Marker
+                        key={getLocationId(location)}
+                        position={[location.lat, location.lng]}
+                        icon={location.id === highlightedId || location._id === highlightedId ? highlightedIcon : goldenIcon}
+                    >
                         <Popup>
-                            <strong>{location.title}</strong> <br />
+                            <strong>{location.title || location.name || 'Unnamed Location'}</strong> <br />
                             {location.description} <br />
                             {location.url ? (<div><a href={location.url} target="_blank" rel="noopener noreferrer">{location.url}</a></div>) : null}
                             <em>Tags: {(location.tags || []).join(', ')}</em>
@@ -121,7 +165,10 @@ function LocationMap({ locations, center = defaultCenter, onMapClick, draftLocat
                 ))}
 
                 {draftLocation && draftLocation.lat && draftLocation.lng && (
-                    <Marker position={[draftLocation.lat, draftLocation.lng]} icon={goldenIcon}>
+                    <Marker
+                        position={[draftLocation.lat, draftLocation.lng]}
+                        icon={goldenIcon}
+                    >
                         <Popup>
                             New location position<br />
                             {draftLocation.title || 'Unnamed'}

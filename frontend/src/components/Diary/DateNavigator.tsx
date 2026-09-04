@@ -1,8 +1,7 @@
 import React from 'react';
-import { Stack, IconButton, Button, Chip, TextField } from '@mui/material';
+import { Stack, IconButton, Button, Chip } from '@mui/material';
 import { ChevronLeft, ChevronRight, Today } from '@mui/icons-material';
-import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import CustomDatePickerButton from './CustomDatePickerButton';
 
 interface DateNavigatorProps {
   selectedDate: Date;
@@ -31,13 +30,12 @@ export const DateNavigator: React.FC<DateNavigatorProps> = ({
 
   return (
     <Stack
-      direction="row"
       spacing={1}
-      alignItems="center"
       sx={{
         mb: 3,
-        flexWrap: 'wrap',
-        gap: 1,
+        display: 'flex',
+        flexDirection: 'row',
+        alignItems: 'center',
         '& .MuiIconButton-root': {
           border: (theme) => `1px solid ${theme.palette.divider}`,
           borderRadius: 1,
@@ -52,56 +50,16 @@ export const DateNavigator: React.FC<DateNavigatorProps> = ({
         <ChevronLeft />
       </IconButton>
 
-      <LocalizationProvider dateAdapter={AdapterDateFns}>
-        <DatePicker
-          label="Select date"
-          value={selectedDate}
-          onChange={(newValue) => {
-            if (newValue) {
-              onDateChange(newValue);
-            }
-          }}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              size="small"
-              sx={{
-                width: '200px',
-                '& .MuiInputBase-root': {
-                  fontFamily: '"Courier New", monospace',
-                  fontSize: '0.9rem',
-                  borderRadius: 1,
-                  bgcolor: 'background.paper',
-                  border: (theme) => `1px solid ${theme.palette.divider}`,
-                },
-                '& .MuiInputLabel-root': {
-                  fontFamily: '"Courier New", monospace',
-                  color: 'text.secondary',
-                }
-              }}
-            />
-          )}
-        />
-      </LocalizationProvider>
+
+
+
+      <CustomDatePickerButton selectedDate={selectedDate} onDateChange={onDateChange} />
 
       <IconButton onClick={goToNextDay} size="small">
         <ChevronRight />
       </IconButton>
 
-      {isToday ? (
-        <Chip
-          label="Today"
-          size="small"
-          sx={{
-            fontFamily: '"Courier New", monospace',
-            bgcolor: 'primary.main',
-            color: 'primary.contrastText',
-            fontWeight: 600,
-            letterSpacing: '0.05em',
-            '& .MuiChip-label': { px: 2 }
-          }}
-        />
-      ) : (
+      {!isToday && (
         <Button
           variant="outlined"
           startIcon={<Today />}

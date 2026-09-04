@@ -1,147 +1,108 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useState } from 'react';
 import { Box, Paper } from '@mui/material';
-import { diaryApi, DiaryEntry } from '../../api/diary';
-import { DiaryHeader } from '../../components/Diary/DiaryHeader';
+
 import { DateNavigator } from '../../components/Diary/DateNavigator';
 import { EntryEditor } from '../../components/Diary/EntryEditor';
-import { SearchBar } from '../../components/Diary/SearchBar';
-import { DiaryFooter } from '../../components/Diary/DiaryFooter';
-import { formatDateInput, parseDateInput, isToday } from '../../helpers/diary';
+import { parseDateInput, isToday } from '../../helpers/diary';
+import { DiaryEntry, useListEntriesQuery } from '../../api/diaryApi';
 
-// Type for API error responses
-interface ApiError {
-  status?: number;
-  message?: string;
-}
+import { useAutoSave } from './hooks/useAutoSave';
+import { useDiaryNavigation } from './hooks/useDiaryNavigation';
+import { useDiaryEntry } from './hooks/useDiaryEntry';
+import { AutoSaveRestoreDialog } from './components/AutoSaveRestoreDialog/AutoSaveRestoreDialog';
+import { SearchSection } from './components/SearchSection/SearchSection';
 
 const DiaryPage: React.FC = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const dateParam = searchParams.get('date');
-  const initialDate = dateParam ? parseDateInput(dateParam) : new Date();
+  const { initialDate, updateUrl } = useDiaryNavigation();
   const [selectedDate, setSelectedDate] = useState<Date>(initialDate);
 
-  const [entry, setEntry] = useState<DiaryEntry | null>(null);
-  const [content, setContent] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Diary entry management
+  const { content, setContent, entry, isLoading, loadError, handleSave, dateStr } =
+    useDiaryEntry(selectedDate);
 
+  // Auto-save functionality
+  const { showRestoreDialog, savedContent, handleRestore, handleDiscard, clearAutoSave } =
+    useAutoSave(content, dateStr);
+
+  // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<DiaryEntry[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
-  const isInitialMount = useRef(true);
-  // Track the current date to prevent race conditions
-  const currentDateRef = useRef<Date>(selectedDate);
+  const { data: searchData, isLoading: searchLoading, error: searchQueryError } =
+    useListEntriesQuery(
+      { search: searchQuery, limit: 20 },
+      { skip: !searchQuery.trim() }
+    );
+
+  // Update search results
+  React.useEffect(() => {
+    if (searchData) {
+      setSearchResults(searchData.data);
+    }
+    if (searchQueryError) {
+      setSearchError('Search failed.');
+    } else {
+      setSearchError(null);
+    }
+  }, [searchData, searchQueryError]);
 
   // Update URL when date changes
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-    const dateStr = formatDateInput(selectedDate);
-    setSearchParams({ date: dateStr });
-  }, [selectedDate, setSearchParams]);
+  React.useEffect(() => {
+    updateUrl(selectedDate);
+  }, [selectedDate, updateUrl]);
 
-  // Load entry when date changes - using a single setState update to avoid cascading renders
-  useEffect(() => {
-    currentDateRef.current = selectedDate;
+  // Keyboard shortcuts
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!event.altKey) return;
+      event.preventDefault();
 
-    const loadEntry = async () => {
-      const dateStr = formatDateInput(selectedDate);
-      setLoading(true);
-      setError(null);
+      const newDate = new Date(selectedDate);
 
-      try {
-        const response = await diaryApi.getByDate(dateStr);
-        // Only update if the date hasn't changed while fetching
-        if (currentDateRef.current === selectedDate) {
-          setEntry(response);
-          setContent(response.content);
-        }
-      } catch (err) {
-        const error = err as ApiError;
-        // Only update if the date hasn't changed while fetching
-        if (currentDateRef.current === selectedDate) {
-          if (error.status === 404) {
-            setEntry(null);
-            setContent('');
-          } else {
-            setError('Failed to load entry.');
-          }
-        }
-      } finally {
-        // Only update loading state if the date hasn't changed
-        if (currentDateRef.current === selectedDate) {
-          setLoading(false);
-        }
+      switch (event.key) {
+        case 'ArrowLeft':
+          newDate.setDate(newDate.getDate() - 1);
+          setSelectedDate(newDate);
+          break;
+        case 'ArrowRight':
+          newDate.setDate(newDate.getDate() + 1);
+          setSelectedDate(newDate);
+          break;
+        case 'ArrowDown':
+          setSelectedDate(new Date());
+          break;
+        default:
+          return;
       }
     };
 
-    loadEntry();
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedDate]);
-
-  const handleSave = async (content: string) => {
-    if (!content.trim()) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const dateStr = formatDateInput(selectedDate);
-      if (entry) {
-        await diaryApi.update(dateStr, content);
-      } else {
-        await diaryApi.create(dateStr, content);
-      }
-      const response = await diaryApi.getByDate(dateStr);
-      setEntry(response);
-      setContent(response.content);
-    } catch {
-      setError('Failed to save entry.');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleDateChange = (date: Date) => {
     setSelectedDate(date);
   };
 
-  // Debounced search
-  useEffect(() => {
-    const handleSearch = async (query: string) => {
-      if (!query.trim()) {
-        setSearchResults([]);
-        return;
-      }
-      setSearchLoading(true);
-      setSearchError(null);
-      try {
-        const response = await diaryApi.list({ search: query, limit: 20 });
-        setSearchResults(response.data);
-      } catch {
-        setSearchError('Search failed.');
-      } finally {
-        setSearchLoading(false);
-      }
-    };
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+  };
 
-    const timer = setTimeout(() => {
-      handleSearch(searchQuery);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+  const handleRestoreWithContent = () => {
+    const restoredContent = handleRestore();
+    if (restoredContent !== null) {
+      setContent(restoredContent);
+    }
+  };
+
+  const handleSaveWithCleanup = async (contentToSave: string) => {
+    await handleSave(contentToSave);
+    clearAutoSave();
+  };
 
   return (
-    <Box
-      sx={{
-        mx: 'auto',
-        minHeight: '100vh',
-      }}
-    >
+    <Box sx={{ mx: 'auto', minHeight: '100vh' }}>
       <Paper
         elevation={3}
         sx={{
@@ -152,7 +113,20 @@ const DiaryPage: React.FC = () => {
           bgcolor: 'background.paper',
         }}
       >
-        <DiaryHeader />
+        <AutoSaveRestoreDialog
+          open={showRestoreDialog}
+          onRestore={handleRestoreWithContent}
+          onDiscard={handleDiscard}
+        />
+
+        <SearchSection
+          searchQuery={searchQuery}
+          onSearchChange={handleSearchChange}
+          searchResults={searchResults}
+          searchLoading={searchLoading}
+          searchError={searchError}
+          onResultClick={(date) => setSelectedDate(parseDateInput(date))}
+        />
 
         <DateNavigator
           selectedDate={selectedDate}
@@ -164,22 +138,12 @@ const DiaryPage: React.FC = () => {
           selectedDate={selectedDate}
           content={content}
           onContentChange={setContent}
-          onSave={handleSave}
-          loading={loading}
-          saving={saving}
-          error={error}
+          onSave={handleSaveWithCleanup}
+          loading={isLoading}
+          saving={false}
+          error={loadError ? 'Failed to load entry.' : null}
+          isToday={isToday(selectedDate)}
         />
-
-        <SearchBar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          searchResults={searchResults}
-          searchLoading={searchLoading}
-          searchError={searchError}
-          onResultClick={(date) => setSelectedDate(parseDateInput(date))}
-        />
-
-        <DiaryFooter />
       </Paper>
     </Box>
   );

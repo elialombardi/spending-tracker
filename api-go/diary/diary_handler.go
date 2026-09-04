@@ -65,9 +65,9 @@ func (h *Handler) GetEntry(c *fiber.Ctx) error {
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
-	if entry == nil {
-		return fiber.NewError(fiber.StatusNotFound, "entry not found")
-	}
+	// if entry == nil {
+	// 	return fiber.NewError(fiber.StatusNotFound, "entry not found")
+	// }
 	return c.JSON(entry)
 }
 

@@ -9,6 +9,7 @@ import {
   Alert,
   IconButton,
   Tooltip,
+  Chip,
 } from '@mui/material';
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import VolumeOffIcon from '@mui/icons-material/VolumeOff';
@@ -23,6 +24,7 @@ interface EntryEditorProps {
   loading: boolean;
   saving: boolean;
   error: string | null;
+  isToday: boolean;
 }
 
 export const EntryEditor: React.FC<EntryEditorProps> = ({
@@ -33,6 +35,7 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
   loading,
   saving,
   error,
+  isToday,
 }) => {
   const textFieldRef = useRef<HTMLTextAreaElement>(null);
 
@@ -55,6 +58,21 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
   useEffect(() => {
     localStorage.setItem('diary-text-visible', String(textVisible));
   }, [textVisible]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Check for Alt+Q (case-insensitive)
+      if (event.key === 'q' && event.altKey) {
+        event.preventDefault(); // Prevent browser default (e.g., quick search)
+        setTextVisible(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []); // Empty dependency array – runs once on mount
 
   // Realistic typewriter sound using white noise with a short envelope
   const playTypewriterSound = () => {
@@ -157,6 +175,21 @@ export const EntryEditor: React.FC<EntryEditorProps> = ({
                 day: 'numeric',
               })}
             </Typography>
+
+            {isToday ? (
+              <Chip
+                label="Today"
+                size="small"
+                sx={{
+                  fontFamily: '"Courier New", monospace',
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
+                  fontWeight: 600,
+                  letterSpacing: '0.05em',
+                  '& .MuiChip-label': { px: 2 }
+                }}
+              />
+            ) : null}
             <Box sx={{ display: 'flex', gap: 0.5 }}>
               <Tooltip title={soundEnabled ? 'Mute typewriter sound' : 'Enable typewriter sound'}>
                 <IconButton

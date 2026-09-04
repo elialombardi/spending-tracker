@@ -67,22 +67,32 @@ const BoxingEventsCalendar: React.FC<Props> = ({ events, onEdit, onCreate, onDel
 
     return (
         <Box>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-                <Stack direction="row" spacing={1} alignItems="center">
+            <Stack sx={{ direction: 'row', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Stack sx={{ direction: 'row', spacing: 1, alignItems: 'center' }}>
                     <IconButton size="small" onClick={prevMonth}><ChevronLeftIcon /></IconButton>
                     <Typography variant="h6">{current.toLocaleString(undefined, { month: 'long', year: 'numeric' })}</Typography>
                     <IconButton size="small" onClick={nextMonth}><ChevronRightIcon /></IconButton>
                 </Stack>
-                <Stack direction="row" spacing={1}>
+                <Stack sx={{ direction: 'row', spacing: 1 }}>
                     <Button size="small" onClick={() => { setCurrent(startOfMonth(new Date())) }}>Today</Button>
                     <Button size="small" onClick={onRefresh}>Refresh</Button>
                 </Stack>
             </Stack>
 
-            <Paper>
-                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+            <Paper sx={{ overflow: 'auto', width: '100%' }}>
+                <Box sx={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(7, 1fr)',
+                    minWidth: { xs: '700px', sm: '100%' } // Responsive min-width
+                }}>
                     {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-                        <Box key={d} sx={{ p: 1, borderBottom: '1px solid', borderColor: 'divider', backgroundColor: 'background.paper' }}>
+                        <Box key={d} sx={{
+                            p: 1,
+                            borderBottom: '1px solid',
+                            borderColor: 'divider',
+                            backgroundColor: 'background.paper',
+                            minWidth: { xs: '100px', sm: 'auto' } // Ensure each cell has minimum width
+                        }}>
                             <Typography variant="caption" sx={{ fontWeight: 600 }}>{d}</Typography>
                         </Box>
                     ))}
@@ -92,7 +102,14 @@ const BoxingEventsCalendar: React.FC<Props> = ({ events, onEdit, onCreate, onDel
                             const dayEvents = eventsByDate[key] || []
                             const isOtherMonth = day.getMonth() !== current.getMonth()
                             return (
-                                <Box key={key} sx={{ minHeight: 100, borderRight: '1px solid', borderBottom: '1px solid', borderColor: 'divider', p: 0.5 }}>
+                                <Box key={key} sx={{
+                                    minHeight: 100,
+                                    borderRight: '1px solid',
+                                    borderBottom: '1px solid',
+                                    borderColor: 'divider',
+                                    p: 0.5,
+                                    minWidth: { xs: '100px', sm: 'auto' } // Consistent cell sizing
+                                }}>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', px: 0.5 }}>
                                         <Typography variant="body2" color={isOtherMonth ? 'text.disabled' : 'text.primary'}>{day.getDate()}</Typography>
                                         <Button size="small" onClick={() => onCreate && onCreate(day)}>+</Button>

@@ -7,6 +7,7 @@ import {
   Assignment,
   Euro,
   SportsMma,
+  LocalGasStation,
 } from "@mui/icons-material";
 import { NavSection } from "../../types/navigation";
 
@@ -38,6 +39,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { path: "/diary", label: "Diary", icon: CalendarToday },
       { path: "/notes", label: "Notes", icon: Note },
       { path: "/boxing-events", label: "Boxing Events", icon: SportsMma },
+      { path: "/fuel-manager", label: "Fuel Manager", icon: LocalGasStation },
     ],
     roles: ["Admin"],
   },

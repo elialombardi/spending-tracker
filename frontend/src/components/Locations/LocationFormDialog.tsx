@@ -38,7 +38,7 @@ const EMPTY_LOCATION = {
 }
 
 // Helper to ensure center is a valid tuple
-const DEFAULT_CENTER = [41.9028, 12.4964]
+const DEFAULT_CENTER: [number, number] = [41.9028, 12.4964]
 
 export default function LocationFormDialog({
     open,
@@ -51,7 +51,7 @@ export default function LocationFormDialog({
     const [formData, setFormData] = useState(EMPTY_LOCATION)
     const [error, setError] = useState('')
     const [loading, setLoading] = useState(false)
-    const [center, setCenter] = useState(DEFAULT_CENTER)
+    const [center, setCenter] = useState<[number, number]>(DEFAULT_CENTER)
     const [searchResults, setSearchResults] = useState([])
     const [highlightedSearchId, setHighlightedSearchId] = useState(null)
     const [centerZoom, setCenterZoom] = useState(undefined)
@@ -334,7 +334,9 @@ export default function LocationFormDialog({
                         required
                         placeholder="41.9028"
                         type="number"
-                        inputProps={{ step: "any" }}
+                        slotProps={{
+                            htmlInput: { step: "any" }
+                        }}
                     />
                 </Box>
                 <Box sx={{ flex: 1 }}>
@@ -347,7 +349,9 @@ export default function LocationFormDialog({
                         required
                         placeholder="12.4964"
                         type="number"
-                        inputProps={{ step: "any" }}
+                        slotProps={{
+                            htmlInput: { step: "any" }
+                        }}
                     />
                 </Box>
             </Box>

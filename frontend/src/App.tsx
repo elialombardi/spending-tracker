@@ -21,6 +21,7 @@ const WorkoutPage = lazy(() => import('./pages/WorkoutPage'));
 const UsersPage = lazy(() => import('./pages/UsersPage'));
 const NotesPage = lazy(() => import('./pages/NotesPage'));
 const BoxingEventsPage = lazy(() => import('./pages/BoxingEvents/BoxingEventsPage'));
+const FuelManager = lazy(() => import('./pages/FuelManager'));
 
 const defaultLocations = [
   {
@@ -164,6 +165,7 @@ function App({ themeName, setThemeName }) {
                   <Route path="/users" element={<UsersPage />} />
                   <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/tasks" element={<TasksPage />} />
+                  <Route path="/fuel-manager" element={<FuelManager />} />
                   <Route path="/admin/tags" element={
                     <TagsPage
                       canWrite={canModify}

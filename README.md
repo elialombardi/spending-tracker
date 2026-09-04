@@ -47,12 +47,15 @@ First, inspect the nearest comparable backend feature and frontend page. Then im
 
 Deliver:
 - A concise summary of the files changed and the API contract.
-- Backend implementation when the feature persists or retrieves data.
-- Frontend implementation, including loading, empty, error, validation, and unauthorized states as applicable.
+- Backend implementation for the new section, including concrete code changes for models, service logic, handler methods, DI wiring, and route registration when the feature persists or retrieves data.
+- Frontend implementation for the new section, including concrete code changes for API client integration, route wiring, page/components, and loading, empty, error, validation, and unauthorized states as applicable.
+- A code example in the response for the new section's DI registration and route registration, aligned with the repository's current patterns.
 - Focused automated tests for new business logic, handlers, or non-trivial UI behavior.
 - Validation by running the relevant Go tests and frontend typecheck, lint, or build commands.
 
-Do not replace existing tooling, introduce a new state-management framework, refactor unrelated code, or add dependencies unless the feature cannot be implemented with the installed stack. Before adding a dependency, explain why an existing library cannot meet the need.
+Do not stop at describing the solution. Implement the new section in code and report the exact implementation points that were added or changed.
+
+Do not replace existing tooling, bypass the installed Redux Toolkit and RTK Query setup, refactor unrelated code, or add dependencies unless the feature cannot be implemented with the installed stack. Before adding a dependency, explain why an existing library cannot meet the need.
 
 Follow all repository guidelines below.
 ```
@@ -62,24 +65,79 @@ Follow all repository guidelines below.
 - Language: Go, as declared in `api-go/go.mod` (currently Go 1.25).
 - HTTP framework: Fiber v2. Database access: GORM, using SQLite or PostgreSQL drivers already configured by the application.
 - Dependency injection: use `samber/do/v2` and register new dependencies through the existing DI setup when required.
+- DI example, following `api-go/di/di.go`:
+
+```go
+do.Provide(injector, func(i do.Injector) (*myfeature.Service, error) {
+  dbConn := do.MustInvoke[*gorm.DB](i)
+  return myfeature.NewService(dbConn), nil
+})
+
+do.Provide(injector, func(i do.Injector) (*myfeature.Handler, error) {
+  service := do.MustInvoke[*myfeature.Service](i)
+  return myfeature.NewHandler(service), nil
+})
+
+return &AppContainer{
+  MyFeatureService: do.MustInvoke[*myfeature.Service](injector),
+  MyFeatureHandler: do.MustInvoke[*myfeature.Handler](injector),
+}, nil
+```
+
+- If the feature needs another dependency, register that provider first, then resolve it inside the service provider with `do.MustInvoke[...]`.
 - Organize domain work under `api-go/<feature>/`. Follow the nearby pattern of `<feature>_models.go`, `<feature>_service.go`, and `<feature>_handler.go` (or the existing domain naming convention).
 - Keep handlers thin: parse and validate HTTP input, authorize, call services, and map HTTP responses. Keep queries, transactions, and business rules in services.
 - Define request/response DTOs and database models explicitly. Use JSON tags and validate incoming data. Do not expose database-only fields accidentally.
 - Register API routes through the domain handler using the existing `/api` grouping. Apply the established authentication and role middleware; do not create unauthenticated endpoints unless the request explicitly requires it.
+- Route registration example, following `api-go/main.go` and feature route files:
+
+```go
+// main.go
+container.MyFeatureHandler.RegisterRoutes(app, container.AuthMiddleware)
+```
+
+```go
+// api-go/myfeature/routes.go
+func (h *Handler) RegisterRoutes(app *fiber.App, authMiddleware *user.AuthMiddleware) {
+  group := app.Group("/api/my-feature", authMiddleware.Authenticate)
+  group.Get("/items", h.ListItems)
+  group.Post("/items", authMiddleware.Authorize(user.AdminRole), h.CreateItem)
+}
+```
+
+- Match the existing convention: the handler owns its `RegisterRoutes` method, while `main.go` wires that handler into the app during startup.
 - Return appropriate status codes: `400` for invalid input, `401`/`403` for access failures, `404` for absent resources, and `500` only for unexpected server failures.
 - Use parameterized GORM queries. Make multi-record mutations transactional with `db.Transaction`.
 - Prefer existing helper functions and types in the relevant domain before creating duplicates.
 - Add focused Go tests alongside the affected backend package, especially for business rules, authorization-sensitive behavior, and import/export parsing.
 
+**Database migrations**: When you add new persistent models for a feature, include the corresponding model types in the GORM `AutoMigrate` call so migrations are applied at startup. Edit [api-go/internal/db/gorm_db.go](api-go/internal/db/gorm_db.go#L1) and add your model struct pointers to the `db.AutoMigrate(...)` list. Only include structs that map to real database tables (structs with `gorm` tags); do not add DTOs or in-memory types.
+
+Example snippet:
+
+```go
+// inside NewDatabase() after opening the DB connection
+if err := db.AutoMigrate(
+  &user.User{},
+  &reports.Transaction{},
+  &myfeature.MyModel{}, // add new models here
+); err != nil {
+  return nil, err
+}
+```
+
+If you prefer automated migrations or versioned migrations, add a note here and wire the migration tooling consistently across the app.
+
 ## Frontend Guidelines
 
 - Language: TypeScript. Framework/build tool: React 19 with Vite.
 - UI system: MUI with Emotion. Use MUI components and `@mui/icons-material` for controls; retain the existing theme and visual language.
+- Use the latest Material UI documentation for the installed major version before implementing UI work: `@mui/material`, `@mui/icons-material`, and `@mui/x-date-pickers` are already in the repo. Prefer the current docs for component APIs, theming, accessibility, and migration notes instead of older MUI v5-era examples.
 - Routing: React Router. Add the new route and navigation entry through the existing application routing/navigation pattern.
 - Place reusable UI in `frontend/src/components/`; place feature screens in the nearest existing page or feature directory. Do not put all implementation code in `App.tsx`.
-- Use the existing API client under `frontend/src/api/`. Add endpoint metadata to `api/endpoints.ts` and use the client rather than ad hoc `fetch` calls.
+- Use the existing Redux Toolkit and RTK Query setup under `frontend/src/api/`. Extend `baseApi` with `injectEndpoints`, add any shared endpoint metadata or types in the existing API structure, and consume the generated hooks in components instead of ad hoc `fetch` calls.
 - Keep request/response schemas and types in the existing API schema/domain structure. Preserve global ambient types in `src/types/` unless all consumers are intentionally migrated.
-- Use functional React components and typed props. Follow the repository's existing hooks and local state patterns; do not add global state management for a self-contained section.
+- The Redux store and React Redux provider are already wired into the app. Use functional React components and typed props, follow the repository's existing RTK Query plus local UI state patterns, and do not introduce a second client-side data fetching or state-management library.
 - Implement request loading, errors, empty data, form validation, mutation progress, and success refresh/feedback where relevant.
 - Build responsive layouts with stable dimensions for tables, controls, and dialogs. Use accessible labels, semantic form controls, keyboard support, and tooltips for icon-only buttons.
 - Do not use raw SVG icons, a new CSS framework, or new visual conventions when an installed MUI component or icon covers the need.

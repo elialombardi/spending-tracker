@@ -131,13 +131,6 @@ func derefString(value *string) string {
 	return *value
 }
 
-func boolToInt(value bool) int {
-	if value {
-		return 1
-	}
-	return 0
-}
-
 func round2(value float64) float64 {
 	parsed, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", value), 64)
 	return parsed
@@ -384,28 +377,6 @@ func escapeCsv(value string) string {
 		return `"` + strings.ReplaceAll(normalized, `"`, `""`) + `"`
 	}
 	return normalized
-}
-
-// --- sql helper functions used by handlers/reports ---
-
-func scanTransactionRow(rows *sql.Rows) (transactionRow, error) {
-	var tr transactionRow
-	var cat sql.NullString
-	var sugcat sql.NullString
-	var sugconf sql.NullFloat64
-	var needsReviewInt int
-	var excludeInt int
-	var isMonthlyInt int
-	if err := rows.Scan(&tr.ID, &tr.AccountNumber, &tr.BookingDate, &tr.ValueDate, &tr.Amount, &tr.RawDescription, &tr.MerchantKey, &cat, &sugcat, &sugconf, &needsReviewInt, &excludeInt, &tr.ImportedAtUtc, &isMonthlyInt); err != nil {
-		return transactionRow{}, err
-	}
-	tr.Category = cat
-	tr.SuggestedCategory = sugcat
-	tr.SuggestionConfidence = sugconf
-	tr.NeedsReview = needsReviewInt != 0
-	tr.ExcludeFromCalculations = excludeInt != 0
-	tr.IsMonthlyRecurring = isMonthlyInt != 0
-	return tr, nil
 }
 
 func fetchRuleBehaviorLookup(database *gorm.DB) (map[string]string, error) {

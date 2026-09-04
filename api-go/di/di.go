@@ -6,6 +6,7 @@ import (
 
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/boxing_events"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/diary"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/fuel"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/locations"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/notes"
@@ -35,6 +36,8 @@ type AppContainer struct {
 	BoxingEventService boxing_events.Service
 	BoxingEventHandler *boxing_events.Handler
 	PinnacleClient     *boxing_events.PinnacleClient
+	FuelService        *fuel.Service
+	FuelHandler        *fuel.Handler
 }
 
 // InitializeApp sets up the dependency graph using samber/do
@@ -136,6 +139,17 @@ func InitializeApp() (*AppContainer, error) {
 		return boxing_events.NewPinnacleClient(), nil
 	})
 
+	// Fuel Manager Service
+	do.Provide(injector, func(i do.Injector) (*fuel.Service, error) {
+		dbConn := do.MustInvoke[*gorm.DB](i)
+		return fuel.NewService(dbConn), nil
+	})
+
+	// Fuel Manager Handler
+	do.Provide(injector, func(i do.Injector) (*fuel.Handler, error) {
+		service := do.MustInvoke[*fuel.Service](i)
+		return fuel.NewHandler(service), nil
+	})
 	// 2. Resolve dependencies into your AppContainer struct
 	return &AppContainer{
 		DB:                 do.MustInvoke[*gorm.DB](injector),
@@ -156,5 +170,7 @@ func InitializeApp() (*AppContainer, error) {
 		AuthMiddleware:     do.MustInvoke[*user.AuthMiddleware](injector),
 		DiaryService:       do.MustInvoke[diary.Service](injector),
 		DiaryHandler:       do.MustInvoke[*diary.Handler](injector),
+		FuelService:        do.MustInvoke[*fuel.Service](injector),
+		FuelHandler:        do.MustInvoke[*fuel.Handler](injector),
 	}, nil
 }

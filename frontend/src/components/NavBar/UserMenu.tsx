@@ -193,15 +193,6 @@ function UserMenu({
 
         <Divider sx={{ my: 0.5 }} />
 
-        <MenuItem onClick={handleClose} sx={{ py: 1 }}>
-          Profile
-        </MenuItem>
-        <MenuItem onClick={handleClose} sx={{ py: 1 }}>
-          Settings
-        </MenuItem>
-
-        <Divider sx={{ my: 0.5 }} />
-
         {/* Theme selector */}
         <Box sx={{ px: 2, py: 1 }}>
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>

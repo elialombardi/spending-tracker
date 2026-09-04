@@ -1,7 +1,6 @@
 package reports
 
 import (
-	"database/sql"
 	"errors"
 	"regexp"
 	"sort"
@@ -633,8 +632,4 @@ func (s *TransactionService) fetchCycleAnchorDates(configured []string) ([]strin
 		anchors = append(anchors, r.BookingDate)
 	}
 	return anchors, nil
-}
-
-func (s *TransactionService) sqlDB() (*sql.DB, error) {
-	return s.db.DB()
 }

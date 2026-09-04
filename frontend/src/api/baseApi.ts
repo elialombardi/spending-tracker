@@ -62,5 +62,8 @@ export const baseApi = createApi({
     reducerPath: 'baseApi',
     baseQuery: wrappedBaseQuery,
     endpoints: () => ({}),
-    tagTypes: ['Location', /* add your other tag types here */],
+    tagTypes: [
+        'Location',
+        'Fuel',
+    ],
 });

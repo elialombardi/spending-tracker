@@ -1,6 +1,8 @@
 package di
 
 import (
+	"os"
+
 	"github.com/samber/do/v2"
 	"gorm.io/gorm"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/tasks"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/workouts"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/youtube"
 )
 
 type AppContainer struct {
@@ -38,6 +41,8 @@ type AppContainer struct {
 	PinnacleClient     *boxing_events.PinnacleClient
 	FuelService        *fuel.Service
 	FuelHandler        *fuel.Handler
+	YoutubeService     *youtube.Service
+	YoutubeHandler     *youtube.Handler
 }
 
 // InitializeApp sets up the dependency graph using samber/do
@@ -150,6 +155,21 @@ func InitializeApp() (*AppContainer, error) {
 		service := do.MustInvoke[*fuel.Service](i)
 		return fuel.NewHandler(service), nil
 	})
+
+	do.Provide(injector, func(i do.Injector) (*youtube.Service, error) {
+		dbConn := do.MustInvoke[*gorm.DB](i)
+		return youtube.NewService(dbConn, youtube.OAuthConfig{
+			ClientID:     os.Getenv("YOUTUBE_CLIENT_ID"),
+			ClientSecret: os.Getenv("YOUTUBE_CLIENT_SECRET"),
+			RedirectURL:  os.Getenv("YOUTUBE_REDIRECT_URL"),
+		}), nil
+	})
+
+	do.Provide(injector, func(i do.Injector) (*youtube.Handler, error) {
+		service := do.MustInvoke[*youtube.Service](i)
+		return youtube.NewHandler(service), nil
+	})
+
 	// 2. Resolve dependencies into your AppContainer struct
 	return &AppContainer{
 		DB:                 do.MustInvoke[*gorm.DB](injector),
@@ -172,5 +192,7 @@ func InitializeApp() (*AppContainer, error) {
 		DiaryHandler:       do.MustInvoke[*diary.Handler](injector),
 		FuelService:        do.MustInvoke[*fuel.Service](injector),
 		FuelHandler:        do.MustInvoke[*fuel.Handler](injector),
+		YoutubeService:     do.MustInvoke[*youtube.Service](injector),
+		YoutubeHandler:     do.MustInvoke[*youtube.Handler](injector),
 	}, nil
 }

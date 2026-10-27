@@ -9,6 +9,7 @@ import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import { bootstrapDevelopmentSession, canWrite, isSessionExpired, login, logout, useAuthSession, isAdmin } from './auth';
 import { isDevelopmentEnv } from './config';
+import { YoutubeManager } from './pages/YoutubeManager';
 
 const appVersion = import.meta.env.VITE_APP_VERSION;
 
@@ -160,6 +161,7 @@ function App({ themeName, setThemeName }) {
               <Route path="/notes" element={<NotesPage canWrite={canModify} />} />
               <Route path="/diary" element={<DiaryPage />} />
               <Route path="/boxing-events" element={<BoxingEventsPage />} />
+              <Route path="/youtube-manager" element={<YoutubeManager />} />
               {isAdminUser ? (
                 <>
                   <Route path="/users" element={<UsersPage />} />

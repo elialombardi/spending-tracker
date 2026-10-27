@@ -10,6 +10,8 @@ import SnackbarProvider from './components/SnackbarProvider'
 
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
 import { getTheme } from './theme'
 
 // avoid fast-refresh warning for files without exports
@@ -32,7 +34,9 @@ function AppWithTheme() {
         <Provider store={store}>
           <BrowserRouter>
             <SnackbarProvider>
-              <App themeName={themeName} setThemeName={handleSetThemeName} />
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <App themeName={themeName} setThemeName={handleSetThemeName} />
+              </LocalizationProvider>
             </SnackbarProvider>
           </BrowserRouter>
         </Provider>

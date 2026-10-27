@@ -15,6 +15,28 @@ The React Compiler is not enabled on this template because of its impact on dev 
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
+## Date pickers
+
+The app root provides a shared MUI X `LocalizationProvider` with `AdapterDateFns`
+for all routes, including lazy-loaded pages and picker dialogs. Render standalone
+picker components under the same provider in tests or previews.
+
+After changing frontend code or dependencies, rebuild and redeploy the Docker
+image; restarting an existing container does not update its bundled JavaScript.
+
+For Vite development, the picker entry points are prebundled together to share
+one localization context. If the context error persists after dependency changes,
+stop the development server and restart it with `npm run dev -- --force`, then
+reload the page. Avoid running multiple Vite servers with different configurations
+against the same dependency cache.
+
+## Mobile navigation
+
+Tap a section heading in the mobile navigation drawer to expand or collapse its
+links without closing the drawer. Selecting a link closes the drawer and navigates
+to that page. Tapping the backdrop or pressing Escape also dismisses the drawer;
+Tab moves focus without dismissing it.
+
 ## Search configuration
 
 Place search supports these providers through environment configuration:

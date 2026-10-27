@@ -23,7 +23,7 @@ function MobileNav({ open, onClose, sections, currentPath }: MobileNavProps) {
 
   return (
     <Drawer anchor="left" open={open} onClose={onClose}>
-      <Box sx={{ width: 280, p: 2 }} role="presentation" onClick={onClose} onKeyDown={onClose}>
+      <Box sx={{ width: 280, p: 2 }} role="presentation">
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
           <Box
             component="img"
@@ -43,6 +43,7 @@ function MobileNav({ open, onClose, sections, currentPath }: MobileNavProps) {
               <ListItemButton
                 component={NavLink}
                 to={item.path}
+                onClick={onClose}
                 selected={currentPath === item.path}
                 sx={{
                   borderRadius: 2,
@@ -65,6 +66,7 @@ function MobileNav({ open, onClose, sections, currentPath }: MobileNavProps) {
               menuText={section.title}
               items={section.items}
               currentPath={currentPath}
+              onNavigate={onClose}
             />
           ))}
         </List>

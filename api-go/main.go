@@ -48,11 +48,15 @@ func main() {
 	container.DiaryHandler.RegisterRoutes(app, container.AuthMiddleware)
 	container.BoxingEventHandler.RegisterRoutes(app, container.AuthMiddleware)
 	container.FuelHandler.RegisterRoutes(app, container.AuthMiddleware)
+	container.YoutubeHandler.RegisterRoutes(app, container.AuthMiddleware)
 
 	container.UserService.SeedDefaultUsers()
 
 	if os.Getenv("APP_ENV") != "development" {
 		container.BoxingEventService.StartBackgroundSync(make(chan struct{}))
+	} else {
+		container.YoutubeService.StartBackgroundSync(make(chan struct{}))
+
 	}
 
 	app.Get("/api/version", func(c *fiber.Ctx) error {

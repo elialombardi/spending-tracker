@@ -11,6 +11,7 @@ import (
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/reports"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/workouts"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/youtube"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -50,6 +51,13 @@ func NewDatabase() (*gorm.DB, error) {
 		&boxing_events.BoxingEvent{},
 		&fuel.FuelRecord{},
 		&fuel.FuelStats{},
+		&youtube.Subscription{},
+		&youtube.YoutubeChannel{},
+		&youtube.Tag{},
+		&youtube.YoutubeVideo{},
+		&youtube.ChannelTag{},
+		&youtube.SyncLog{},
+		&youtube.OAuthToken{},
 	); err != nil {
 		return nil, err
 	}

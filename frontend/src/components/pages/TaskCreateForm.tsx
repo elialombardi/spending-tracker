@@ -7,8 +7,6 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 
 function getTodayValue() {
@@ -148,32 +146,30 @@ function TaskCreateFormContent({
                         disabled={isBusy}
                     />
 
-                    <LocalizationProvider dateAdapter={AdapterDateFns}>
-                        <DatePicker
-                            label="Date"
-                            value={date ? new Date(date) : null}
-                            onChange={(newValue) => updateField('date')(newValue ? newValue.toISOString().slice(0, 10) : '')}
-                            disabled={isBusy}
-                            slotProps={{
-                                textField: {
-                                    required: true,
-                                    fullWidth: true,
-                                }
-                            }}
-                        />
+                    <DatePicker
+                        label="Date"
+                        value={date ? new Date(date) : null}
+                        onChange={(newValue) => updateField('date')(newValue ? newValue.toISOString().slice(0, 10) : '')}
+                        disabled={isBusy}
+                        slotProps={{
+                            textField: {
+                                required: true,
+                                fullWidth: true,
+                            }
+                        }}
+                    />
 
-                        <DatePicker
-                            label="Sent on"
-                            value={sentOn ? new Date(sentOn) : null}
-                            onChange={(newValue) => updateField('sentOn')(newValue ? newValue.toISOString().slice(0, 10) : '')}
-                            disabled={isBusy}
-                            slotProps={{
-                                textField: {
-                                    fullWidth: true,
-                                }
-                            }}
-                        />
-                    </LocalizationProvider>
+                    <DatePicker
+                        label="Sent on"
+                        value={sentOn ? new Date(sentOn) : null}
+                        onChange={(newValue) => updateField('sentOn')(newValue ? newValue.toISOString().slice(0, 10) : '')}
+                        disabled={isBusy}
+                        slotProps={{
+                            textField: {
+                                fullWidth: true,
+                            }
+                        }}
+                    />
                 </Stack>
 
                 <TextField

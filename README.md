@@ -1,5 +1,19 @@
 # Spending Tracker: AI Section Implementation Prompt
 
+## YouTube configuration
+
+The YouTube service reads `YOUTUBE_API_KEY` for API-key requests. OAuth
+requests use `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, and
+`YOUTUBE_REDIRECT_URL`, supplied to the service through dependency injection.
+The redirect URL must match the URI registered for the Google OAuth client.
+
+Subscription sync requires a saved Google OAuth token for each user in
+`o_auth_tokens`; an API key or application OAuth credentials alone are not
+sufficient. Scheduled and bulk subscription sync select only users with saved
+tokens. A manual sync without a token returns a YouTube-not-connected error.
+The Google authorization/callback flow for creating these tokens is not yet
+implemented.
+
 Use the following prompt when asking an AI service to implement a new client-requested section. Complete the first section before submitting it.
 
 ## New Section Specifics

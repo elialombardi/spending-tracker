@@ -8,6 +8,7 @@ import {
   Euro,
   SportsMma,
   LocalGasStation,
+  PlayArrowRounded,
 } from "@mui/icons-material";
 import { NavSection } from "../../types/navigation";
 
@@ -40,6 +41,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { path: "/notes", label: "Notes", icon: Note },
       { path: "/boxing-events", label: "Boxing Events", icon: SportsMma },
       { path: "/fuel-manager", label: "Fuel Manager", icon: LocalGasStation },
+      { path: "/youtube-manager", label: "YouTube Manager", icon: PlayArrowRounded }
     ],
     roles: ["Admin"],
   },

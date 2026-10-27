@@ -8,23 +8,24 @@ import { useState } from 'react';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import { NavLink } from 'react-router-dom';
-import { NavItem } from './types';
+import { NavItem } from '../../types/navigation';
 
 interface MobileNavMenuProps {
   menuText: string;
   items: NavItem[];
   currentPath: string;
+  onNavigate: () => void;
 }
 
-function MobileNavMenu({ menuText, items, currentPath }: MobileNavMenuProps) {
+function MobileNavMenu({ menuText, items, currentPath, onNavigate }: MobileNavMenuProps) {
   const [open, setOpen] = useState(false);
 
-  const handleToggle = () => setOpen(!open);
+  const handleToggle = () => setOpen(previousOpen => !previousOpen);
 
   return (
     <>
       <ListItem disablePadding>
-        <ListItemButton onClick={handleToggle}>
+        <ListItemButton onClick={handleToggle} aria-expanded={open}>
           <ListItemText primary={menuText} />
           {open ? <ExpandLess /> : <ExpandMore />}
         </ListItemButton>
@@ -35,6 +36,7 @@ function MobileNavMenu({ menuText, items, currentPath }: MobileNavMenuProps) {
             <ListItemButton
               component={NavLink}
               to={item.path}
+              onClick={onNavigate}
               selected={currentPath === item.path}
               sx={{
                 borderRadius: 2,

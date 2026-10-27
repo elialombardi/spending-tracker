@@ -15,6 +15,13 @@ The React Compiler is not enabled on this template because of its impact on dev 
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
 
+## Category selection
+
+Category pickers support selecting existing categories by mouse, touch, or
+keyboard, as well as typing a new category. Custom option rendering must preserve
+MUI's option props, including `data-option-index`, accessibility attributes, and
+event handlers, so the selected category matches the clicked or highlighted item.
+
 ## Date pickers
 
 The app root provides a shared MUI X `LocalizationProvider` with `AdapterDateFns`

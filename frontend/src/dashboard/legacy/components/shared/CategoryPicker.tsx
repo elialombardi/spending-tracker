@@ -37,44 +37,32 @@ export default function CategoryPicker({ categories = [], disabled, name, placeh
                 onInputChange={(event, newInputValue) => {
                     onChange(newInputValue)
                 }}
-                PopperProps={{ sx: { minWidth: 220 } }}
-                renderInput={(params) => {
-                    const { InputProps, ...textFieldParams } = params || {}
-
-                    return (
-                        <TextField
-                            {...textFieldParams}
-                            name={name}
-                            placeholder={placeholder}
-                            variant="outlined"
-                            size="small"
-                            fullWidth
-                            InputProps={{
-                                ...InputProps,
+                slotProps={{ popper: { sx: { minWidth: 220 } } }}
+                renderInput={(params) => (
+                    <TextField
+                        {...params}
+                        name={name}
+                        placeholder={placeholder}
+                        variant="outlined"
+                        size="small"
+                        fullWidth
+                        slotProps={{
+                            ...params.slotProps,
+                            input: {
+                                ...params.slotProps.input,
                                 sx: { bgcolor: 'transparent', color: 'inherit' },
-                            }}
-                        />
-                    )
-                }}
+                            },
+                        }}
+                    />
+                )}
                 renderOption={(props, option) => {
-                    // Extract only DOM-safe props, explicitly remove internal MUI props
-                    const { key, className, style, onClick, onMouseEnter, onMouseLeave, ...rest } = props || {}
-
-                    // Ensure we don't spread internal props onto the <li>
-                    const safeProps = {
-                        className: `category-picker-option ${className || ''}`,
-                        style,
-                        onClick,
-                        onMouseEnter,
-                        onMouseLeave,
-                        // Add any other safe DOM attributes you need
-                    }
+                    const { key, className, ...optionProps } = props
 
                     const cat = categories.find((c) => c.name === option)
                     const meta = cat ? buildCategoryMeta(cat) : ''
 
                     return (
-                        <li key={key || option} {...safeProps}>
+                        <li key={key} {...optionProps} className={`category-picker-option ${className || ''}`}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                                 <span className="category-picker-option-copy">
                                     <span className="category-picker-option-title">{option}</span>

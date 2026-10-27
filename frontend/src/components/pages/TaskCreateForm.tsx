@@ -16,7 +16,7 @@ function getTodayValue() {
 const getInitialFormState = (task = null) => ({
     projectId: task ? String(task.projectId || '') : '',
     name: task ? task.name || '' : '',
-    cost: task && task.cost != null ? String(task.cost) : '',
+    cost: task && task.cost != null ? String(task.cost) : '10',
     date: task ? task.date || getTodayValue() : getTodayValue(),
     sentOn: task ? task.sentOn || '' : '',
     description: task ? task.description || '' : '',
@@ -76,7 +76,7 @@ function TaskCreateFormContent({
             } else {
                 await onCreate?.(payload);
             }
-            // Reset form to empty state after successful submission
+            // Reset form to defaults after successful submission
             setFormState(getInitialFormState(null));
             onSuccess?.(); // Notify parent if needed
         } catch (error) {
@@ -141,6 +141,7 @@ function TaskCreateFormContent({
                         fullWidth
                         label="Cost"
                         type="number"
+                        slotProps={{ htmlInput: { step: 10 } }}
                         value={cost}
                         onChange={(event) => updateField('cost')(event.target.value)}
                         disabled={isBusy}

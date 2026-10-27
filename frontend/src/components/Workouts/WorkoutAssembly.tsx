@@ -134,7 +134,7 @@ export default function WorkoutAssembly({
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <FitnessCenter sx={{ fontSize: 24 }} />
-          <Typography variant="h6" fontWeight="bold">
+          <Typography variant="h6"  sx={{ fontWeight: "bold" }}>
             Current Workout
           </Typography>
         </Box>
@@ -171,7 +171,7 @@ export default function WorkoutAssembly({
         </Typography>
       ) : (
         <>
-          <List size="small">
+          <List dense>
             {workoutSequence.map((sess, index) => {
               const sessionDuration = calculateSessionDuration(sess);
               const formattedSessionDuration = formatDuration(sessionDuration);

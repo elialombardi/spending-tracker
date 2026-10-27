@@ -180,7 +180,7 @@ export default function SessionFormModal({ open, onClose, onSaveSession, initial
           />
 
           <Grid container spacing={2}>
-            <Grid item xs={4}>
+            <Grid   size={{ xs: 4 }}>
               <TextField
                 label="Rounds"
                 type="number"
@@ -188,10 +188,10 @@ export default function SessionFormModal({ open, onClose, onSaveSession, initial
                 onChange={(e) => setRounds(e.target.value)}
                 size="small"
                 fullWidth
-                inputProps={{ min: 1 }}
+                 slotProps={{ htmlInput: { min: 1 } }}
               />
             </Grid>
-            <Grid item xs={4}>
+            <Grid   size={{ xs: 4 }}>
               <TextField
                 label="Cycles"
                 type="number"
@@ -199,10 +199,10 @@ export default function SessionFormModal({ open, onClose, onSaveSession, initial
                 onChange={(e) => setCycles(e.target.value)}
                 size="small"
                 fullWidth
-                inputProps={{ min: 1 }}
+                 slotProps={{ htmlInput: { min: 1 } }}
               />
             </Grid>
-            <Grid item xs={4}>
+            <Grid   size={{ xs: 4 }}>
               <TextField
                 label="Cycle Rest (MM:SS)"
                 value={cycleRest}
@@ -210,10 +210,10 @@ export default function SessionFormModal({ open, onClose, onSaveSession, initial
                 size="small"
                 fullWidth
                 placeholder="01:00"
-                inputProps={{ pattern: '[0-9]{2}:[0-9]{2}' }}
+                 slotProps={{ htmlInput: { pattern: '[0-9]{2}:[0-9]{2}' } }}
               />
             </Grid>
-            <Grid item xs={4}>
+            <Grid   size={{ xs: 4 }}>
               <TextField
                 label="Round Prepare (MM:SS)"
                 value={roundPrepare}
@@ -221,7 +221,7 @@ export default function SessionFormModal({ open, onClose, onSaveSession, initial
                 size="small"
                 fullWidth
                 placeholder="00:15"
-                inputProps={{ pattern: '[0-9]{2}:[0-9]{2}' }}
+                 slotProps={{ htmlInput: { pattern: '[0-9]{2}:[0-9]{2}' } }}
               />
             </Grid>
           </Grid>

@@ -63,18 +63,13 @@ func (h *TransactionHandler) listCategoryMappings(c fiber.Ctx) error {
 
 	responses := []CategoryMappingResponse{}
 	for _, rule := range rules {
-		matchingTransactions, err := h.transactionService.CountMatchingTransactions(rule.MerchantKey)
-		if err != nil {
-			return fiber.NewError(fiber.StatusInternalServerError, err.Error())
-		}
-
 		responses = append(responses, CategoryMappingResponse{
 			MappingID:            rule.ID, // Assuming ID is a string or compatible type
 			MerchantKey:          rule.MerchantKey,
 			Category:             nullableStringPtr(rule.Category),
 			Behavior:             normalizeBehavior(rule.Behavior),
 			AppliedCount:         rule.AppliedCount,
-			MatchingTransactions: matchingTransactions,
+			MatchingTransactions: rule.MatchingTransactions,
 		})
 	}
 
@@ -101,7 +96,30 @@ func (h *TransactionHandler) listTransactions(c fiber.Ctx) error {
 	}
 	category := strings.TrimSpace(c.Query("category"))
 
-	transactions, err := h.transactionService.FetchTransactions(from, to, direction, category, hasNeedsReview, needsReview)
+	var pagination *TransactionPagination
+	queryArgs := c.Request().URI().QueryArgs()
+	if queryArgs.Has("page") || queryArgs.Has("limit") {
+		pageText, limitText := "1", "50"
+		if queryArgs.Has("page") {
+			pageText = string(queryArgs.Peek("page"))
+		}
+		if queryArgs.Has("limit") {
+			limitText = string(queryArgs.Peek("limit"))
+		}
+		page, err := strconv.Atoi(pageText)
+		if err != nil || page < 1 {
+			return fiber.NewError(fiber.StatusBadRequest, "page must be a positive integer.")
+		}
+		limit, err := strconv.Atoi(limitText)
+		if err != nil || limit < 1 || limit > 200 {
+			return fiber.NewError(fiber.StatusBadRequest, "limit must be an integer between 1 and 200.")
+		}
+		if page-1 > int(^uint(0)>>1)/limit {
+			return fiber.NewError(fiber.StatusBadRequest, "page is too large.")
+		}
+		pagination = &TransactionPagination{Page: page, Limit: limit}
+	}
+	transactions, total, err := h.transactionService.FetchTransactionsPage(c.Context(), from, to, direction, category, hasNeedsReview, needsReview, pagination)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -115,6 +133,19 @@ func (h *TransactionHandler) listTransactions(c fiber.Ctx) error {
 	for _, t := range transactions {
 		behavior := h.transactionService.ResolveMerchantRuleBehavior(t.MerchantKey, behaviorLookup)
 		responses = append(responses, h.mapTransaction(t, behavior))
+	}
+	if pagination != nil {
+		var totalPages int64
+		if total > 0 {
+			totalPages = (total-1)/int64(pagination.Limit) + 1
+		}
+		return c.JSON(fiber.Map{
+			"data": responses,
+			"meta": fiber.Map{
+				"page": pagination.Page, "limit": pagination.Limit,
+				"total": total, "totalPages": totalPages,
+			},
+		})
 	}
 	return c.JSON(responses)
 }
@@ -406,8 +437,10 @@ func (h *TransactionHandler) getTransactionsSummary(c fiber.Ctx) error {
 	}
 
 	summary, err := h.transactionService.FetchCategorySummary(from, to)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+	}
 
-	// 3. Process grouping logic in memory (same as your original implementation)
 	type aggregate struct {
 		total float64
 		count int
@@ -421,7 +454,7 @@ func (h *TransactionHandler) getTransactionsSummary(c fiber.Ctx) error {
 		}
 		agg := grouped[key]
 		agg.total += row.Amount
-		agg.count++
+		agg.count += row.Count
 		grouped[key] = agg
 	}
 

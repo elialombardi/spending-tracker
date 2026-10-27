@@ -1,4 +1,5 @@
 class SoundEffects {
+  private audioCtx: AudioContext | null = null;
   constructor() {
     this.audioCtx = null;
   }
@@ -13,7 +14,7 @@ class SoundEffects {
     }
   }
 
-  playBeep(frequency = 880, duration = 0.15, type = 'sine') {
+  playBeep(frequency = 880, duration = 0.15, type: OscillatorType = 'sine') {
     try {
       this.init();
       const osc = this.audioCtx.createOscillator();

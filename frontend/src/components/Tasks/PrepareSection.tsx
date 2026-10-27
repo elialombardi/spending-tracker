@@ -10,7 +10,7 @@ import { formatCurrency } from '../../helpers/formatters';
 import { Button } from '@mui/material';
 import api from '../../api';
 
-export default function PrepareSection({ projectGroups, onTasksSent }) {
+export default function PrepareSection({ projectGroups, onTasksSent, openEditTask }) {
     const [isSending, setIsSending] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
@@ -64,7 +64,7 @@ export default function PrepareSection({ projectGroups, onTasksSent }) {
             {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
             {projectGroups.map((group) => (
                 <Paper key={group.projectName} sx={{ borderRadius: 3, p: 2.5 }} variant="outlined">
-                    <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" spacing={1} sx={{ mb: 1 }}>
+                    <Stack direction={{ xs: 'column', md: 'row' }}  spacing={1} sx={{ justifyContent: "space-between", ...({ mb: 1 }) }}>
                         <Box>
                             <Typography sx={{ fontWeight: 700 }} variant="h6">
                                 {group.projectName}
@@ -76,7 +76,7 @@ export default function PrepareSection({ projectGroups, onTasksSent }) {
                     </Stack>
                     <List disablePadding>
                         {group.tasks.map((task) => (
-                            <TaskLine key={task.id} task={task} showDate={false} />
+                            <TaskLine key={task.id} task={task} showDate={false} onEdit={() => openEditTask(task)} />
                         ))}
                     </List>
                 </Paper>

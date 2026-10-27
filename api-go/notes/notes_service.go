@@ -58,16 +58,6 @@ func (s *notesService) ListFolderTree() ([]NoteFolderTreeResponse, error) {
 		childrenByParent[*folder.ParentID] = append(childrenByParent[*folder.ParentID], folderNode)
 	}
 
-	for id, node := range nodesByID {
-		children := childrenByParent[id]
-		if len(children) == 0 {
-			continue
-		}
-		for _, child := range children {
-			node.Children = append(node.Children, *child)
-		}
-	}
-
 	for _, note := range notes {
 		folderNode, ok := nodesByID[note.FolderID]
 		if !ok {
@@ -76,9 +66,18 @@ func (s *notesService) ListFolderTree() ([]NoteFolderTreeResponse, error) {
 		folderNode.Notes = append(folderNode.Notes, mapNoteEntity(note))
 	}
 
+	var buildTree func(*NoteFolderTreeResponse) NoteFolderTreeResponse
+	buildTree = func(node *NoteFolderTreeResponse) NoteFolderTreeResponse {
+		result := *node
+		for _, child := range childrenByParent[node.ID] {
+			result.Children = append(result.Children, buildTree(child))
+		}
+		return result
+	}
+
 	response := make([]NoteFolderTreeResponse, 0, len(roots))
 	for _, root := range roots {
-		response = append(response, *root)
+		response = append(response, buildTree(root))
 	}
 	return response, nil
 }

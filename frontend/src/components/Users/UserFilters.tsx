@@ -25,8 +25,8 @@ const UserFilters = ({
 
   return (
     <Paper sx={{ p: 2, mb: 3 }}>
-      <Grid container spacing={2} alignItems="center">
-        <Grid item xs={12} sm={6} md={4}>
+      <Grid container spacing={2}  sx={{ alignItems: "center" }}>
+        <Grid     size={{ xs: 12, sm: 6, md: 4 }}>
           <OutlinedInput
             placeholder="Search by username..."
             value={searchTerm}
@@ -49,7 +49,7 @@ const UserFilters = ({
             size="small"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid     size={{ xs: 12, sm: 6, md: 3 }}>
           <FormControl fullWidth size="small">
             <InputLabel>Role</InputLabel>
             <Select
@@ -64,7 +64,7 @@ const UserFilters = ({
             </Select>
           </FormControl>
         </Grid>
-        <Grid item xs={12} sm={12} md={5}>
+        <Grid     size={{ xs: 12, sm: 12, md: 5 }}>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
             {hasFilters && (
               <Button

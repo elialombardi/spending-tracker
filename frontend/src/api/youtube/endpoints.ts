@@ -104,7 +104,7 @@ export const youtubeApi = baseApi.injectEndpoints({
                 url: '/youtube/sync',
                 method: 'POST',
             }),
-            invalidatesTags: ['Channels', 'Videos'],
+            invalidatesTags: ['Sync'],
         }),
 
         syncChannel: builder.mutation<{ syncId: string }, string>({
@@ -112,7 +112,7 @@ export const youtubeApi = baseApi.injectEndpoints({
                 url: `/youtube/sync/channel/${channelId}`,
                 method: 'POST',
             }),
-            invalidatesTags: ['Channels', 'Videos'],
+            invalidatesTags: ['Sync'],
         }),
 
         syncTagChannels: builder.mutation<{ syncId: string }, string>({
@@ -120,12 +120,23 @@ export const youtubeApi = baseApi.injectEndpoints({
                 url: `/youtube/sync/tag/${tagId}`,
                 method: 'POST',
             }),
-            invalidatesTags: ['Channels', 'Videos'],
+            invalidatesTags: ['Sync'],
         }),
 
         getSyncStatus: builder.query<SyncStatus, void>({
             query: () => '/youtube/sync/status',
             providesTags: ['Sync'],
+            async onQueryStarted(_arg, { dispatch, getState, queryFulfilled }) {
+                const previous = youtubeApi.endpoints.getSyncStatus.select()(getState()).data
+                try {
+                    const { data } = await queryFulfilled
+                    if (previous && data.lastSync && previous.lastSync?.id !== data.lastSync.id) {
+                        dispatch(baseApi.util.invalidateTags(['Channels', 'Videos']))
+                    }
+                } catch {
+                    console.error('Failed to refresh YouTube sync status.')
+                }
+            },
         }),
     }),
 });

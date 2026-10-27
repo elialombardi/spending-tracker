@@ -1,6 +1,6 @@
 import { fetchJSON } from '../client';
 import { endpoints } from '../endpoints';
-import type { Note, NoteFolderTree, NoteStyle } from '../../types/domain';
+import type { Note, NoteFolderTree, NoteStyle } from '../../types/notes';
 
 type CreateFolderPayload = {
   name: string

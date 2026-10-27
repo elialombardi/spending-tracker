@@ -21,9 +21,9 @@ export default function WorkoutHeader({
     <Stack
       direction={{ xs: 'column', sm: 'row' }}
       spacing={2}
-      mb={3}
+       sx={{ mb: 3 }}
     >
-      <Typography variant="h5" fontWeight="bold">
+      <Typography variant="h5"  sx={{ fontWeight: "bold" }}>
         Workout Builder
       </Typography>
 

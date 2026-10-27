@@ -1,8 +1,10 @@
 package youtube
 
 import (
+	"context"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -17,6 +19,12 @@ type Service struct {
 	apiKey      string
 	oauthConfig *oauth2.Config
 	httpClient  *http.Client
+	ctx         context.Context
+	cancel      context.CancelFunc
+	jobMu       sync.Mutex
+	jobWG       sync.WaitGroup
+	jobSlots    chan struct{}
+	stopping    bool
 }
 type OAuthConfig struct {
 	ClientID     string
@@ -37,15 +45,37 @@ func NewService(db *gorm.DB, oauthConfig OAuthConfig) *Service {
 	}
 
 	apiKey := os.Getenv("YOUTUBE_API_KEY")
-	if apiKey == "" {
-		// You might want to handle this differently
-		apiKey = "your-api-key" // Should come from config
-	}
+	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Service{
 		db:          db,
 		apiKey:      apiKey,
 		oauthConfig: config,
 		httpClient:  &http.Client{Timeout: 30 * time.Second},
+		ctx:         ctx,
+		cancel:      cancel,
+		jobSlots:    make(chan struct{}, 4),
+	}
+}
+
+func (s *Service) Cancel() {
+	s.cancel()
+}
+
+func (s *Service) Shutdown(ctx context.Context) error {
+	s.cancel()
+	s.jobMu.Lock()
+	s.stopping = true
+	s.jobMu.Unlock()
+	done := make(chan struct{})
+	go func() {
+		s.jobWG.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }

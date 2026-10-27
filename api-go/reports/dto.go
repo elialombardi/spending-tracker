@@ -2,6 +2,11 @@ package reports
 
 import "database/sql"
 
+type TransactionPagination struct {
+	Page  int
+	Limit int
+}
+
 type ImportResultResponse struct {
 	AccountNumber               string                      `json:"accountNumber"`
 	FileName                    string                      `json:"fileName"`

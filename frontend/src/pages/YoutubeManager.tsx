@@ -32,10 +32,10 @@ import {
     Delete as DeleteIcon,
     Edit as EditIcon,
 } from '@mui/icons-material';
-import { useGetChannelsQuery, useGetTagsQuery, useGetLatestVideosQuery, useSyncAllMutation, useGetSyncStatusQuery } from '../api/youtube/endpoints';
+import { youtubeApi, useGetChannelsQuery, useGetTagsQuery, useGetLatestVideosQuery, useSyncAllMutation, useGetSyncStatusQuery } from '../api/youtube/endpoints';
 import { ChannelList } from '../components/youtube/ChannelList';
 import { SyncStatus } from '../components/youtube/SyncStatus';
-import TagManager from '../components/pages/TagManager';
+import { TagManager } from '../components/youtube/TagManager';
 import { VideoFeed } from '../components/youtube/VideoFeed';
 
 interface TabPanelProps {
@@ -71,7 +71,11 @@ export function YoutubeManager() {
     const { data: channels, isLoading: channelsLoading, error: channelsError, refetch: refetchChannels } = useGetChannelsQuery({ includeVideos: true, limit: 10 });
     const { data: tags, isLoading: tagsLoading, error: tagsError, refetch: refetchTags } = useGetTagsQuery();
     const { data: videos, isLoading: videosLoading, error: videosError, refetch: refetchVideos } = useGetLatestVideosQuery({ limit: 20 });
-    const { data: syncStatus, isLoading: syncStatusLoading, refetch: refetchSyncStatus } = useGetSyncStatusQuery();
+    const { data: cachedSyncStatus } = youtubeApi.endpoints.getSyncStatus.useQueryState();
+    const { data: syncStatus, isLoading: syncStatusLoading, error: syncStatusError, refetch: refetchSyncStatus } = useGetSyncStatusQuery(undefined, {
+        pollingInterval: cachedSyncStatus?.isSyncing ? 2000 : 0,
+        refetchOnMountOrArgChange: true,
+    });
     const [syncAll, { isLoading: syncAllLoading }] = useSyncAllMutation();
 
     const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -87,7 +91,6 @@ export function YoutubeManager() {
                 severity: 'success',
             });
             setSyncDialogOpen(false);
-            refetchSyncStatus();
         } catch (error) {
             setSnackbar({
                 open: true,
@@ -139,7 +142,7 @@ export function YoutubeManager() {
 
             {/* Sync Status */}
             <Box sx={{ mb: 3 }}>
-                <SyncStatus status={syncStatus} loading={syncStatusLoading} />
+                <SyncStatus status={syncStatus} loading={syncStatusLoading} error={syncStatusError} />
             </Box>
 
             {/* Tabs */}
@@ -169,6 +172,7 @@ export function YoutubeManager() {
                     <TagManager
                         tags={tags || []}
                         loading={tagsLoading}
+                        error={tagsError}
                         onRefresh={refetchTags} />
                 </TabPanel>
 

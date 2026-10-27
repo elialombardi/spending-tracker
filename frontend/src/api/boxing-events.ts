@@ -1,5 +1,6 @@
 import { fetchJSON } from './client';
 import { endpoints } from './endpoints';
+import { baseApi } from './baseApi';
 
 export interface BoxingEvent {
     id: number;
@@ -28,6 +29,16 @@ export interface FilterParams {
     page?: number;
     limit?: number;
 }
+
+export const boxingEventsQueryApi = baseApi.injectEndpoints({
+    endpoints: builder => ({
+        listBoxingEvents: builder.query<ListResponse, FilterParams>({
+            query: params => ({ url: endpoints.boxingEvents, params }),
+        }),
+    }),
+});
+
+export const { useListBoxingEventsQuery } = boxingEventsQueryApi;
 
 export const boxingEventsApi = {
     list: (params: FilterParams) =>

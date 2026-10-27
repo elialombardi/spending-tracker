@@ -14,7 +14,7 @@ export default function WorkoutActions({
   const isSequenceEmpty = workoutSequence.length === 0;
 
   return (
-    <Stack direction="row" spacing={1} mb={2}>
+    <Stack direction="row" spacing={1}  sx={{ mb: 2 }}>
       {selectedWorkoutId && (
         <Tooltip title="Delete Saved Workout">
           <IconButton

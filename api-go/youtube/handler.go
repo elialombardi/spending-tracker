@@ -355,7 +355,8 @@ func (h *Handler) SyncChannel(c fiber.Ctx) error {
 
 	channelID := c.Params("id")
 
-	if err := h.service.SyncChannelVideos(userID, channelID); err != nil {
+	syncLog, err := h.service.SyncChannel(userID, channelID)
+	if err != nil {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{
 			"error": err.Error(),
 		})
@@ -363,6 +364,7 @@ func (h *Handler) SyncChannel(c fiber.Ctx) error {
 
 	return c.Status(fiber.StatusAccepted).JSON(fiber.Map{
 		"message": "Sync started",
+		"syncId":  syncLog.ID,
 	})
 }
 

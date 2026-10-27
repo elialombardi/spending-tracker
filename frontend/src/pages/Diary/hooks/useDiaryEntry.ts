@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   useGetEntryByDateQuery,
   useCreateEntryMutation,
@@ -8,10 +8,15 @@ import { formatDateInput } from "../../../helpers/diary";
 
 export const useDiaryEntry = (selectedDate: Date) => {
   const dateStr = formatDateInput(selectedDate);
-  const [content, setContent] = useState("");
+  const [draft, setDraft] = useState<{ date: string; content: string } | null>(null);
+  const [previousDate, setPreviousDate] = useState(dateStr);
+  if (previousDate !== dateStr) {
+    setPreviousDate(dateStr);
+    setDraft(null);
+  }
 
   const {
-    data: entry,
+    currentData: entry,
     isLoading,
     error: loadError,
     refetch,
@@ -22,16 +27,8 @@ export const useDiaryEntry = (selectedDate: Date) => {
   const [createEntry] = useCreateEntryMutation();
   const [updateEntry] = useUpdateEntryMutation();
 
-  // Update content when entry loads
-  useEffect(() => {
-    if (entry) {
-      setContent(entry.content);
-    } else if (loadError && (loadError as any)?.status === 404) {
-      setContent("");
-    } else if (!entry) {
-      setContent("");
-    }
-  }, [entry, loadError]);
+  const content = draft?.date === dateStr ? draft.content : entry?.content || "";
+  const setContent = (content: string) => setDraft({ date: dateStr, content });
 
   const handleSave = async (contentToSave: string) => {
     if (!contentToSave.trim()) return;
@@ -42,6 +39,7 @@ export const useDiaryEntry = (selectedDate: Date) => {
         await createEntry({ date: dateStr, content: contentToSave }).unwrap();
       }
       await refetch();
+      setDraft(current => current?.date === dateStr && current.content === contentToSave ? null : current);
     } catch (err) {
       console.error("Failed to save entry:", err);
       throw err;

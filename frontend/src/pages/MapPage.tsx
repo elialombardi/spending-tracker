@@ -1,220 +1,285 @@
-// MapPage.js
-import { useEffect, useState } from 'react'
-import Box from '@mui/material/Box'
-import Paper from '@mui/material/Paper'
-import TagLocationsDrawer from '../components/TagLocationsDrawer'
-import Typography from '@mui/material/Typography'
-import List from '@mui/material/List'
-import ListItemButton from '@mui/material/ListItemButton'
-import ListItemText from '@mui/material/ListItemText'
-import Button from '@mui/material/Button'
+import { useMemo, useState } from 'react'
+import {
+    Alert, Box, Button, Chip, IconButton, InputAdornment, LinearProgress,
+    List, ListItem, ListItemButton, Paper, Stack, TextField, Tooltip, Typography,
+} from '@mui/material'
+import AddIcon from '@mui/icons-material/Add'
+import CloseIcon from '@mui/icons-material/Close'
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
+import ExploreOutlinedIcon from '@mui/icons-material/ExploreOutlined'
+import FilterAltOffIcon from '@mui/icons-material/FilterAltOff'
+import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined'
+import SearchIcon from '@mui/icons-material/Search'
+import ZoomOutMapIcon from '@mui/icons-material/ZoomOutMap'
 import { useListLocationsQuery, useCreateLocationMutation, useUpdateLocationMutation } from '../api/locationsApi'
 import { useListTagsQuery } from '../api/locationTagsApi'
-import { LocationPayload } from '../types/domain'
+import type { Location, LocationPayload } from '../types/domain'
 import { useAuthSession, canWrite } from '../auth'
 import LocationFormDialog from '../components/Locations/LocationFormDialog'
-
-const defaultCenter = [41.9028, 12.4964]
-const UNTAGGED = '__untagged__'
+import LocationMap from '../components/Locations/LocationMap'
+import { filterLocations, isMappableLocation, UNTAGGED } from './mapLocations'
 
 export default function MapPage() {
     const { session } = useAuthSession()
-    const [locations, setLocations] = useState([])
-    const [tags, setTags] = useState([])
-    const [filter, setFilter] = useState('all')
-    const [selectedTag, setSelectedTag] = useState(null)
-    const [drawerOpen, setDrawerOpen] = useState(false)
+    const writable = canWrite(session)
+    const [search, setSearch] = useState('')
+    const [selectedTag, setSelectedTag] = useState<string | null>(null)
+    const [selectedId, setSelectedId] = useState<number | null>(null)
+    const [fitBoundsKey, setFitBoundsKey] = useState(0)
     const [formDialogOpen, setFormDialogOpen] = useState(false)
-    const [editingLocation, setEditingLocation] = useState(null)
-    const [center, setCenter] = useState(defaultCenter)
-    const [highlightedId, setHighlightedId] = useState(null)
+    const [editingLocation, setEditingLocation] = useState<Location | null>(null)
     const [appError, setAppError] = useState('')
 
-    const { data: remoteLocations, error: locationsError } = useListLocationsQuery(undefined, { skip: !session })
-    const { data: remoteTags, error: tagsError } = useListTagsQuery(undefined, { skip: !session })
-
-    useEffect(() => {
-        if (!session) return undefined
-        if (Array.isArray(remoteLocations)) setLocations(remoteLocations)
-        if (Array.isArray(remoteTags)) setTags(remoteTags)
-        if (locationsError || tagsError) {
-            handleApiError(locationsError || tagsError, 'Failed to load data from the API.')
-        }
-        return undefined
-    }, [session, remoteLocations, remoteTags, locationsError, tagsError])
-
-    function handleApiError(err, fallbackMessage) {
-        if (err?.code === 'AUTH_REQUIRED') return
-        if (err?.code === 'FORBIDDEN') {
-            setAppError('Your role does not allow that action.')
-            return
-        }
-        setAppError(err instanceof Error ? err.message : fallbackMessage)
-    }
-
+    const {
+        data: locations = [], error: locationsError, isLoading, isFetching, refetch: refetchLocations,
+    } = useListLocationsQuery(undefined, { skip: !session })
+    const { data: tags = [], error: tagsError, refetch: refetchTags } = useListTagsQuery(undefined, { skip: !session })
     const [createLocation] = useCreateLocationMutation()
     const [updateLocation] = useUpdateLocationMutation()
 
-    // Handler for creating a location
-    const handleCreateLocation = async (payload) => {
-        try {
-            const created = await createLocation(payload).unwrap()
-            setLocations((current) => [...current, created || payload])
-        } catch (err) {
-            handleApiError(err, 'Failed to create the location.')
-            throw err
+    const tagCounts = useMemo(() => {
+        const counts = new Map<string, number>()
+        for (const location of locations) {
+            const locationTags = new Set((location.tags || []).filter(tag => tag.trim()))
+            if (!locationTags.size) counts.set(UNTAGGED, (counts.get(UNTAGGED) || 0) + 1)
+            for (const tag of locationTags) counts.set(tag, (counts.get(tag) || 0) + 1)
         }
+        return counts
+    }, [locations])
+    const tagOptions = useMemo(
+        () => [...new Set([...tags, ...locations.flatMap(location => location.tags || [])])]
+            .filter(tag => tag.trim()).sort((a, b) => a.localeCompare(b)),
+        [tags, locations],
+    )
+    const visibleLocations = useMemo(
+        () => filterLocations(locations, search, selectedTag),
+        [locations, search, selectedTag],
+    )
+    const mapLocations = useMemo(() => visibleLocations.filter(isMappableLocation), [visibleLocations])
+    const selectedLocation = mapLocations.find(location => location.id === selectedId)
+    const center = useMemo<[number, number] | undefined>(
+        () => selectedLocation ? [selectedLocation.lat, selectedLocation.lng] : undefined,
+        [selectedLocation],
+    )
+    const hasFilters = Boolean(search.trim() || selectedTag)
+    const missingCoordinates = visibleLocations.length - mapLocations.length
+
+    function clearFilters() {
+        setSearch('')
+        setSelectedTag(null)
+        setSelectedId(null)
     }
 
-    // Handler for editing a location
-    const handleEditLocation = (location) => {
+    function openForm(location: Location | null = null) {
         setEditingLocation(location)
+        setAppError('')
         setFormDialogOpen(true)
     }
 
-    // Handler for updating a location
-    const handleUpdateLocation = async (payload) => {
+    async function handleFormSubmit(payload: LocationPayload) {
+        setAppError('')
         try {
-            const updated = await updateLocation({ id: editingLocation.id, ...payload }).unwrap()
-            setLocations((current) =>
-                current.map((loc) =>
-                    (loc.id || loc._id) === (editingLocation.id || editingLocation._id)
-                        ? updated || { ...loc, ...payload }
-                        : loc
-                )
-            )
-            setEditingLocation(null)
-        } catch (err) {
-            handleApiError(err, 'Failed to update the location.')
-            throw err
-        }
-    }
-
-    // Handle form submission (both add and edit)
-    const handleFormSubmit = async (payload) => {
-        if (editingLocation) {
-            await handleUpdateLocation(payload)
-        } else {
-            await handleCreateLocation(payload)
-        }
-    }
-
-    const handleOpenAddDialog = () => {
-        setEditingLocation(null)
-        setFormDialogOpen(true)
-    }
-
-    const handleCloseFormDialog = () => {
-        setFormDialogOpen(false)
-        setEditingLocation(null)
-    }
-
-    // Helper function to check if a location has no tags
-    const hasNoTags = (loc) => {
-        return !loc.tags ||
-            !Array.isArray(loc.tags) ||
-            loc.tags.length === 0 ||
-            (loc.tags.length === 1 && loc.tags[0] === '')
-    }
-
-    const filteredLocations = locations.filter((loc) => {
-        if (filter === 'all') return true
-        return (loc.tags || []).includes(filter)
-    })
-
-    const mapLocations = selectedTag
-        ? locations.filter((loc) => {
-            if (selectedTag === UNTAGGED) {
-                return hasNoTags(loc)
+            if (editingLocation) {
+                await updateLocation({ id: editingLocation.id, location: payload }).unwrap()
+            } else {
+                await createLocation(payload).unwrap()
+                clearFilters()
             }
-            return (loc.tags || []).includes(selectedTag)
-        })
-        : filteredLocations
-
-    const tagCounts = tags.reduce((acc, t) => {
-        acc[t] = (locations.filter((loc) => (loc.tags || []).includes(t))).length;
-        return acc;
-    }, {})
-
-    const untaggedCount = locations.filter(loc => hasNoTags(loc)).length;
-    tagCounts[UNTAGGED] = untaggedCount;
-
-    const drawerLocations = selectedTag === UNTAGGED
-        ? locations.filter(loc => hasNoTags(loc))
-        : selectedTag
-            ? locations.filter(loc => (loc.tags || []).includes(selectedTag))
-            : [];
-
-    // Debug logging
-    useEffect(() => {
-        console.log('Locations:', locations)
-        console.log('Untagged count:', untaggedCount)
-        console.log('Drawer locations:', drawerLocations)
-        console.log('Selected tag:', selectedTag)
-    }, [locations, untaggedCount, drawerLocations, selectedTag])
+        } catch (error) {
+            setAppError(error instanceof Error ? error.message : 'Unable to save this location. Please try again.')
+            throw error
+        }
+    }
 
     return (
-        <Box sx={{ display: 'flex', gap: 2, height: { xs: 'auto', md: 'calc(100vh - 120px)' }, flexDirection: { xs: 'column', md: 'row' } }}>
-            {/* Tags column */}
-            <Box sx={{ width: { xs: '100%', md: 220 } }}>
-                <Paper sx={{ p: 2, height: { xs: 'auto', md: '100%' }, mb: { xs: 2, md: 0 } }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="h6">Tags</Typography>
-                        {canWrite(session) ? (
-                            <Button size="small" variant="contained" onClick={handleOpenAddDialog}>
-                                Add location
-                            </Button>
-                        ) : null}
-                    </Box>
-                    <List sx={{ maxHeight: '60vh', overflow: 'auto' }}>
-                        {tags.map((t) => (
-                            <ListItemButton key={t} selected={selectedTag === t} onClick={() => { setSelectedTag(t); setDrawerOpen(true); }}>
-                                <ListItemText primary={t} secondary={`${tagCounts[t] || 0} locations`} />
-                            </ListItemButton>
-                        ))}
-                        {untaggedCount > 0 && (
-                            <ListItemButton
-                                key={UNTAGGED}
-                                selected={selectedTag === UNTAGGED}
-                                onClick={() => { setSelectedTag(UNTAGGED); setDrawerOpen(true); }}
-                            >
-                                <ListItemText primary="Untagged" secondary={`${untaggedCount} locations`} />
-                            </ListItemButton>
+        <Stack spacing={2.5}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' } }}>
+                <Box>
+                    <Typography variant="overline" color="primary" sx={{ letterSpacing: 2 }}>YOUR PLACES, AT A GLANCE</Typography>
+                    <Typography component="h1" variant="h4" sx={{ fontWeight: 700 }}>Explore your places</Typography>
+                    <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+                        Find a favorite, discover a connection, or save somewhere new.
+                    </Typography>
+                </Box>
+                {writable && (
+                    <Button variant="contained" startIcon={<AddIcon />} onClick={() => openForm()} sx={{ flexShrink: 0 }}>
+                        Add location
+                    </Button>
+                )}
+            </Stack>
+
+            {appError && <Alert severity="error" onClose={() => setAppError('')}>{appError}</Alert>}
+            {(locationsError || tagsError) && (
+                <Alert severity="error" action={
+                    <Button color="inherit" size="small" onClick={() => {
+                        if (locationsError) void refetchLocations()
+                        if (tagsError) void refetchTags()
+                    }}>Retry</Button>
+                }>
+                    {locationsError ? 'Could not load your locations.' : 'Could not load all tags. You can still browse your saved places.'}
+                </Alert>
+            )}
+
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
+                <TextField
+                    fullWidth
+                    size="small"
+                    label="Search your places"
+                    placeholder="Search by name, description, or tag"
+                    value={search}
+                    onChange={event => { setSearch(event.target.value); setSelectedId(null) }}
+                    slotProps={{ input: {
+                        startAdornment: <InputAdornment position="start"><SearchIcon color="action" /></InputAdornment>,
+                        endAdornment: search ? (
+                            <InputAdornment position="end">
+                                <IconButton size="small" aria-label="Clear search" onClick={() => { setSearch(''); setSelectedId(null) }}>
+                                    <CloseIcon fontSize="small" />
+                                </IconButton>
+                            </InputAdornment>
+                        ) : null,
+                    } }}
+                />
+                <Stack direction="row" spacing={1} sx={{ mt: 2, overflowX: 'auto', pb: 0.5 }} aria-label="Filter by tag">
+                    <Chip
+                        label={`All places · ${locations.length}`}
+                        color={selectedTag === null ? 'primary' : 'default'}
+                        variant={selectedTag === null ? 'filled' : 'outlined'}
+                        aria-pressed={selectedTag === null}
+                        onClick={() => { setSelectedTag(null); setSelectedId(null) }}
+                    />
+                    {tagOptions.map(tag => (
+                        <Chip
+                            key={tag}
+                            label={`${tag} · ${tagCounts.get(tag) || 0}`}
+                            color={selectedTag === tag ? 'primary' : 'default'}
+                            variant={selectedTag === tag ? 'filled' : 'outlined'}
+                            aria-pressed={selectedTag === tag}
+                            onClick={() => { setSelectedTag(selectedTag === tag ? null : tag); setSelectedId(null) }}
+                        />
+                    ))}
+                    {!!tagCounts.get(UNTAGGED) && (
+                        <Chip
+                            label={`Untagged · ${tagCounts.get(UNTAGGED)}`}
+                            color={selectedTag === UNTAGGED ? 'primary' : 'default'}
+                            variant={selectedTag === UNTAGGED ? 'filled' : 'outlined'}
+                            aria-pressed={selectedTag === UNTAGGED}
+                            onClick={() => { setSelectedTag(selectedTag === UNTAGGED ? null : UNTAGGED); setSelectedId(null) }}
+                        />
+                    )}
+                </Stack>
+            </Paper>
+
+            <Box sx={{
+                display: 'grid', gridTemplateColumns: { xs: '1fr', md: '340px minmax(0, 1fr)' },
+                gap: 2, height: { md: 'clamp(460px, calc(100dvh - 340px), 760px)' },
+            }}>
+                <Paper variant="outlined" sx={{
+                    order: { xs: 2, md: 1 }, display: 'flex', flexDirection: 'column',
+                    minHeight: 0, borderRadius: 3, overflow: 'hidden', maxHeight: { xs: 480, md: 'none' },
+                }}>
+                    <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', p: 2, borderBottom: 1, borderColor: 'divider' }}>
+                        <Box aria-live="polite" role="status">
+                            <Typography component="h2" variant="subtitle1" sx={{ fontWeight: 700 }}>
+                                {isLoading ? 'Loading places...' : `${visibleLocations.length} ${visibleLocations.length === 1 ? 'place' : 'places'}`}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                {hasFilters ? `Matching your filters · ${locations.length} total` : 'Select a place to focus the map'}
+                            </Typography>
+                        </Box>
+                        {hasFilters && (
+                            <Tooltip title="Reset all filters">
+                                <IconButton aria-label="Reset all filters" onClick={clearFilters}><FilterAltOffIcon fontSize="small" /></IconButton>
+                            </Tooltip>
                         )}
-                    </List>
+                    </Stack>
+                    {isFetching && <LinearProgress aria-label="Loading locations" />}
+                    {!isLoading && !visibleLocations.length ? (
+                        <Stack spacing={2} sx={{ alignItems: 'center', p: 4, textAlign: 'center', my: 'auto' }}>
+                            <ExploreOutlinedIcon sx={{ fontSize: 44, color: 'text.secondary' }} />
+                            <Typography variant="h6">
+                                {locationsError ? 'Places are unavailable' : hasFilters ? 'No matching places' : 'Your next favorite starts here'}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                {locationsError ? 'Retry loading your locations using the message above.'
+                                    : hasFilters ? 'Try another name or tag, or reset your filters.'
+                                        : 'Save places you want to visit and keep them organized with tags.'}
+                            </Typography>
+                            {hasFilters ? <Button onClick={clearFilters}>Reset filters</Button>
+                                : writable && !locationsError && <Button startIcon={<AddIcon />} onClick={() => openForm()}>Add your first location</Button>}
+                        </Stack>
+                    ) : (
+                        <List aria-label="Saved places" sx={{ overflowY: 'auto', p: 1, minHeight: 0 }}>
+                            {visibleLocations.map(location => (
+                                <ListItem key={location.id} disablePadding sx={{ mb: 0.75, alignItems: 'flex-start' }}>
+                                    <ListItemButton
+                                        selected={selectedId === location.id}
+                                        aria-pressed={selectedId === location.id}
+                                        onClick={() => setSelectedId(location.id)}
+                                        sx={{ borderRadius: 2, alignItems: 'flex-start', p: 1.5, minWidth: 0 }}
+                                    >
+                                        <LocationOnOutlinedIcon color={selectedId === location.id ? 'primary' : 'action'} sx={{ mr: 1, mt: 0.25 }} />
+                                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                                            <Typography sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}>{location.title || 'Unnamed location'}</Typography>
+                                            {location.description && <Typography variant="body2" color="text.secondary" sx={{
+                                                mt: 0.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere',
+                                            }}>{location.description}</Typography>}
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75, overflowWrap: 'anywhere' }}>
+                                                {(location.tags || []).filter(tag => tag.trim()).join(' · ') || 'Untagged'}
+                                            </Typography>
+                                            {!isMappableLocation(location) && <Typography variant="caption" color="warning.main">Coordinates need updating</Typography>}
+                                        </Box>
+                                    </ListItemButton>
+                                    {writable && <Tooltip title="Edit location">
+                                        <IconButton size="small" aria-label={`Edit ${location.title || 'unnamed location'}`} onClick={() => openForm(location)} sx={{ mt: 1 }}>
+                                            <EditOutlinedIcon fontSize="small" />
+                                        </IconButton>
+                                    </Tooltip>}
+                                </ListItem>
+                            ))}
+                        </List>
+                    )}
+                </Paper>
+
+                <Paper variant="outlined" sx={{
+                    order: { xs: 1, md: 2 }, borderRadius: 3, overflow: 'hidden', minWidth: 0,
+                    display: 'flex', flexDirection: 'column', height: { xs: 360, md: '100%' },
+                }}>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1 }}>
+                        <Box>
+                            <Typography component="h2" variant="subtitle1" sx={{ fontWeight: 700 }}>On the map</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                {selectedLocation ? selectedLocation.title : `${mapLocations.length} ${mapLocations.length === 1 ? 'pin' : 'pins'} · Scroll to zoom, drag to explore`}
+                            </Typography>
+                        </Box>
+                        <Button size="small" startIcon={<ZoomOutMapIcon />} disabled={!mapLocations.length} onClick={() => {
+                            setSelectedId(null)
+                            setFitBoundsKey(value => value + 1)
+                        }} sx={{ flexShrink: 0 }}>Show all</Button>
+                    </Stack>
+                    {!!missingCoordinates && <Alert severity="warning" sx={{ borderRadius: 0 }}>
+                        {missingCoordinates} {missingCoordinates === 1 ? 'place has' : 'places have'} invalid coordinates and cannot appear on the map.
+                    </Alert>}
+                    <Box sx={{ flex: 1, minHeight: 0, position: 'relative', isolation: 'isolate' }}>
+                        <LocationMap
+                            locations={mapLocations}
+                            center={center}
+                            centerZoom={selectedLocation ? 15 : undefined}
+                            highlightedId={selectedId}
+                            onSelectLocation={location => setSelectedId(Number(location.id))}
+                            fitBoundsKey={fitBoundsKey}
+                        />
+                    </Box>
                 </Paper>
             </Box>
 
-            {/* Map column */}
-            <Box sx={{ flex: 2, minHeight: { xs: 300, md: 'auto' } }}>
-                <Paper elevation={1} sx={{ height: { xs: 'auto', md: '100%' }, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
-                    <Typography>Select a tag to view its locations and the map.</Typography>
-                </Paper>
-            </Box>
-
-            {/* Drawer */}
-            <TagLocationsDrawer
-                open={drawerOpen}
-                onClose={() => setDrawerOpen(false)}
-                selectedTag={selectedTag}
-                locations={drawerLocations}
-                onCenter={(coord) => setCenter(coord)}
-                center={center}
-                draftLocation={null}
-                onHighlight={(id) => setHighlightedId(id)}
-                highlightedId={highlightedId}
-                onEditLocation={handleEditLocation}
-            />
-
-            {/* Single dialog for both add and edit */}
             <LocationFormDialog
                 open={formDialogOpen}
-                onClose={handleCloseFormDialog}
+                onClose={() => { setFormDialogOpen(false); setEditingLocation(null) }}
                 location={editingLocation}
                 onSubmit={handleFormSubmit}
-                tagOptions={tags}
+                tagOptions={tagOptions}
                 mode={editingLocation ? 'edit' : 'add'}
             />
-        </Box>
+        </Stack>
     )
 }

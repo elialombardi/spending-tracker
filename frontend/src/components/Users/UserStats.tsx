@@ -12,7 +12,7 @@ const UserStats = ({ stats }) => {
   return (
     <Grid container spacing={3} sx={{ mb: 3 }}>
       {statItems.map((item) => (
-        <Grid item xs={12} sm={6} md={3} key={item.label}>
+        <Grid     key={item.label} size={{ xs: 12, sm: 6, md: 3 }}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>

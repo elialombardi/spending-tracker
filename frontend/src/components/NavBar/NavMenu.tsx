@@ -6,7 +6,7 @@ import ListItemText from '@mui/material/ListItemText';
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import { NavItem } from './types';
+import type { NavItem } from '../../types/navigation';
 
 interface NavMenuProps {
   menuText: string;

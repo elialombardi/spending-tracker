@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     TextField, Button, Stack,
@@ -20,7 +20,9 @@ const BoxingEventForm: React.FC<Props> = ({ open, onClose, onSubmit, initialData
     const [description, setDescription] = useState('');
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    useEffect(() => {
+    const [previous, setPrevious] = useState<{ initialData?: BoxingEvent; open: boolean } | null>(null);
+    if (!previous || previous.initialData !== initialData || previous.open !== open) {
+        setPrevious({ initialData, open });
         if (initialData) {
             setTitle(initialData.title);
             setStartDate(initialData.start_date.slice(0, 16));
@@ -35,7 +37,7 @@ const BoxingEventForm: React.FC<Props> = ({ open, onClose, onSubmit, initialData
             setDescription('');
         }
         setErrors({});
-    }, [initialData, open]);
+    }
 
     const validate = (): boolean => {
         const newErrors: Record<string, string> = {};

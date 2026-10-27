@@ -2,7 +2,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import { NavLink } from 'react-router-dom';
 import NavMenu from './NavMenu';
-import { NavSection } from './types';
+import type { NavSection } from '../../types/navigation';
 
 interface DesktopNavProps {
   sections: NavSection[];

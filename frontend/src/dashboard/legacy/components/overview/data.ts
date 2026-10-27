@@ -344,7 +344,7 @@ export function buildComparisonSpendChart({
     selectedCycleStart,
     spendingGranularity,
 }) {
-    const comparisonCycleTransactionLookup = new Map(
+    const comparisonCycleTransactionLookup = new Map<string, { transactions: { amount: number; bookingDate: string; category?: string }[] }>(
         comparisonCycleTransactions.map((comparisonCycleTransaction) => [
             comparisonCycleTransaction.from,
             comparisonCycleTransaction,

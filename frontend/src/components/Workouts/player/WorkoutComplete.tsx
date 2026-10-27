@@ -13,7 +13,7 @@ export function WorkoutComplete({ onFinish }) {
         flex: 1,
       }}
     >
-      <Typography variant="h4" fontWeight="bold" gutterBottom>
+      <Typography variant="h4"  gutterBottom sx={{ fontWeight: "bold" }}>
         Workout Complete! 🎉
       </Typography>
       <Typography variant="body1" sx={{ mb: 3, opacity: 0.9 }}>

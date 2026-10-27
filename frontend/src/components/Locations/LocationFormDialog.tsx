@@ -1,5 +1,5 @@
 // components/LocationFormDialog.js
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
@@ -63,8 +63,9 @@ export default function LocationFormDialog({
     const submitButtonText = mode === 'edit' ? 'Save Changes' : 'Add Location'
     const submittingText = mode === 'edit' ? 'Saving...' : 'Adding...'
 
-    // Reset form when dialog opens or location changes
-    useEffect(() => {
+    const [previous, setPrevious] = useState<{ open: boolean; location: typeof location; mode: string } | null>(null)
+    if (!previous || previous.open !== open || previous.location !== location || previous.mode !== mode) {
+        setPrevious({ open, location, mode })
         if (open) {
             if (mode === 'edit' && location) {
                 setFormData({
@@ -91,17 +92,13 @@ export default function LocationFormDialog({
             setSearchResults([])
             setHighlightedSearchId(null)
         }
-    }, [open, location, mode])
-
-    // Reset form when dialog closes
-    useEffect(() => {
-        if (!open) {
+        else {
             setError('')
             setLoading(false)
             setSearchResults([])
             setHighlightedSearchId(null)
         }
-    }, [open])
+    }
 
     // Handle zoom reset
     useEffect(() => {
@@ -132,7 +129,7 @@ export default function LocationFormDialog({
         }
     }
 
-    const handleSearchResults = (results) => {
+    const handleSearchResults = useCallback((results) => {
         setSearchResults(results || [])
         if (Array.isArray(results) && results.length > 0) {
             const latLngs = results
@@ -145,7 +142,7 @@ export default function LocationFormDialog({
                 setCenter([avgLat, avgLng])
             }
         }
-    }
+    }, [])
 
     const handleSearchHover = (id) => {
         setHighlightedSearchId(id)

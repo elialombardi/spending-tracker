@@ -9,12 +9,7 @@ interface AutoSaveData {
 }
 
 export const useAutoSave = (content: string, dateStr: string) => {
-  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
-  const [savedContent, setSavedContent] = useState<string | null>(null);
-  const autoSaveIntervalRef = useRef<number | null>(null);
-
-  // Check for auto-saved content on mount
-  useEffect(() => {
+  const [savedContent, setSavedContent] = useState<string | null>(() => {
     const saved = localStorage.getItem(AUTO_SAVE_KEY);
     if (saved) {
       try {
@@ -25,8 +20,7 @@ export const useAutoSave = (content: string, dateStr: string) => {
           today.getTime() - savedDate.getTime() < 24 * 60 * 60 * 1000;
 
         if (isRecent && parsed.content.trim()) {
-          setSavedContent(parsed.content);
-          setShowRestoreDialog(true);
+          return parsed.content;
         } else {
           localStorage.removeItem(AUTO_SAVE_KEY);
         }
@@ -35,7 +29,10 @@ export const useAutoSave = (content: string, dateStr: string) => {
         localStorage.removeItem(AUTO_SAVE_KEY);
       }
     }
-  }, []);
+    return null;
+  });
+  const [showRestoreDialog, setShowRestoreDialog] = useState(savedContent !== null);
+  const autoSaveIntervalRef = useRef<number | null>(null);
 
   // Auto-save content every 30 seconds
   useEffect(() => {

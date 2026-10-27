@@ -1,6 +1,7 @@
 package boxing_events
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -49,9 +50,9 @@ type PinnacleEvent struct {
 }
 
 // FetchPrematchBoxingEvents retrieves upcoming (prematch) boxing events from Pinnacle.
-func (c *PinnacleClient) FetchPrematchBoxingEvents() ([]PinnacleEvent, error) {
+func (c *PinnacleClient) FetchPrematchBoxingEvents(ctx context.Context) ([]PinnacleEvent, error) {
 	url := fmt.Sprintf("%s/kit/v1/markets?sport_id=9&event_type=prematch", c.baseURL)
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}

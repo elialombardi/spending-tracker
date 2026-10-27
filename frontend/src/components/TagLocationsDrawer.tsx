@@ -105,15 +105,15 @@ export default function TagLocationsDrawer({
                                     >
                                         <ListItemButton
                                             onClick={() => {
-                                                onCenter && onCenter([loc.lat, loc.lng]);
-                                                onHighlight && onHighlight(loc.id || loc._id);
+                                                onCenter?.([loc.lat, loc.lng]);
+                                                onHighlight?.(loc.id || loc._id);
                                             }}
                                             onMouseEnter={() => {
-                                                onHighlight && onHighlight(loc.id || loc._id);
-                                                onCenter && onCenter([loc.lat, loc.lng]);
+                                                onHighlight?.(loc.id || loc._id);
+                                                onCenter?.([loc.lat, loc.lng]);
                                             }}
                                             onMouseLeave={() => {
-                                                onHighlight && onHighlight(null);
+                                                onHighlight?.(null);
                                             }}
                                             selected={highlightedId === (loc.id || loc._id)}
                                             sx={{ flex: 1 }}
@@ -127,7 +127,7 @@ export default function TagLocationsDrawer({
                                             size="small"
                                             onClick={(e) => {
                                                 e.stopPropagation(); // Prevent triggering the ListItemButton click
-                                                onEditLocation && onEditLocation(loc);
+                                                onEditLocation?.(loc);
                                             }}
                                             sx={{ mr: 1 }}
                                             aria-label="edit location"

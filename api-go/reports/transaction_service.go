@@ -1,6 +1,7 @@
 package reports
 
 import (
+	"context"
 	"errors"
 	"regexp"
 	"sort"
@@ -43,7 +44,12 @@ func NewTransactionService(db *gorm.DB) *TransactionService {
 }
 
 func (s *TransactionService) FetchTransactions(from, to *time.Time, direction, category string, hasNeedsReview bool, needsReview bool) ([]Transaction, error) {
-	query := s.db.Model(&Transaction{})
+	transactions, _, err := s.FetchTransactionsPage(context.Background(), from, to, direction, category, hasNeedsReview, needsReview, nil)
+	return transactions, err
+}
+
+func (s *TransactionService) FetchTransactionsPage(ctx context.Context, from, to *time.Time, direction, category string, hasNeedsReview bool, needsReview bool, page *TransactionPagination) ([]Transaction, int64, error) {
+	query := s.db.WithContext(ctx).Model(&Transaction{})
 
 	if from != nil {
 		query = query.Where("booking_date >= ?", from.Format(dateLayout))
@@ -69,23 +75,31 @@ func (s *TransactionService) FetchTransactions(from, to *time.Time, direction, c
 		}
 	}
 
-	query = query.Order("booking_date DESC, imported_at_utc DESC")
+	var total int64
+	if page != nil {
+		if err := query.Count(&total).Error; err != nil {
+			return nil, 0, err
+		}
+		query = query.Offset((page.Page - 1) * page.Limit).Limit(page.Limit)
+	}
+	query = query.Order("booking_date DESC, imported_at_utc DESC, id DESC")
 
 	var transactions []Transaction
 	if err := query.Find(&transactions).Error; err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return transactions, nil
+	return transactions, total, nil
 }
 
 type CategorySummary struct {
 	Category *string `gorm:"column:category"`
 	Amount   float64 `gorm:"column:amount"`
+	Count    int     `gorm:"column:count"`
 }
 
 func (s *TransactionService) FetchCategorySummary(from, to *time.Time) ([]CategorySummary, error) {
 	query := s.db.Model(&Transaction{}).
-		Select("category, SUM(ABS(amount)) AS amount").
+		Select("category, SUM(ABS(amount)) AS amount, COUNT(*) AS count").
 		Where("amount < ? AND exclude_from_calculations = ?", 0, false).
 		Group("category")
 
@@ -138,9 +152,22 @@ func (s *TransactionService) FetchCycleIncomeCategoryCounts() ([]CategoryCount, 
 	return rows, err
 }
 
-func (s *TransactionService) FetchCategoryMappings() ([]CategoryRule, error) {
-	var rules []CategoryRule
-	if err := s.db.Order("merchant_key ASC").Find(&rules).Error; err != nil {
+type CategoryMappingRow struct {
+	CategoryRule
+	MatchingTransactions int `gorm:"column:matching_transactions"`
+}
+
+func (s *TransactionService) FetchCategoryMappings() ([]CategoryMappingRow, error) {
+	counts := s.db.Model(&Transaction{}).
+		Select("merchant_key, COUNT(*) AS matching_transactions").
+		Where("amount < ? AND exclude_from_calculations = ?", 0, false).
+		Group("merchant_key")
+	var rules []CategoryMappingRow
+	if err := s.db.Model(&CategoryRule{}).
+		Select("category_rules.*, COALESCE(matching.matching_transactions, 0) AS matching_transactions").
+		Joins("LEFT JOIN (?) AS matching ON matching.merchant_key = category_rules.merchant_key", counts).
+		Order("category_rules.merchant_key ASC, category_rules.id ASC").
+		Scan(&rules).Error; err != nil {
 		return nil, err
 	}
 	return rules, nil

@@ -47,9 +47,9 @@ function renderImportResult(importResult) {
     ]
 
     return (
-        <Grid container spacing={2} alignItems="stretch">
+        <Grid container spacing={2}  sx={{ alignItems: "stretch" }}>
             {stats.map((stat) => (
-                <Grid item xs={12} sm={6} md={3} key={stat.key}>
+                <Grid     key={stat.key} size={{ xs: 12, sm: 6, md: 3 }}>
                     <Card variant="outlined" sx={{ height: '100%' }}>
                         <CardHeader
                             avatar={<Avatar sx={{ bgcolor: (theme) => theme.palette[stat.color]?.main ?? theme.palette.primary.main }}>{stat.icon}</Avatar>}
@@ -65,7 +65,7 @@ function renderImportResult(importResult) {
             ))}
 
             {Array.isArray(importResult.reviewQueue) && importResult.reviewQueue.length > 0 && (
-                <Grid item xs={12}>
+                <Grid   size={{ xs: 12 }}>
                     <Accordion>
                         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                             <Typography variant="subtitle1">Review Queue ({importResult.reviewQueue.length})</Typography>

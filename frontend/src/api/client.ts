@@ -90,7 +90,7 @@ export async function fetchJSON<T>(path: string, opts: ApiFetchOptions = {}): Pr
     throw createApiError(message || `Request failed ${res.status} ${res.statusText}`, res, message);
   }
   if (res.status === 204) return null;
-  return res.json().catch(() => null) as Promise<T | null>;
+  return res.json() as Promise<T>;
 }
 
 export async function downloadFile(path: string, opts: ApiFetchOptions = {}) {

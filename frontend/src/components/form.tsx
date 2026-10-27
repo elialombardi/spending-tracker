@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useState } from 'react'
 import TagMultiSelect from './TagMultiSelect';
 import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
@@ -13,10 +13,6 @@ function LocationForm({ value, onChange, onSubmit, tagOptions = [] }) {
         onChange({ ...value, [field]: event.target.value });
     };
 
-    useEffect(() => {
-        if (value && value.lat && value.lng) setError('')
-    }, [value?.lat, value?.lng])
-
     const handleSubmit = (e) => {
         e.preventDefault()
         if (!value || value.lat == null || value.lng == null || value.lat === '' || value.lng === '') {
@@ -24,14 +20,14 @@ function LocationForm({ value, onChange, onSubmit, tagOptions = [] }) {
             return
         }
         setError('')
-        onSubmit && onSubmit()
+        onSubmit?.()
     }
 
     return (
         <Box sx={{ mt: 2 }}>
             <form onSubmit={handleSubmit}>
                 <Stack spacing={2} sx={{ width: '100%' }}>
-                    {error && <Alert severity="error">{error}</Alert>}
+                    {error && (!value?.lat || !value?.lng) && <Alert severity="error">{error}</Alert>}
 
                     <TextField
                         fullWidth

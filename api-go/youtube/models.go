@@ -91,17 +91,17 @@ type ChannelTag struct {
 // SyncLog represents a sync operation log
 type SyncLog struct {
 	ID                string `gorm:"primaryKey;type:varchar(36)"`
-	UserID            uint   `gorm:"type:bigint;not null;index"`
-	Type              string `gorm:"size:20;not null"`  // "all", "channel", "tag"
-	TargetID          string `gorm:"type:varchar(100)"` // Channel ID or Tag ID
-	Status            string `gorm:"size:20;not null"`  // "pending", "running", "completed", "failed"
+	UserID            uint   `gorm:"type:bigint;not null;index;index:idx_youtube_sync_user_status_created,priority:1"`
+	Type              string `gorm:"size:20;not null"`                                                       // "all", "channel", "tag"
+	TargetID          string `gorm:"type:varchar(100)"`                                                      // Channel ID or Tag ID
+	Status            string `gorm:"size:20;not null;index:idx_youtube_sync_user_status_created,priority:2"` // "pending", "running", "completed", "failed"
 	TotalChannels     int
 	ProcessedChannels int
 	TotalVideosAdded  int
 	ErrorMessage      string
 	StartedAt         *time.Time
 	CompletedAt       *time.Time
-	CreatedAt         time.Time
+	CreatedAt         time.Time `gorm:"index:idx_youtube_sync_user_status_created,priority:3,sort:desc"`
 }
 
 // Subscription represents a user's subscription to a YouTube channel

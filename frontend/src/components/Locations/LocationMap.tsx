@@ -27,6 +27,8 @@ interface LocationMapProps {
     highlightedId?: string | number | null;
     centerZoom?: number;
     visible?: boolean;
+    onSelectLocation?: (location: Location) => void;
+    fitBoundsKey?: number;
 }
 
 // Fix: Use type assertion for Leaflet Default icon
@@ -76,9 +78,9 @@ function MapViewSetter({ center, zoom }: { center?: LatLngExpression; zoom?: num
         if (center) {
             try {
                 if (typeof zoom === 'number') {
-                    map.setView(center, zoom);
+                    map.setView(center, zoom, { animate: false });
                 } else {
-                    map.setView(center, map.getZoom());
+                    map.setView(center, map.getZoom(), { animate: false });
                 }
             } catch (err) {
                 console.warn('Failed to set map view', err);
@@ -88,19 +90,21 @@ function MapViewSetter({ center, zoom }: { center?: LatLngExpression; zoom?: num
     return null;
 }
 
-function FitBoundsToLocations({ locations, padding = [50, 50] }: { locations: Location[]; padding?: PointExpression }) {
+const boundsPadding: PointExpression = [50, 50];
+
+function FitBoundsToLocations({ locations, fitBoundsKey }: { locations: Location[]; fitBoundsKey?: number }) {
     const map = useMap();
     useEffect(() => {
         if (!map) return;
         if (Array.isArray(locations) && locations.length > 0) {
             const latlngs = locations
-                .filter((l) => typeof l.lat === 'number' && typeof l.lng === 'number')
+                .filter((l) => Number.isFinite(l.lat) && Number.isFinite(l.lng))
                 .map((l) => [l.lat, l.lng] as LatLngExpression);
             if (latlngs.length === 0) return;
             const bounds = L.latLngBounds(latlngs);
-            map.fitBounds(bounds, { padding });
+            map.fitBounds(bounds, { padding: boundsPadding, maxZoom: 15, animate: false });
         }
-    }, [map, locations, padding]);
+    }, [map, locations, fitBoundsKey]);
     return null;
 }
 
@@ -125,7 +129,9 @@ function LocationMap({
     draftLocation,
     highlightedId,
     centerZoom,
-    visible = true
+    visible = true,
+    onSelectLocation,
+    fitBoundsKey
 }: LocationMapProps) {
     // Get location ID safely
     const getLocationId = (loc: Location) => {
@@ -142,7 +148,7 @@ function LocationMap({
             >
                 <MapViewSetter center={center} zoom={centerZoom} />
                 <InvalidateSize visible={visible} />
-                <FitBoundsToLocations locations={locations} padding={[50, 50] as PointExpression} />
+                <FitBoundsToLocations locations={locations} fitBoundsKey={fitBoundsKey} />
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -154,6 +160,7 @@ function LocationMap({
                         key={getLocationId(location)}
                         position={[location.lat, location.lng]}
                         icon={location.id === highlightedId || location._id === highlightedId ? highlightedIcon : goldenIcon}
+                        eventHandlers={onSelectLocation ? { click: () => onSelectLocation(location) } : undefined}
                     >
                         <Popup>
                             <strong>{location.title || location.name || 'Unnamed Location'}</strong> <br />

@@ -49,8 +49,6 @@ function App() {
           canWrite={dashboard.canWrite}
           comparisonCycleReports={dashboard.comparisonCycleReports}
           comparisonCycleTransactions={dashboard.comparisonCycleTransactions}
-          currentCycleReport={dashboard.currentCycleReport}
-          currentCycleTransactions={dashboard.currentCycleTransactions}
           cycleTransactions={dashboard.cycleTransactions}
           isBusy={dashboard.isBusy}
           monthlyReport={dashboard.monthlyReport}

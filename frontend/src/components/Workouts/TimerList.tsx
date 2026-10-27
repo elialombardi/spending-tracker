@@ -43,7 +43,7 @@ export default function TimerList({ timers, onUpdateTimers }) {
   return (
     <>
       <Paper variant="outlined" sx={{ mb: 2, bgcolor: 'background.default' }}>
-        <List size="small" disablePadding>
+        <List dense disablePadding>
           {timers.map((timer, idx) => (
             <ListItem
               key={timer.id}

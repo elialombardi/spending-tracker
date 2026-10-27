@@ -1,45 +1,19 @@
-import { Box, Stack, Typography, Button } from "@mui/material";
-import { useState, useCallback, useEffect } from "react";
+import { Alert, Box, Stack, Typography, Button } from "@mui/material";
+import { useState } from "react";
 import { useSnackbar } from "../../hooks/useSnackbar";
-import { BoxingEvent, FilterParams, boxingEventsApi } from "../../api/boxing-events";
+import { BoxingEvent, FilterParams, boxingEventsApi, useListBoxingEventsQuery } from "../../api/boxing-events";
 import BoxingEventForm from "../../components/BoxingEvents/BoxingEventForm";
 import BoxingEventsCalendar from '../../components/BoxingEvents/BoxingEventsCalendar'
 import AddIcon from '@mui/icons-material/Add';
 
 
 const BoxingEventsPage: React.FC = () => {
-    const [events, setEvents] = useState<BoxingEvent[]>([]);
-    const [total, setTotal] = useState(0);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [filters, setFilters] = useState<FilterParams>({ page: 1, limit: 20 });
+    const filters: FilterParams = { page: 1, limit: 20 };
+    const { data, error, refetch: fetchEvents } = useListBoxingEventsQuery(filters);
+    const events = data?.data || [];
     const [openForm, setOpenForm] = useState(false);
     const [editingEvent, setEditingEvent] = useState<BoxingEvent | null>(null);
     const snackbar = useSnackbar();
-
-    const fetchEvents = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const res = await boxingEventsApi.list(filters);
-            setEvents(res.data);
-            setTotal(res.total);
-        } catch (err) {
-            console.error(err);
-            setError('Failed to load events.');
-            snackbar.error('Failed to load events.');
-        } finally {
-            setLoading(false);
-        }
-    }, [filters, snackbar]);
-
-    useEffect(() => {
-        fetchEvents();
-    }, [fetchEvents]);
-
-    const handleFilterChange = (newFilters: Partial<FilterParams>) => {
-        setFilters((prev) => ({ ...prev, ...newFilters, page: 1 }));
-    };
 
     const handleCreate = () => {
         setEditingEvent(null);
@@ -96,6 +70,7 @@ const BoxingEventsPage: React.FC = () => {
 
     return (
         <Box sx={{ p: 3 }}>
+            {error && <Alert severity="error">Failed to load events.</Alert>}
             <Stack sx={{ direction: 'row', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h4">Boxing Events</Typography>
                 <Stack direction="row" spacing={1}>

@@ -14,7 +14,7 @@ export const usersApi = {
   // User CRUD
   listUsers: async (page = 1, limit = 10) => {
     const query = new URLSearchParams({ page: String(page), limit: String(limit) }).toString();
-    return fetchJSON<User[]>(`${endpoints.listUsers.path}?${query}`);
+    return fetchJSON<{ data: User[]; meta: { page: number; limit: number; total: number } }>(`${endpoints.listUsers.path}?${query}`);
   },
 
   getUser: async (id: number | string) => {

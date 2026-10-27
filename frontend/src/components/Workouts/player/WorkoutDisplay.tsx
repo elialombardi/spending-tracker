@@ -39,30 +39,30 @@ export function WorkoutDisplay({
           color: '#fff',
         }}
       >
-        <Typography variant="body1" fontWeight="700" sx={{ fontSize: '1rem' }}>
+        <Typography variant="body1"  sx={{ fontWeight: "700", ...({ fontSize: '1rem' }) }}>
           {currentStep.sessionName}
         </Typography>
       </Paper>
 
       {/* Cycle & Round Info */}
       <Stack direction="row" spacing={3}>
-        <Typography variant="body1" fontWeight="600" sx={{ fontSize: '1.1rem' }}>
+        <Typography variant="body1"  sx={{ fontWeight: "600", ...({ fontSize: '1.1rem' }) }}>
           Cycle: <b>{currentStep.cycle} / {currentStep.totalCycles}</b>
         </Typography>
-        <Typography variant="body1" fontWeight="600" sx={{ fontSize: '1.1rem' }}>
+        <Typography variant="body1"  sx={{ fontWeight: "600", ...({ fontSize: '1.1rem' }) }}>
           Round: <b>{currentStep.round} / {currentStep.totalRounds}</b>
         </Typography>
       </Stack>
 
       {/* Action Name */}
       <Typography
-        fontWeight="900"
-        sx={{
+
+        sx={{ fontWeight: "900", ...({
           textTransform: 'uppercase',
           letterSpacing: 2,
           fontSize: { xs: '1.8rem', sm: '2.5rem' },
           lineHeight: 1.1,
-        }}
+        }) }}
       >
         {currentStep.timerName}
       </Typography>

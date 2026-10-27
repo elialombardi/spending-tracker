@@ -13,7 +13,7 @@ export default function SessionBuilder({ onStartWorkout }) {
   const [workouts, setWorkouts] = useState([]);
 
   // Active Workout State
-  const [selectedWorkoutId, setSelectedWorkoutId] = useState('');
+  const [selectedWorkoutId, setSelectedWorkoutId] = useState<number | ''>('');
   const [workoutName, setWorkoutName] = useState('My Custom Workout');
   const [workoutSequence, setWorkoutSequence] = useState([]);
 
@@ -195,7 +195,7 @@ export default function SessionBuilder({ onStartWorkout }) {
 
   if (loading && sessions.length === 0) {
     return (
-      <Box display="flex" >
+      <Box  sx={{ display: "flex" }} >
         <CircularProgress />
       </Box>
     );
@@ -218,7 +218,7 @@ export default function SessionBuilder({ onStartWorkout }) {
 
       <Grid container>
         {/* Left Column: Sessions */}
-        <Grid xs={12} md={6}>
+        <Grid   size={{ xs: 12, md: 6 }}>
           <SessionLibrary
             sessions={sessions}
             onAddToWorkout={handleAddToWorkout}
@@ -245,7 +245,6 @@ export default function SessionBuilder({ onStartWorkout }) {
           onRemoveFromWorkout={handleRemoveFromWorkout}
           onStartWorkout={handleStart}
           selectedWorkoutId={selectedWorkoutId}
-          workoutSequence={workoutSequence}
           savingWorkout={savingWorkout}
           onSaveWorkout={handleSaveWorkout}
           onDeleteWorkout={handleDeleteWorkout}

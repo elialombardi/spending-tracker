@@ -11,7 +11,7 @@ export function WorkoutProgress({ currentStepIdx, totalSteps, progress }) {
           mb: 0.5
         }}
       >
-        <Typography variant="body2" fontWeight="700" sx={{ opacity: 0.95 }}>
+        <Typography variant="body2"  sx={{ fontWeight: "700", ...({ opacity: 0.95 }) }}>
           Step {currentStepIdx + 1} of {totalSteps}
         </Typography>
       </Box>

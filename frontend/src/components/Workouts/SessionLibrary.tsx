@@ -81,10 +81,10 @@ export default function SessionLibrary({ sessions, onAddToWorkout, onDeleteSessi
 
   return (
     <Paper sx={{ p: { xs: 1.5, sm: 2 }, width: '100%' }} elevation={2}>
-      <Typography variant="h6" gutterBottom fontWeight="bold">
+      <Typography variant="h6" gutterBottom  sx={{ fontWeight: "bold" }}>
         Session Library
       </Typography>
-      <List size="small" disablePadding>
+      <List dense disablePadding>
         {sessionsWithDuration.map((sess) => (
           <Card key={sess.id} variant="outlined" sx={{ mb: 1, width: '100%' }}>
             <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
@@ -101,7 +101,7 @@ export default function SessionLibrary({ sessions, onAddToWorkout, onDeleteSessi
                 {/* Session Details */}
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                    <Typography variant="subtitle1" fontWeight="bold" noWrap>
+                    <Typography variant="subtitle1"  noWrap sx={{ fontWeight: "bold" }}>
                       {sess.name}
                     </Typography>
                     {/* Total Duration Badge */}
@@ -139,7 +139,7 @@ export default function SessionLibrary({ sessions, onAddToWorkout, onDeleteSessi
                       }}
                     >
                       <RepeatIcon sx={{ fontSize: '1rem' }} />
-                      <Typography variant="caption" fontWeight="600">{sess.cycles}</Typography>
+                      <Typography variant="caption"  sx={{ fontWeight: "600" }}>{sess.cycles}</Typography>
                     </Box>
 
                     {/* Rounds */}
@@ -156,7 +156,7 @@ export default function SessionLibrary({ sessions, onAddToWorkout, onDeleteSessi
                       }}
                     >
                       <FitnessCenterIcon sx={{ fontSize: '1rem' }} />
-                      <Typography variant="caption" fontWeight="600">{sess.rounds}</Typography>
+                      <Typography variant="caption"  sx={{ fontWeight: "600" }}>{sess.rounds}</Typography>
                     </Box>
 
                     {/* Timers */}
@@ -173,7 +173,7 @@ export default function SessionLibrary({ sessions, onAddToWorkout, onDeleteSessi
                       }}
                     >
                       <TimerIcon sx={{ fontSize: '1rem' }} />
-                      <Typography variant="caption" fontWeight="600">{sess.timers?.length || 0}</Typography>
+                      <Typography variant="caption"  sx={{ fontWeight: "600" }}>{sess.timers?.length || 0}</Typography>
                     </Box>
 
                     {/* Per Round Duration */}
@@ -190,7 +190,7 @@ export default function SessionLibrary({ sessions, onAddToWorkout, onDeleteSessi
                       }}
                     >
                       <AccessTimeIcon sx={{ fontSize: '0.9rem' }} />
-                      <Typography variant="caption" fontWeight="600">
+                      <Typography variant="caption"  sx={{ fontWeight: "600" }}>
                         {formatDuration(
                           (sess.timers?.reduce((sum, t) => sum + (t.duration || 0), 0) || 0) + 
                           (sess.roundPrepareDuration || 0)

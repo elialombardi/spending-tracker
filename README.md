@@ -1,5 +1,93 @@
 # Spending Tracker: AI Section Implementation Prompt
 
+## Correctness regression checks
+
+Run `cd api-go && go test ./notes ./reports ./locations` to check nested note
+folders, transaction summaries, and location update persistence.
+
+The transaction summary's category counts represent individual expense
+transactions, not category groups. Empty, whitespace-only, and null categories
+are combined as `Uncategorized`; date bounds and calculation exclusions apply
+to both totals and counts. Database failures return an error rather than an
+empty successful summary.
+
+## Refactoring and performance checks
+
+Frontend quality gates are `cd frontend && npm run typecheck && npm run lint &&
+npm test && npm run build`. Lint currently passes with existing warnings; its
+rules and TypeScript checks have not been disabled.
+
+Run backend regression tests with `cd api-go && go test ./... && go vet ./...`.
+Run the measured workloads with:
+
+```sh
+cd api-go
+go test ./reports ./youtube -run '^$' \
+  -bench 'BenchmarkCategoryMappings|BenchmarkImportTransactions|BenchmarkChannelStatistics' \
+  -benchmem -benchtime=300ms
+```
+
+Representative local SQLite/in-process HTTP measurements (not production
+PostgreSQL or Google network latency):
+
+| Workload | Before | After |
+| --- | --- | --- |
+| 100 mapping rules / 1,000 transactions | 101 queries, 8.37 ms | 1 query, 2.65 ms |
+| 1,000-row import | 27.77 ms, 10.21 MB allocated | 13.97 ms, 2.68 MB allocated |
+| Statistics for 100 channels | 100 requests | 2 requests, at most 50 IDs each |
+| Dashboard with three comparison cycles | overlapping request graph | 11 requests with no repeated URLs in the regression fixture |
+
+Imports iterate workbook rows, query fingerprints in groups of 500, fetch rules
+once, cache merchant matches for the import, and insert batches of 200 in one
+transaction. Existing duplicate, review, categorization, and amount behavior is
+covered by tests, including rollback when a later batch fails.
+
+### Optional transaction pagination
+
+`GET /api/transactions` still returns the existing JSON array when neither
+`page` nor `limit` is present. Supplying either parameter opts into:
+
+```json
+{
+  "data": [],
+  "meta": { "page": 1, "limit": 50, "total": 0, "totalPages": 0 }
+}
+```
+
+The default page is 1 and default limit is 50. Limits must be 1-200; invalid,
+empty, negative, or overflowing values return HTTP 400. Existing filters apply
+to both rows and totals. Ordering is booking date, import time, then ID,
+descending, for deterministic page boundaries.
+
+Startup AutoMigrate adds non-unique date/import/ID, fingerprint, merchant expense,
+category-rule merchant, and YouTube job owner/status/time indexes. Existing
+duplicate fingerprints or rules are not deleted or made unique. Plan a
+maintenance window for large PostgreSQL tables: startup index creation is not
+concurrent. SQLite regression tests check additive/idempotent migrations;
+PostgreSQL execution plans and multi-instance locking need integration validation
+against the deployment database.
+
+### Background jobs
+
+| Setting | Default in development | Default otherwise |
+| --- | --- | --- |
+| `BOXING_SYNC_ENABLED` | `false` | `true` |
+| `YOUTUBE_SYNC_ENABLED` | `true` | `false` |
+
+Set either variable to `true` or `false` to override it; malformed or empty
+overrides fail startup. Enabled schedules still run immediately and every six
+hours. Disabling a schedule does not disable manual sync endpoints.
+
+SIGINT/SIGTERM cancels schedules and in-flight requests, drains Fiber, and waits
+for workers before closing the database. YouTube syncs allow one pending/running
+job per user, with at most four active workers per service and a ten-minute
+deadline including queue time. PostgreSQL user-row locks serialize claims across
+instances; expired jobs are marked failed on status lookup or the next claim.
+Cancellation and partial failures persist failed status rather than claiming
+success. Individual channel sync now returns its queued job's `syncId` with
+HTTP 202, matching subscription/tag sync. Poll the existing status endpoint for
+completion.
+
 ## YouTube configuration
 
 The YouTube service reads `YOUTUBE_API_KEY` for API-key requests. OAuth

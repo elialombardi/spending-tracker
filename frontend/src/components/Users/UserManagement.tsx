@@ -8,6 +8,7 @@ import UserTable from './UserTable';
 import UserFormDialog from './UserFormDialog';
 import UserDeleteDialog from './UserDeleteDialog';
 import UserSnackbar from './UserSnackbar';
+import type { User } from '../../types/domain';
 
 const UserManagement = () => {
   // State
@@ -29,7 +30,7 @@ const UserManagement = () => {
     open: false,
     user: null,
   });
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Pick<User, 'username' | 'password' | 'role'>>({
     username: '',
     password: '',
     role: 'Writer',

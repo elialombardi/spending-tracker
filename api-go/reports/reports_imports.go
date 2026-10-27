@@ -1,9 +1,8 @@
 package reports
 
 import (
-	"bytes"
+	"errors"
 	"fmt"
-	"io"
 	"mime/multipart"
 	"regexp"
 	"slices"
@@ -17,45 +16,37 @@ import (
 
 var accountNumberRegex = regexp.MustCompile(`(?i)Conto\s+BancoPosta\s+n\.:\s*(\S+)`)
 
-func parsePosteItalianeWorkbook(reader multipart.File) (parsedWorkbook, error) {
-	content, err := io.ReadAll(reader)
+func parsePosteItalianeWorkbook(reader multipart.File) (result parsedWorkbook, parseErr error) {
+	book, err := excelize.OpenReader(reader)
 	if err != nil {
 		return parsedWorkbook{}, err
 	}
-	book, err := excelize.OpenReader(bytes.NewReader(content))
-	if err != nil {
-		return parsedWorkbook{}, err
-	}
-	defer book.Close()
+	defer func() { parseErr = errors.Join(parseErr, book.Close()) }()
 
 	sheetName := book.GetSheetName(0)
-	rows, err := book.GetRows(sheetName)
+	rows, err := book.Rows(sheetName)
 	if err != nil {
 		return parsedWorkbook{}, err
 	}
-	headerRow := -1
-	for index, row := range rows {
-		if normalizeForFingerprint(cellValue(row, 0)) == "DATA CONTABILE" && normalizeForFingerprint(cellValue(row, 4)) == "DESCRIZIONE OPERAZIONI" {
-			headerRow = index
-			break
-		}
-	}
-	if headerRow < 0 {
-		return parsedWorkbook{}, fmt.Errorf("could not find the Poste Italiane transaction header row")
-	}
+	defer func() { parseErr = errors.Join(parseErr, rows.Close()) }()
+	headerFound := false
 	accountNumber := "UNKNOWN"
-	for i := 0; i < len(rows) && i < 20; i++ {
-		joined := strings.Join(rows[i], " ")
-		match := accountNumberRegex.FindStringSubmatch(joined)
-		if len(match) > 1 {
-			accountNumber = strings.TrimSpace(match[1])
-			break
-		}
-	}
-
 	transactions := []ParsedTransaction{}
-	for i := headerRow + 1; i < len(rows); i++ {
-		row := rows[i]
+	for index := 0; rows.Next(); index++ {
+		row, err := rows.Columns()
+		if err != nil {
+			return parsedWorkbook{}, err
+		}
+		if index < 20 && accountNumber == "UNKNOWN" {
+			match := accountNumberRegex.FindStringSubmatch(strings.Join(row, " "))
+			if len(match) > 1 {
+				accountNumber = strings.TrimSpace(match[1])
+			}
+		}
+		if !headerFound {
+			headerFound = normalizeForFingerprint(cellValue(row, 0)) == "DATA CONTABILE" && normalizeForFingerprint(cellValue(row, 4)) == "DESCRIZIONE OPERAZIONI"
+			continue
+		}
 		description := collapseWhitespace(cellValue(row, 4))
 		debit, err := parseAmount(cellValue(row, 2))
 		if err != nil {
@@ -82,7 +73,6 @@ func parsePosteItalianeWorkbook(reader multipart.File) (parsedWorkbook, error) {
 		}
 		merchantKey := extractMerchantKey(description)
 		transactions = append(transactions, ParsedTransaction{
-			AccountNumber:         accountNumber,
 			BookingDate:           bookingDate,
 			ValueDate:             valueDate,
 			DebitAmount:           debit,
@@ -91,8 +81,18 @@ func parsePosteItalianeWorkbook(reader multipart.File) (parsedWorkbook, error) {
 			RawDescription:        description,
 			NormalizedDescription: normalizeForFingerprint(description),
 			MerchantKey:           merchantKey,
-			SourceFingerprint:     createFingerprint(accountNumber, bookingDate, valueDate, amount, description),
 		})
+	}
+	if err := rows.Error(); err != nil {
+		return parsedWorkbook{}, err
+	}
+	if !headerFound {
+		return parsedWorkbook{}, fmt.Errorf("could not find the Poste Italiane transaction header row")
+	}
+	for i := range transactions {
+		row := &transactions[i]
+		row.AccountNumber = accountNumber
+		row.SourceFingerprint = createFingerprint(accountNumber, row.BookingDate, row.ValueDate, row.Amount, row.RawDescription)
 	}
 	return parsedWorkbook{accountNumber: accountNumber, transactions: transactions}, nil
 }
@@ -104,26 +104,34 @@ func importParsedTransactions(database *gorm.DB, accountNumber string, fileName 
 		for _, tx := range transactions {
 			fingerprints = append(fingerprints, tx.SourceFingerprint)
 		}
-		var existing []string
-		if err := database.Model(&Transaction{}).
-			Where("source_fingerprint IN ?", fingerprints).
-			Distinct("source_fingerprint").
-			Pluck("source_fingerprint", &existing).Error; err != nil {
-			return ImportResultResponse{}, err
-		}
-		for _, fingerprint := range existing {
-			known[fingerprint] = struct{}{}
+		for start := 0; start < len(fingerprints); start += 500 {
+			var existing []string
+			if err := database.Model(&Transaction{}).
+				Where("source_fingerprint IN ?", fingerprints[start:min(start+500, len(fingerprints))]).
+				Distinct("source_fingerprint").
+				Pluck("source_fingerprint", &existing).Error; err != nil {
+				return ImportResultResponse{}, err
+			}
+			for _, fingerprint := range existing {
+				known[fingerprint] = struct{}{}
+			}
 		}
 	}
 
-	behaviors, err := fetchRuleBehaviorLookup(database)
-	if err != nil {
-		return ImportResultResponse{}, err
-	}
 	rules, err := fetchCategoryRules(database)
 	if err != nil {
 		return ImportResultResponse{}, err
 	}
+	behaviors := make(map[string]string, len(rules))
+	for _, rule := range rules {
+		behaviors[rule.MerchantKey] = rule.Behavior
+	}
+	type cachedMatch struct {
+		category   *string
+		confidence *float64
+		exact      bool
+	}
+	matches := make(map[string]cachedMatch)
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	imported := 0
@@ -135,6 +143,7 @@ func importParsedTransactions(database *gorm.DB, accountNumber string, fileName 
 		return ImportResultResponse{}, tx.Error
 	}
 	defer tx.Rollback()
+	records := make([]Transaction, 0, 200)
 
 	for _, parsed := range transactions {
 		if _, exists := known[parsed.SourceFingerprint]; exists {
@@ -142,7 +151,12 @@ func importParsedTransactions(database *gorm.DB, accountNumber string, fileName 
 			continue
 		}
 		known[parsed.SourceFingerprint] = struct{}{}
-		suggestionCategory, suggestionConfidence, exactMatch, behavior := matchCategory(parsed.MerchantKey, rules)
+		match, found := matches[parsed.MerchantKey]
+		if !found {
+			match.category, match.confidence, match.exact, _ = matchCategory(parsed.MerchantKey, rules)
+			matches[parsed.MerchantKey] = match
+		}
+		suggestionCategory, suggestionConfidence, exactMatch := match.category, match.confidence, match.exact
 		needsReview := parsed.Amount <= 0
 		var category *string
 		var suggestedCategory *string
@@ -186,14 +200,22 @@ func importParsedTransactions(database *gorm.DB, accountNumber string, fileName 
 		if suggestionConfidenceValue != nil {
 			record.SuggestionConfidence = *suggestionConfidenceValue
 		}
-		if err := tx.Create(&record).Error; err != nil {
-			return ImportResultResponse{}, err
+		records = append(records, record)
+		if len(records) == cap(records) {
+			if err := tx.CreateInBatches(&records, 200).Error; err != nil {
+				return ImportResultResponse{}, err
+			}
+			records = records[:0]
 		}
 		imported++
 		if needsReview {
 			reviewQueue = append(reviewQueue, ReviewTransactionResponse{TransactionID: id, BookingDate: parsed.BookingDate, Amount: round2(absFloat(parsed.Amount)), Description: parsed.RawDescription, MerchantKey: parsed.MerchantKey, MerchantRuleBehavior: resolveMerchantRuleBehavior(parsed.MerchantKey, behaviors), SuggestedCategory: suggestionCategory, SuggestionConfidence: suggestionConfidence})
 		}
-		_ = behavior
+	}
+	if len(records) > 0 {
+		if err := tx.CreateInBatches(&records, 200).Error; err != nil {
+			return ImportResultResponse{}, err
+		}
 	}
 	if err := tx.Commit().Error; err != nil {
 		return ImportResultResponse{}, err

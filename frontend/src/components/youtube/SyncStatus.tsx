@@ -7,15 +7,18 @@ import {
     Chip,
     Grid,
     CircularProgress,
+    Alert,
 } from '@mui/material';
 import { SyncStatus as SyncStatusType } from '../../api/youtube/types';
 
 interface SyncStatusProps {
     status?: SyncStatusType;
     loading: boolean;
+    error?: unknown;
 }
 
-export function SyncStatus({ status, loading }: SyncStatusProps) {
+export function SyncStatus({ status, loading, error }: SyncStatusProps) {
+    if (error) return <Alert severity="error">Failed to load YouTube sync status.</Alert>;
     if (loading) {
         return (
             <Paper sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -55,7 +58,7 @@ export function SyncStatus({ status, loading }: SyncStatusProps) {
                 {status.isSyncing && status.currentSync && (
                     <Grid size={12}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                            <Typography variant="subtitle2">Syncing...</Typography>
+                            <Typography variant="subtitle2">{status.currentSync.status === 'pending' ? 'Queued...' : 'Syncing...'}</Typography>
                             <Chip
                                 label={status.currentSync.type}
                                 size="small"

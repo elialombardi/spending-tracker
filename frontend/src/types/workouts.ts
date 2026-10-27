@@ -6,6 +6,16 @@ export interface Timer {
   color?: string;
 }
 
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: {
+    totalItems: number;
+    totalPages: number;
+    page: number;
+    limit: number;
+  };
+}
+
 export interface Session {
   id?: number;
   name: string;

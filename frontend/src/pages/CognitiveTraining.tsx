@@ -291,17 +291,17 @@ function CognitiveTraining() {
 
                         <Box sx={{ mt: 2 }}>
                             <Typography variant="body2">Duration (seconds)</Typography>
-                            <TextField type="number" size="small" value={durationSec} onChange={(e) => setDurationSec(Number(e.target.value))} sx={{ mt: 1, width: 140 }} inputProps={{ min: 1 }} />
+                            <TextField type="number" size="small" value={durationSec} onChange={(e) => setDurationSec(Number(e.target.value))} sx={{ mt: 1, width: 140 }}  slotProps={{ htmlInput: { min: 1 } }} />
                         </Box>
 
                         <Box sx={{ mt: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
                             <Box>
                                 <Typography variant="body2">Element duration min (ms)</Typography>
-                                <TextField type="number" size="small" value={elementDurationMinMs} onChange={(e) => setElementDurationMinMs(Number(e.target.value))} sx={{ mt: 1, width: 140 }} inputProps={{ min: 50 }} />
+                                <TextField type="number" size="small" value={elementDurationMinMs} onChange={(e) => setElementDurationMinMs(Number(e.target.value))} sx={{ mt: 1, width: 140 }}  slotProps={{ htmlInput: { min: 50 } }} />
                             </Box>
                             <Box>
                                 <Typography variant="body2">Element duration max (ms)</Typography>
-                                <TextField type="number" size="small" value={elementDurationMaxMs} onChange={(e) => setElementDurationMaxMs(Number(e.target.value))} sx={{ mt: 1, width: 140 }} inputProps={{ min: 50 }} />
+                                <TextField type="number" size="small" value={elementDurationMaxMs} onChange={(e) => setElementDurationMaxMs(Number(e.target.value))} sx={{ mt: 1, width: 140 }}  slotProps={{ htmlInput: { min: 50 } }} />
                             </Box>
                         </Box>
 

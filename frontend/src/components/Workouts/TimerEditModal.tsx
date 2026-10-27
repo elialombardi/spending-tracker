@@ -91,7 +91,7 @@ export default function TimerEditModal({ open, timer, onClose, onSave }) {
 
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="xs">
-      <DialogTitle fontWeight="bold">Edit Timer</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 'bold' }}>Edit Timer</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <TextField
@@ -111,7 +111,7 @@ export default function TimerEditModal({ open, timer, onClose, onSave }) {
             size="small"
             error={!!error}
             helperText={error || 'Format: MM:SS (e.g., 01:30 for 90 seconds)'}
-            inputProps={{ pattern: '[0-9]{2}:[0-9]{2}' }}
+             slotProps={{ htmlInput: { pattern: '[0-9]{2}:[0-9]{2}' } }}
           />
           <Box>
             <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>

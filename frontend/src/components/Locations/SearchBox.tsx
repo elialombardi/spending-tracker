@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
@@ -9,7 +9,6 @@ import ListItem from '@mui/material/ListItem';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import { PLACE_SEARCH_PROVIDER } from '../../config';
-import { FetchBaseQueryError } from '@reduxjs/toolkit/query';
 import { useGetGeocodeSearchQuery } from '../../api/geoapifyApi';
 
 const SEARCH_RESULT_LIMIT = 8;
@@ -44,7 +43,7 @@ interface NominatimResult {
 }
 
 // Helper to normalize results
-function normalizeSearchResults(payload: GeoapifyResponse | NominatimResult[] | any): SearchResult[] {
+function normalizeSearchResults(payload: GeoapifyResponse | NominatimResult[]): SearchResult[] {
     if (PLACE_SEARCH_PROVIDER === 'geoapify') {
         const geoPayload = payload as GeoapifyResponse;
         return Array.isArray(geoPayload?.results)
@@ -80,8 +79,6 @@ interface SearchBoxProps {
 function SearchBox({ onSelect, onResults, onHover }: SearchBoxProps) {
     const [query, setQuery] = useState('');
     const [debouncedQuery, setDebouncedQuery] = useState('');
-    const [results, setResults] = useState<SearchResult[]>([]);
-    const [errorMessage, setErrorMessage] = useState('');
 
     // Debounce the search query to avoid excessive API calls
     useEffect(() => {
@@ -91,13 +88,11 @@ function SearchBox({ onSelect, onResults, onHover }: SearchBoxProps) {
                 setDebouncedQuery(trimmed);
             } else {
                 setDebouncedQuery('');
-                setResults([]);
-                if (onResults) onResults([]);
             }
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [query, onResults]);
+    }, [query]);
 
     // Use RTK Query hook for geocoding search
     const { data, isLoading, error, isFetching } = useGetGeocodeSearchQuery(
@@ -111,55 +106,29 @@ function SearchBox({ onSelect, onResults, onHover }: SearchBoxProps) {
         }
     );
 
-    // Update results when data changes
+    const results = useMemo(
+        () => debouncedQuery && !error ? normalizeSearchResults(data) : [],
+        [data, debouncedQuery, error],
+    );
     useEffect(() => {
-        if (data) {
-            const normalized = normalizeSearchResults(data);
-            setResults(normalized);
-            if (onResults) onResults(normalized);
-            setErrorMessage('');
-        }
-    }, [data, onResults]);
+        onResults?.(results);
+    }, [results, onResults]);
 
-    // Handle errors - FIXED with proper type checking
-    useEffect(() => {
-        if (error) {
-            setResults([]);
-            if (onResults) onResults([]);
-
-            let message = 'Place search failed.';
-
-            // Type guard to check if error is FetchBaseQueryError
-            const isFetchBaseQueryError = (err: any): err is FetchBaseQueryError => {
-                return err && typeof err === 'object' && 'status' in err;
-            };
-
-            // Type guard to check if error is SerializedError
-            const isSerializedError = (err: any): err is { message?: string } => {
-                return err && typeof err === 'object' && 'message' in err;
-            };
-
-            if (isFetchBaseQueryError(error)) {
-                // Handle FetchBaseQueryError
-                if (error.data && typeof error.data === 'object' && 'error' in error.data) {
-                    message = (error.data as any).error;
-                } else if (typeof error.data === 'string') {
-                    message = error.data;
-                } else if (error.status) {
-                    message = `Request failed with status ${error.status}`;
-                }
-            } else if (isSerializedError(error)) {
-                // Handle SerializedError
-                if (error.message) {
-                    message = error.message;
-                }
-            } else if (typeof error === 'string') {
-                message = error;
+    let errorMessage = '';
+    if (error) {
+        errorMessage = 'Place search failed.';
+        if ('status' in error) {
+            if (error.data && typeof error.data === 'object' && 'error' in error.data && typeof error.data.error === 'string') {
+                errorMessage = error.data.error;
+            } else if (typeof error.data === 'string') {
+                errorMessage = error.data;
+            } else {
+                errorMessage = `Request failed with status ${error.status}`;
             }
-
-            setErrorMessage(message);
+        } else if (error.message) {
+            errorMessage = error.message;
         }
-    }, [error, onResults]);
+    }
 
     const handleSearch = (e: React.FormEvent) => {
         e?.preventDefault();

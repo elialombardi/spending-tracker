@@ -1,4 +1,5 @@
-import type { Location, LocationPayload, Session, Timer, Workout } from '../types/domain';
+import type { Location, LocationPayload } from '../types/domain';
+import type { Session, Timer, Workout } from '../types/workouts';
 
 export const schemas = {
   Location: {

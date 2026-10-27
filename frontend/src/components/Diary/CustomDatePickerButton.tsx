@@ -5,7 +5,6 @@ import { useState } from 'react';
 
 export default function CustomDatePickerButton({ selectedDate, onDateChange }) {
   const [anchorEl, setAnchorEl] = useState(null);
-  const [pickerValue, setPickerValue] = useState(selectedDate || new Date());
 
   const handleClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -17,7 +16,6 @@ export default function CustomDatePickerButton({ selectedDate, onDateChange }) {
 
   const handleChange = (newValue) => {
     if (newValue) {
-      setPickerValue(newValue);
       onDateChange(newValue);
     }
     handleClose();
@@ -26,6 +24,7 @@ export default function CustomDatePickerButton({ selectedDate, onDateChange }) {
   return (
     <>
       <IconButton
+        aria-label="Choose diary date"
         onClick={handleClick}
         color="primary"
         sx={{
@@ -54,7 +53,7 @@ export default function CustomDatePickerButton({ selectedDate, onDateChange }) {
       >
         <Box sx={{ p: 1 }}>
           <DateCalendar
-            value={pickerValue}
+            value={selectedDate || new Date()}
             onChange={handleChange}
             sx={{
               // Remove the default toolbar if you want cleaner look

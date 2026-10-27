@@ -2,34 +2,45 @@ package youtube
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"math"
-	"net/http"
+	"strings"
 	"time"
 
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/jobs"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
+	"google.golang.org/api/googleapi"
+	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
-var ErrYouTubeNotConnected = errors.New("YouTube is not connected; connect your Google account before syncing subscriptions")
+const syncTimeout = 10 * time.Minute
+
+var (
+	ErrYouTubeNotConnected = errors.New("YouTube is not connected; connect your Google account before syncing subscriptions")
+	ErrSyncInProgress      = errors.New("a sync is already pending or running")
+)
 
 func (s *Service) connectedUserIDs() ([]uint, error) {
 	var userIDs []uint
-	if err := s.db.Model(&OAuthToken{}).Pluck("user_id", &userIDs).Error; err != nil {
+	if err := s.db.WithContext(s.ctx).Model(&OAuthToken{}).Pluck("user_id", &userIDs).Error; err != nil {
 		return nil, fmt.Errorf("failed to get YouTube-connected users: %w", err)
 	}
 	return userIDs, nil
 }
 
 func (s *Service) getOAuthToken(userID uint) (*OAuthToken, error) {
+	return s.getOAuthTokenContext(s.ctx, userID)
+}
+
+func (s *Service) getOAuthTokenContext(ctx context.Context, userID uint) (*OAuthToken, error) {
 	var token OAuthToken
-	result := s.db.Where("user_id = ?", userID).Limit(1).Find(&token)
+	result := s.db.WithContext(ctx).Where("user_id = ?", userID).Limit(1).Find(&token)
 	if result.Error != nil {
 		return nil, fmt.Errorf("failed to load YouTube OAuth token: %w", result.Error)
 	}
@@ -39,822 +50,445 @@ func (s *Service) getOAuthToken(userID uint) (*OAuthToken, error) {
 	return &token, nil
 }
 
-// StartBackgroundSync starts a background goroutine that periodically syncs all channels
-// for connected users. It runs immediately on start and then every 6 hours.
-func (s *Service) StartBackgroundSync(stopCh <-chan struct{}) {
-	go func() {
-		log.Println("[YouTube] Starting background sync service...")
-
-		// Run immediately on start
-		s.runBackgroundSync()
-
-		ticker := time.NewTicker(6 * time.Hour)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ticker.C:
-				log.Println("[YouTube] Running scheduled background sync...")
-				s.runBackgroundSync()
-			case <-stopCh:
-				log.Println("[YouTube] Background sync stopped")
-				return
-			}
-		}
-	}()
+func (s *Service) StartBackgroundSync(ctx context.Context) <-chan struct{} {
+	return jobs.Start(ctx, 6*time.Hour, func(context.Context) { s.runBackgroundSync() })
 }
 
-// runBackgroundSync performs the actual background sync for connected users
 func (s *Service) runBackgroundSync() {
-	userIDs, err := s.connectedUserIDs()
-	if err != nil {
-		log.Printf("[YouTube] Failed to get users for background sync: %v", err)
-		return
+	if err := s.SyncAllUsersSubscriptions(); err != nil && !errors.Is(err, ErrYouTubeNotConnected) {
+		log.Printf("[YouTube] Background sync: %v", err)
 	}
-
-	if len(userIDs) == 0 {
-		log.Println("[YouTube] No YouTube-connected users found. Skipping background sync.")
-		return
-	}
-
-	log.Printf("[YouTube] Background sync started for %d users", len(userIDs))
-
-	// Sync for each user
-	successCount := 0
-	failCount := 0
-
-	for _, userID := range userIDs {
-		if err := s.syncUserChannelsInBackground(userID); err != nil {
-			log.Printf("[YouTube] Failed to sync user %d: %v", userID, err)
-			failCount++
-		} else {
-			successCount++
-		}
-	}
-
-	log.Printf("[YouTube] Background sync completed: %d succeeded, %d failed", successCount, failCount)
 }
 
-// syncUserChannelsInBackground syncs all channels for a specific user
-func (s *Service) syncUserChannelsInBackground(userID uint) error {
-	// Check if user already has a sync running
-	var runningSync SyncLog
-	err := s.db.Where("user_id = ? AND status = ?", userID, "running").
-		Order("created_at DESC").
-		First(&runningSync).Error
-
-	if err == nil {
-		log.Printf("[YouTube] User %d already has a sync in progress, skipping", userID)
-		return nil
-	}
-
-	// Start sync - this will fetch subscriptions from YouTube
-	_, err = s.SyncAllSubscribedChannels(userID)
-	if err != nil {
-		return fmt.Errorf("failed to start sync: %w", err)
-	}
-
-	log.Printf("[YouTube] Started sync for user %d", userID)
-	return nil
-}
-
-// SyncAllUsersSubscriptions syncs subscriptions for connected users (manual trigger)
 func (s *Service) SyncAllUsersSubscriptions() error {
 	userIDs, err := s.connectedUserIDs()
 	if err != nil {
 		return err
 	}
-
 	if len(userIDs) == 0 {
 		return ErrYouTubeNotConnected
 	}
-
-	log.Printf("[YouTube] Manually syncing subscriptions for %d users", len(userIDs))
-
-	successCount := 0
-	failCount := 0
-
+	var failures []error
 	for _, userID := range userIDs {
-		_, err := s.SyncAllSubscribedChannels(userID)
-		if err != nil {
-			log.Printf("[YouTube] Failed to sync for user %d: %v", userID, err)
-			failCount++
-		} else {
-			successCount++
+		if s.ctx.Err() != nil {
+			return errors.Join(append(failures, s.ctx.Err())...)
+		}
+		if _, err := s.SyncAllSubscribedChannels(userID); err != nil && !errors.Is(err, ErrSyncInProgress) {
+			failures = append(failures, fmt.Errorf("sync user %d: %w", userID, err))
 		}
 	}
-
-	log.Printf("[YouTube] Manual sync completed: %d succeeded, %d failed", successCount, failCount)
-	return nil
+	return errors.Join(failures...)
 }
 
-// fetchSubscribedChannelsWithOAuth fetches all channels the user is subscribed to using OAuth
+func (s *Service) youtubeClient(ctx context.Context, userID uint, requireOAuth bool) (*youtube.Service, error) {
+	token, err := s.getOAuthTokenContext(ctx, userID)
+	client := s.httpClient
+	if err == nil {
+		oauthToken := &oauth2.Token{
+			AccessToken: token.AccessToken, RefreshToken: token.RefreshToken,
+			TokenType: token.TokenType, Expiry: token.Expiry,
+		}
+		client = s.oauthConfig.Client(context.WithValue(ctx, oauth2.HTTPClient, s.httpClient), oauthToken)
+		client.Timeout = s.httpClient.Timeout
+	} else if !errors.Is(err, ErrYouTubeNotConnected) || requireOAuth || s.apiKey == "" {
+		return nil, err
+	}
+	api, err := youtube.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return nil, fmt.Errorf("create YouTube client: %w", err)
+	}
+	return api, nil
+}
+
 func (s *Service) fetchSubscribedChannelsWithOAuth(userID uint) ([]YoutubeChannel, error) {
-	// Get user's OAuth token
-	token, err := s.getOAuthToken(userID)
+	ctx, cancel := context.WithTimeout(s.ctx, syncTimeout)
+	defer cancel()
+	api, err := s.youtubeClient(ctx, userID, true)
 	if err != nil {
 		return nil, err
 	}
+	return loadSubscribedChannels(ctx, api)
+}
 
-	oauthToken := &oauth2.Token{
-		AccessToken:  token.AccessToken,
-		RefreshToken: token.RefreshToken,
-		TokenType:    token.TokenType,
-		Expiry:       token.Expiry,
+func thumbnailURL(thumbnails *youtube.ThumbnailDetails) string {
+	if thumbnails == nil {
+		return ""
 	}
-
-	client := s.oauthConfig.Client(context.Background(), oauthToken)
-	service, err := youtube.New(client)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create YouTube service: %w", err)
+	for _, thumbnail := range []*youtube.Thumbnail{thumbnails.High, thumbnails.Medium, thumbnails.Default} {
+		if thumbnail != nil && thumbnail.Url != "" {
+			return thumbnail.Url
+		}
 	}
+	return ""
+}
 
-	var allChannels []YoutubeChannel
+func loadSubscribedChannels(ctx context.Context, api *youtube.Service) ([]YoutubeChannel, error) {
+	channels := []YoutubeChannel{}
 	pageToken := ""
-
 	for {
-		call := service.Subscriptions.List([]string{"snippet", "contentDetails"}).
-			Mine(true).
-			MaxResults(50)
-
-		if pageToken != "" {
-			call = call.PageToken(pageToken)
-		}
-
-		response, err := call.Do()
+		response, err := api.Subscriptions.List([]string{"snippet"}).
+			Mine(true).MaxResults(50).PageToken(pageToken).Context(ctx).Do()
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch subscriptions: %w", err)
+			return nil, fmt.Errorf("fetch subscriptions: %w", err)
 		}
-
+		ids := make([]string, 0, len(response.Items))
 		for _, item := range response.Items {
-			// Get channel statistics
-			stats, err := s.fetchChannelStatisticsWithOAuth(client, item.Snippet.ChannelId)
-			if err != nil {
-				stats = &channelStats{}
+			if item.Snippet == nil || item.Snippet.ResourceId == nil || item.Snippet.ResourceId.ChannelId == "" {
+				return nil, errors.New("subscription is missing its subscribed channel ID")
 			}
-
-			thumbnail := item.Snippet.Thumbnails.High.Url
-			if thumbnail == "" {
-				thumbnail = item.Snippet.Thumbnails.Medium.Url
-			}
-			if thumbnail == "" {
-				thumbnail = item.Snippet.Thumbnails.Default.Url
-			}
-
-			channel := YoutubeChannel{
-				ID:              item.Snippet.ChannelId,
-				Name:            item.Snippet.Title,
-				Description:     item.Snippet.Description,
-				Thumbnail:       thumbnail,
-				SubscriberCount: stats.SubscriberCount,
-				VideoCount:      stats.VideoCount,
-				ViewCount:       stats.ViewCount,
-			}
-
-			allChannels = append(allChannels, channel)
+			ids = append(ids, item.Snippet.ResourceId.ChannelId)
 		}
-
+		stats, err := loadChannelStatistics(ctx, api, ids)
+		if err != nil {
+			return nil, err
+		}
+		for _, item := range response.Items {
+			id := item.Snippet.ResourceId.ChannelId
+			counts, present := stats[id]
+			if !present {
+				return nil, fmt.Errorf("statistics unavailable for subscribed channel %s", id)
+			}
+			channels = append(channels, YoutubeChannel{
+				ID: id, Name: item.Snippet.Title, Description: item.Snippet.Description,
+				Thumbnail:       thumbnailURL(item.Snippet.Thumbnails),
+				SubscriberCount: counts.SubscriberCount, VideoCount: counts.VideoCount, ViewCount: counts.ViewCount,
+			})
+		}
 		if response.NextPageToken == "" {
-			break
+			return channels, nil
+		}
+		if response.NextPageToken == pageToken {
+			return nil, errors.New("YouTube returned a repeated subscription page token")
 		}
 		pageToken = response.NextPageToken
 	}
-
-	return allChannels, nil
 }
 
-// fetchChannelStatisticsWithOAuth fetches statistics using OAuth client
-func (s *Service) fetchChannelStatisticsWithOAuth(client *http.Client, channelID string) (*channelStats, error) {
-	service, err := youtube.New(client)
-	if err != nil {
-		return nil, err
-	}
-
-	call := service.Channels.List([]string{"statistics"}).Id(channelID)
-	response, err := call.Do()
-	if err != nil {
-		return nil, err
-	}
-
-	if len(response.Items) == 0 {
-		return &channelStats{}, nil
-	}
-
-	stats := response.Items[0].Statistics
-	if stats.SubscriberCount > math.MaxInt64 || stats.VideoCount > math.MaxInt64 || stats.ViewCount > math.MaxInt64 {
-		return nil, fmt.Errorf("channel %s statistics exceed the supported count range", channelID)
-	}
-	return &channelStats{
-		SubscriberCount: int64(stats.SubscriberCount),
-		VideoCount:      int64(stats.VideoCount),
-		ViewCount:       int64(stats.ViewCount),
-	}, nil
+type channelStats struct {
+	SubscriberCount int64
+	VideoCount      int64
+	ViewCount       int64
 }
 
-// SyncAllSubscribedChannels fetches all channels the user is subscribed to from YouTube using OAuth
+func loadChannelStatistics(ctx context.Context, api *youtube.Service, ids []string) (map[string]channelStats, error) {
+	result := make(map[string]channelStats, len(ids))
+	for start := 0; start < len(ids); start += 50 {
+		end := min(start+50, len(ids))
+		response, err := api.Channels.List([]string{"statistics"}).Id(strings.Join(ids[start:end], ",")).Context(ctx).Do()
+		if err != nil {
+			return nil, fmt.Errorf("fetch channel statistics: %w", err)
+		}
+		for _, item := range response.Items {
+			stats := item.Statistics
+			if stats == nil || stats.SubscriberCount > math.MaxInt64 || stats.VideoCount > math.MaxInt64 || stats.ViewCount > math.MaxInt64 {
+				return nil, fmt.Errorf("channel %s statistics are missing or exceed the supported count range", item.Id)
+			}
+			result[item.Id] = channelStats{
+				SubscriberCount: int64(stats.SubscriberCount), VideoCount: int64(stats.VideoCount), ViewCount: int64(stats.ViewCount),
+			}
+		}
+	}
+	return result, nil
+}
+
 func (s *Service) SyncAllSubscribedChannels(userID uint) (*SyncLog, error) {
-	// Get user's OAuth token
-	token, err := s.getOAuthToken(userID)
-	if err != nil {
+	if _, err := s.getOAuthToken(userID); err != nil {
 		return nil, err
 	}
-
-	// Create OAuth2 client
-	oauthToken := &oauth2.Token{
-		AccessToken:  token.AccessToken,
-		RefreshToken: token.RefreshToken,
-		TokenType:    token.TokenType,
-		Expiry:       token.Expiry,
-	}
-
-	client := s.oauthConfig.Client(context.Background(), oauthToken)
-
-	// Create YouTube service with OAuth client
-	_, err = youtube.New(client)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create YouTube service: %w", err)
-	}
-
-	// Use OAuth to fetch subscriptions
 	return s.startSync(userID, "subscriptions", "")
 }
 
-// SyncAllChannels triggers a sync for all user channels
 func (s *Service) SyncAllChannels(userID uint) (*SyncLog, error) {
 	return s.startSync(userID, "all", "")
 }
 
-// SyncChannel triggers a sync for a specific channel
 func (s *Service) SyncChannel(userID uint, channelID string) (*SyncLog, error) {
 	return s.startSync(userID, "channel", channelID)
 }
 
-// SyncTagChannels triggers a sync for all channels with a specific tag
 func (s *Service) SyncTagChannels(userID uint, tagID string) (*SyncLog, error) {
 	return s.startSync(userID, "tag", tagID)
 }
 
-// startSync starts a new sync operation
+func expireSyncs(database *gorm.DB, userID uint) error {
+	return database.Model(&SyncLog{}).Where("user_id = ? AND status IN ? AND created_at < ?", userID, []string{"pending", "running"}, time.Now().UTC().Add(-syncTimeout)).
+		Updates(map[string]any{"status": "failed", "error_message": "Sync expired before completion.", "completed_at": time.Now().UTC()}).Error
+}
+
 func (s *Service) startSync(userID uint, syncType, targetID string) (*SyncLog, error) {
-	// Check if there's already a running sync
-	var runningSync SyncLog
-	err := s.db.Where("user_id = ? AND status = ?", userID, "running").
-		Order("created_at DESC").
-		First(&runningSync).Error
-
-	if err == nil {
-		return nil, fmt.Errorf("a sync is already in progress")
+	s.jobMu.Lock()
+	defer s.jobMu.Unlock()
+	if s.stopping || s.ctx.Err() != nil {
+		return nil, errors.New("YouTube sync service is shutting down")
 	}
-
-	syncLog := &SyncLog{
-		ID:        uuid.New().String(),
-		UserID:    userID,
-		Type:      syncType,
-		TargetID:  targetID,
-		Status:    "pending",
-		CreatedAt: time.Now(),
-	}
-
-	err = s.db.Create(syncLog).Error
+	syncLog := &SyncLog{ID: uuid.NewString(), UserID: userID, Type: syncType, TargetID: targetID, Status: "pending", CreatedAt: time.Now().UTC()}
+	err := s.db.WithContext(s.ctx).Transaction(func(tx *gorm.DB) error {
+		// The user row serializes claims across application instances without adding a unique constraint to existing logs.
+		var owner struct{ ID uint }
+		if err := tx.Table("users").Clauses(clause.Locking{Strength: "UPDATE"}).Select("id").Where("id = ?", userID).Take(&owner).Error; err != nil {
+			return fmt.Errorf("lock sync owner: %w", err)
+		}
+		if err := expireSyncs(tx, userID); err != nil {
+			return err
+		}
+		var active int64
+		if err := tx.Model(&SyncLog{}).Where("user_id = ? AND status IN ?", userID, []string{"pending", "running"}).Count(&active).Error; err != nil {
+			return err
+		}
+		if active > 0 {
+			return ErrSyncInProgress
+		}
+		return tx.Create(syncLog).Error
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	// Start sync in background
-	go s.performSync(syncLog.ID, syncType, targetID, userID)
-
+	s.jobWG.Add(1)
+	go func() {
+		defer s.jobWG.Done()
+		ctx, cancel := context.WithDeadline(s.ctx, syncLog.CreatedAt.Add(syncTimeout))
+		defer cancel()
+		var err error
+		select {
+		case s.jobSlots <- struct{}{}:
+			defer func() { <-s.jobSlots }()
+			err = s.performSync(ctx, *syncLog)
+		case <-ctx.Done():
+			err = ctx.Err()
+		}
+		s.finishSync(syncLog.ID, err)
+	}()
 	return syncLog, nil
 }
 
-// fetchSubscribedChannels fetches all channels the user is subscribed to from YouTube
-func (s *Service) fetchSubscribedChannels() ([]YoutubeChannel, error) {
-	var allChannels []YoutubeChannel
-	pageToken := ""
+func (s *Service) updateSync(ctx context.Context, id string, updates map[string]any) error {
+	result := s.db.WithContext(ctx).Model(&SyncLog{}).Where("id = ? AND status = ?", id, "running").Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected != 1 {
+		return errors.New("sync is no longer running")
+	}
+	return nil
+}
 
-	for {
-		// YouTube API endpoint for subscriptions
-		apiURL := fmt.Sprintf(
-			"https://www.googleapis.com/youtube/v3/subscriptions?key=%s&part=snippet%%2CcontentDetails&mine=true&maxResults=50",
-			s.apiKey,
-		)
+func (s *Service) finishSync(id string, syncErr error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	status, message := "completed", ""
+	if syncErr != nil {
+		status, message = "failed", syncErr.Error()
+		log.Printf("[YouTube] Sync %s failed: %v", id, syncErr)
+	}
+	result := s.db.WithContext(ctx).Model(&SyncLog{}).Where("id = ? AND status IN ?", id, []string{"pending", "running"}).
+		Updates(map[string]any{"status": status, "error_message": message, "completed_at": time.Now().UTC()})
+	if result.Error != nil {
+		log.Printf("[YouTube] Cannot persist final status for sync %s: %v", id, result.Error)
+	} else if result.RowsAffected != 1 {
+		log.Printf("[YouTube] Sync %s was already terminated", id)
+	}
+}
 
-		if pageToken != "" {
-			apiURL += fmt.Sprintf("&pageToken=%s", pageToken)
+func (s *Service) fetchChannelVideos(ctx context.Context, api *youtube.Service, channelID string) ([]YoutubeVideo, error) {
+	var options []googleapi.CallOption
+	if s.apiKey != "" {
+		options = append(options, googleapi.QueryParameter("key", s.apiKey))
+	}
+	response, err := api.Search.List([]string{"snippet"}).ChannelId(channelID).
+		Order("date").MaxResults(50).Type("video").Context(ctx).Do(options...)
+	if err != nil {
+		return nil, fmt.Errorf("fetch videos for channel %s: %w", channelID, err)
+	}
+	videos := make([]YoutubeVideo, 0, len(response.Items))
+	for _, item := range response.Items {
+		if item.Id == nil || item.Id.VideoId == "" || item.Snippet == nil {
+			return nil, errors.New("YouTube video result is missing its ID or snippet")
 		}
-
-		resp, err := s.httpClient.Get(apiURL)
+		publishedAt, err := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch subscriptions: %w", err)
+			return nil, fmt.Errorf("parse publication date for video %s: %w", item.Id.VideoId, err)
 		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
-			return nil, fmt.Errorf("YouTube API error: %s, body: %s", resp.Status, string(body))
-		}
-
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read response: %w", err)
-		}
-
-		var result struct {
-			Items []struct {
-				Snippet struct {
-					Title       string `json:"title"`
-					Description string `json:"description"`
-					ChannelID   string `json:"channelId"`
-					Thumbnails  struct {
-						Default struct {
-							URL string `json:"url"`
-						} `json:"default"`
-						Medium struct {
-							URL string `json:"url"`
-						} `json:"medium"`
-						High struct {
-							URL string `json:"url"`
-						} `json:"high"`
-					} `json:"thumbnails"`
-					PublishedAt time.Time `json:"publishedAt"`
-				} `json:"snippet"`
-				ContentDetails struct {
-					TotalItemCount int `json:"totalItemCount"`
-				} `json:"contentDetails"`
-			} `json:"items"`
-			NextPageToken string `json:"nextPageToken"`
-			PageInfo      struct {
-				TotalResults int `json:"totalResults"`
-			} `json:"pageInfo"`
-		}
-
-		if err := json.Unmarshal(body, &result); err != nil {
-			return nil, fmt.Errorf("failed to parse response: %w", err)
-		}
-
-		// Process each subscription
-		for _, item := range result.Items {
-			// Get channel statistics
-			stats, err := s.fetchChannelStatistics(item.Snippet.ChannelID)
-			if err != nil {
-				// Log error but continue with basic info
-				stats = &channelStats{}
-			}
-
-			thumbnail := item.Snippet.Thumbnails.High.URL
-			if thumbnail == "" {
-				thumbnail = item.Snippet.Thumbnails.Medium.URL
-			}
-			if thumbnail == "" {
-				thumbnail = item.Snippet.Thumbnails.Default.URL
-			}
-
-			channel := YoutubeChannel{
-				ID:              item.Snippet.ChannelID,
-				Name:            item.Snippet.Title,
-				Description:     item.Snippet.Description,
-				Thumbnail:       thumbnail,
-				SubscriberCount: stats.SubscriberCount,
-				VideoCount:      stats.VideoCount,
-				ViewCount:       stats.ViewCount,
-				PublishedAt:     &item.Snippet.PublishedAt,
-			}
-
-			allChannels = append(allChannels, channel)
-		}
-
-		// Check if there are more pages
-		if result.NextPageToken == "" {
-			break
-		}
-		pageToken = result.NextPageToken
+		videos = append(videos, YoutubeVideo{
+			ID: item.Id.VideoId, ChannelID: channelID, Title: item.Snippet.Title,
+			Description: item.Snippet.Description, Thumbnail: thumbnailURL(item.Snippet.Thumbnails),
+			PublishedAt: publishedAt, URL: "https://www.youtube.com/watch?v=" + item.Id.VideoId,
+		})
 	}
-
-	return allChannels, nil
-}
-
-// channelStats holds statistics for a YouTube channel
-type channelStats struct {
-	SubscriberCount int64 `json:"subscriberCount"`
-	VideoCount      int64 `json:"videoCount"`
-	ViewCount       int64 `json:"viewCount"`
-}
-
-// fetchChannelStatistics fetches statistics for a specific channel
-func (s *Service) fetchChannelStatistics(channelID string) (*channelStats, error) {
-	apiURL := fmt.Sprintf(
-		"https://www.googleapis.com/youtube/v3/channels?key=%s&id=%s&part=statistics",
-		s.apiKey, channelID,
-	)
-
-	resp, err := s.httpClient.Get(apiURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("YouTube API error: %s, body: %s", resp.Status, string(body))
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var result struct {
-		Items []struct {
-			Statistics struct {
-				SubscriberCount string `json:"subscriberCount"`
-				VideoCount      string `json:"videoCount"`
-				ViewCount       string `json:"viewCount"`
-			} `json:"statistics"`
-		} `json:"items"`
-	}
-
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, err
-	}
-
-	if len(result.Items) == 0 {
-		return &channelStats{}, nil
-	}
-
-	var stats channelStats
-	fmt.Sscanf(result.Items[0].Statistics.SubscriberCount, "%d", &stats.SubscriberCount)
-	fmt.Sscanf(result.Items[0].Statistics.VideoCount, "%d", &stats.VideoCount)
-	fmt.Sscanf(result.Items[0].Statistics.ViewCount, "%d", &stats.ViewCount)
-
-	return &stats, nil
-}
-
-// fetchChannelVideos fetches videos from a specific YouTube channel
-func (s *Service) fetchChannelVideos(channelID string) ([]YoutubeVideo, error) {
-	apiURL := fmt.Sprintf(
-		"https://www.googleapis.com/youtube/v3/search?key=%s&channelId=%s&part=snippet,id&order=date&maxResults=50",
-		s.apiKey, channelID,
-	)
-
-	resp, err := s.httpClient.Get(apiURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch videos for channel %s: %w", channelID, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("YouTube API error: %s, body: %s", resp.Status, string(body))
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	var result struct {
-		Items []struct {
-			ID struct {
-				VideoID string `json:"videoId"`
-			} `json:"id"`
-			Snippet struct {
-				Title       string `json:"title"`
-				Description string `json:"description"`
-				Thumbnails  struct {
-					Default struct {
-						URL string `json:"url"`
-					} `json:"default"`
-					Medium struct {
-						URL string `json:"url"`
-					} `json:"medium"`
-					High struct {
-						URL string `json:"url"`
-					} `json:"high"`
-				} `json:"thumbnails"`
-				PublishedAt time.Time `json:"publishedAt"`
-			} `json:"snippet"`
-		} `json:"items"`
-	}
-
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	var videos []YoutubeVideo
-	for _, item := range result.Items {
-		// Skip if not a video (could be playlist, etc.)
-		if item.ID.VideoID == "" {
-			continue
-		}
-
-		thumbnail := item.Snippet.Thumbnails.High.URL
-		if thumbnail == "" {
-			thumbnail = item.Snippet.Thumbnails.Medium.URL
-		}
-		if thumbnail == "" {
-			thumbnail = item.Snippet.Thumbnails.Default.URL
-		}
-
-		video := YoutubeVideo{
-			ID:          item.ID.VideoID,
-			Title:       item.Snippet.Title,
-			Description: item.Snippet.Description,
-			Thumbnail:   thumbnail,
-			PublishedAt: item.Snippet.PublishedAt,
-			URL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", item.ID.VideoID),
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
-		}
-		videos = append(videos, video)
-	}
-
 	return videos, nil
 }
 
-// SyncChannelVideos fetches videos for a specific channel
-func (s *Service) SyncChannelVideos(userID uint, channelID string) error {
-	// Verify channel belongs to user
-	var channel YoutubeChannel
-	if err := s.db.Where("id = ? AND user_id = ?", channelID, userID).First(&channel).Error; err != nil {
-		return fmt.Errorf("channel not found: %w", err)
-	}
-
-	videos, err := s.fetchChannelVideos(channelID)
-	if err != nil {
-		return err
-	}
-
-	// Save videos in transaction
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		for _, video := range videos {
-			video.ChannelID = channelID
-			if err := tx.Save(&video).Error; err != nil {
+func (s *Service) persistChannel(ctx context.Context, channel YoutubeChannel, videos []YoutubeVideo, refreshDetails bool) (int, error) {
+	added := 0
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if refreshDetails {
+			var existing YoutubeChannel
+			result := tx.Where("id = ? AND user_id = ?", channel.ID, channel.UserID).Limit(1).Find(&existing)
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected == 0 {
+				if err := tx.Omit("Tags", "Videos").Create(&channel).Error; err != nil {
+					return err
+				}
+			} else if err := tx.Model(&existing).Updates(map[string]any{
+				"name": channel.Name, "description": channel.Description, "thumbnail": channel.Thumbnail,
+				"subscriber_count": channel.SubscriberCount, "video_count": channel.VideoCount,
+				"view_count": channel.ViewCount,
+			}).Error; err != nil {
 				return err
 			}
 		}
-
-		// Update last synced time
-		now := time.Now()
-		if err := tx.Model(&YoutubeChannel{}).Where("id = ?", channelID).Update("last_synced_at", now).Error; err != nil {
-			return err
+		if len(videos) > 0 {
+			ids := make([]string, len(videos))
+			for i := range videos {
+				ids[i] = videos[i].ID
+			}
+			var existing []string
+			if err := tx.Model(&YoutubeVideo{}).Where("id IN ?", ids).Pluck("id", &existing).Error; err != nil {
+				return err
+			}
+			known := make(map[string]bool, len(existing))
+			for _, id := range existing {
+				known[id] = true
+			}
+			for _, video := range videos {
+				if !known[video.ID] {
+					added++
+					known[video.ID] = true
+				}
+			}
+			if err := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "id"}},
+				DoUpdates: clause.AssignmentColumns([]string{"title", "description", "thumbnail", "published_at", "url", "updated_at"}),
+			}).CreateInBatches(&videos, 50).Error; err != nil {
+				return err
+			}
 		}
-
+		result := tx.Model(&YoutubeChannel{}).Where("id = ? AND user_id = ?", channel.ID, channel.UserID).Update("last_synced_at", time.Now().UTC())
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return errors.New("channel no longer belongs to the syncing user")
+		}
 		return nil
 	})
+	return added, err
 }
 
-// performSync performs the actual sync operation
-func (s *Service) performSync(syncID, syncType, targetID string, userID uint) {
-	// Update status to running
-	now := time.Now()
-	s.db.Model(&SyncLog{}).Where("id = ?", syncID).Updates(map[string]interface{}{
-		"status":     "running",
-		"started_at": now,
-	})
+func (s *Service) SyncChannelVideos(userID uint, channelID string) error {
+	ctx, cancel := context.WithTimeout(s.ctx, syncTimeout)
+	defer cancel()
+	var channel YoutubeChannel
+	if err := s.db.WithContext(ctx).Where("id = ? AND user_id = ?", channelID, userID).First(&channel).Error; err != nil {
+		return fmt.Errorf("channel not found: %w", err)
+	}
+	api, err := s.youtubeClient(ctx, userID, false)
+	if err != nil {
+		return err
+	}
+	videos, err := s.fetchChannelVideos(ctx, api, channelID)
+	if err != nil {
+		return err
+	}
+	_, err = s.persistChannel(ctx, channel, videos, false)
+	return err
+}
 
-	switch syncType {
-	case "subscriptions":
-		// Fetch all subscribed channels from YouTube
-		channels, err := s.fetchSubscribedChannels()
-		if err != nil {
-			s.db.Model(&SyncLog{}).Where("id = ?", syncID).Updates(map[string]interface{}{
-				"status":        "failed",
-				"error_message": fmt.Sprintf("Error fetching subscriptions: %v", err),
-				"completed_at":  time.Now(),
-			})
-			return
+func (s *Service) performSync(ctx context.Context, syncLog SyncLog) error {
+	result := s.db.WithContext(ctx).Model(&SyncLog{}).Where("id = ? AND status = ?", syncLog.ID, "pending").
+		Updates(map[string]any{"status": "running", "started_at": time.Now().UTC()})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected != 1 {
+		return errors.New("sync is no longer pending")
+	}
+	var channels []YoutubeChannel
+	var api *youtube.Service
+	var err error
+	if syncLog.Type == "subscriptions" {
+		api, err = s.youtubeClient(ctx, syncLog.UserID, true)
+		if err == nil {
+			channels, err = loadSubscribedChannels(ctx, api)
 		}
-
-		if len(channels) == 0 {
-			// User has no subscriptions
-			s.db.Model(&SyncLog{}).Where("id = ?", syncID).Updates(map[string]interface{}{
-				"status":             "completed",
-				"processed_channels": 0,
-				"total_videos_added": 0,
-				"total_channels":     0,
-				"completed_at":       time.Now(),
-			})
-			log.Printf("[YouTube] User %d has no subscriptions", userID)
-			return
-		}
-
-		// Update total channels
-		s.db.Model(&SyncLog{}).Where("id = ?", syncID).Update("total_channels", len(channels))
-
-		// Save channels and sync videos
-		totalVideosAdded := 0
-		processedChannels := 0
-
-		for _, channel := range channels {
-			// Check if channel already exists for this user
-			var existingChannel YoutubeChannel
-			err := s.db.Where("id = ? AND user_id = ?", channel.ID, userID).First(&existingChannel).Error
-
-			if err == gorm.ErrRecordNotFound {
-				// New channel - set user ID and create
-				channel.UserID = userID
-				if err := s.db.Create(&channel).Error; err != nil {
-					log.Printf("[YouTube] Failed to create channel %s: %v", channel.ID, err)
-					continue
-				}
-				log.Printf("[YouTube] Added new channel: %s for user %d", channel.Name, userID)
-			} else if err == nil {
-				// Existing channel - update info
-				channel.UserID = userID
-				if err := s.db.Model(&YoutubeChannel{}).Where("id = ? AND user_id = ?", channel.ID, userID).
-					Updates(map[string]interface{}{
-						"name":             channel.Name,
-						"description":      channel.Description,
-						"thumbnail":        channel.Thumbnail,
-						"subscriber_count": channel.SubscriberCount,
-						"video_count":      channel.VideoCount,
-						"view_count":       channel.ViewCount,
-						"published_at":     channel.PublishedAt,
-					}).Error; err != nil {
-					log.Printf("[YouTube] Failed to update channel %s: %v", channel.ID, err)
-					continue
-				}
-			} else {
-				log.Printf("[YouTube] Error checking channel %s: %v", channel.ID, err)
-				continue
-			}
-
-			// Fetch videos for this channel
-			videos, err := s.fetchChannelVideos(channel.ID)
-			if err != nil {
-				log.Printf("[YouTube] Failed to fetch videos for channel %s: %v", channel.ID, err)
-				// Continue with other channels
-			} else {
-				for _, video := range videos {
-					// Check if video already exists
-					var existingVideo YoutubeVideo
-					err := s.db.Where("id = ? AND channel_id = ?", video.ID, channel.ID).First(&existingVideo).Error
-					if err == gorm.ErrRecordNotFound {
-						// New video
-						video.ChannelID = channel.ID
-						if err := s.db.Create(&video).Error; err == nil {
-							totalVideosAdded++
-						}
-					} else if err == nil {
-						// Update existing video
-						if err := s.db.Model(&YoutubeVideo{}).Where("id = ? AND channel_id = ?", video.ID, channel.ID).
-							Updates(map[string]interface{}{
-								"title":       video.Title,
-								"description": video.Description,
-								"thumbnail":   video.Thumbnail,
-								"view_count":  video.ViewCount,
-								"updated_at":  time.Now(),
-							}).Error; err == nil {
-							// Don't count as new, but still track
-						}
-					}
-				}
-			}
-
-			// Update channel last synced time
-			s.db.Model(&YoutubeChannel{}).Where("id = ? AND user_id = ?", channel.ID, userID).
-				Update("last_synced_at", time.Now())
-
-			processedChannels++
-
-			// Update progress
-			s.db.Model(&SyncLog{}).Where("id = ?", syncID).Updates(map[string]interface{}{
-				"processed_channels": processedChannels,
-				"total_videos_added": totalVideosAdded,
-			})
-		}
-
-		// Update final status
-		s.db.Model(&SyncLog{}).Where("id = ?", syncID).Updates(map[string]interface{}{
-			"status":             "completed",
-			"processed_channels": processedChannels,
-			"total_videos_added": totalVideosAdded,
-			"completed_at":       time.Now(),
-		})
-
-		log.Printf("[YouTube] Sync completed for user %d: %d channels, %d videos added",
-			userID, processedChannels, totalVideosAdded)
-
-	case "all", "channel", "tag":
-		// Existing sync logic for channels already in database
-		var channels []YoutubeChannel
-		var err error
-
-		switch syncType {
+	} else {
+		query := s.db.WithContext(ctx).Model(&YoutubeChannel{}).Where("youtube_channels.user_id = ?", syncLog.UserID)
+		switch syncLog.Type {
 		case "all":
-			err = s.db.Where("user_id = ?", userID).Find(&channels).Error
 		case "channel":
-			err = s.db.Where("id = ? AND user_id = ?", targetID, userID).Find(&channels).Error
+			query = query.Where("youtube_channels.id = ?", syncLog.TargetID)
 		case "tag":
-			err = s.db.Table("youtube_channels").
-				Select("youtube_channels.*").
-				Joins("JOIN channel_tags ON channel_tags.channel_id = youtube_channels.id").
-				Where("youtube_channels.user_id = ? AND channel_tags.tag_id = ?", userID, targetID).
-				Find(&channels).Error
+			query = query.Joins("JOIN channel_tags ON channel_tags.channel_id = youtube_channels.id").Where("channel_tags.tag_id = ?", syncLog.TargetID)
+		default:
+			return fmt.Errorf("unsupported sync type %q", syncLog.Type)
 		}
-
+		err = query.Find(&channels).Error
+		if err == nil && len(channels) > 0 {
+			api, err = s.youtubeClient(ctx, syncLog.UserID, false)
+		}
+	}
+	if err != nil {
+		return err
+	}
+	if err := s.updateSync(ctx, syncLog.ID, map[string]any{"total_channels": len(channels)}); err != nil {
+		return err
+	}
+	var failures []error
+	processed, added := 0, 0
+	for _, channel := range channels {
+		if ctx.Err() != nil {
+			return errors.Join(append(failures, ctx.Err())...)
+		}
+		channel.UserID = syncLog.UserID
+		videos, err := s.fetchChannelVideos(ctx, api, channel.ID)
+		if err == nil {
+			var count int
+			count, err = s.persistChannel(ctx, channel, videos, syncLog.Type == "subscriptions")
+			if err == nil {
+				processed++
+				added += count
+			}
+		}
 		if err != nil {
-			s.db.Model(&SyncLog{}).Where("id = ?", syncID).Updates(map[string]interface{}{
-				"status":        "failed",
-				"error_message": fmt.Sprintf("Error fetching channels: %v", err),
-				"completed_at":  time.Now(),
-			})
-			return
+			failures = append(failures, fmt.Errorf("sync channel %s: %w", channel.ID, err))
 		}
-
-		if len(channels) == 0 {
-			s.db.Model(&SyncLog{}).Where("id = ?", syncID).Updates(map[string]interface{}{
-				"status":             "completed",
-				"processed_channels": 0,
-				"total_videos_added": 0,
-				"total_channels":     0,
-				"completed_at":       time.Now(),
-			})
-			return
+		if err := s.updateSync(ctx, syncLog.ID, map[string]any{"processed_channels": processed, "total_videos_added": added}); err != nil {
+			return errors.Join(append(failures, err)...)
 		}
+	}
+	return errors.Join(failures...)
+}
 
-		// Update total channels
-		s.db.Model(&SyncLog{}).Where("id = ?", syncID).Update("total_channels", len(channels))
-
-		// Sync each channel
-		totalVideosAdded := 0
-		processedChannels := 0
-
-		for _, channel := range channels {
-			videos, err := s.fetchChannelVideos(channel.ID)
-			if err != nil {
-				continue
-			}
-
-			for _, video := range videos {
-				video.ChannelID = channel.ID
-				if err := s.db.Save(&video).Error; err == nil {
-					totalVideosAdded++
-				}
-			}
-
-			s.db.Model(&YoutubeChannel{}).Where("id = ?", channel.ID).Update("last_synced_at", time.Now())
-			processedChannels++
-
-			s.db.Model(&SyncLog{}).Where("id = ?", syncID).Updates(map[string]interface{}{
-				"processed_channels": processedChannels,
-				"total_videos_added": totalVideosAdded,
-			})
-		}
-
-		s.db.Model(&SyncLog{}).Where("id = ?", syncID).Updates(map[string]interface{}{
-			"status":             "completed",
-			"processed_channels": processedChannels,
-			"total_videos_added": totalVideosAdded,
-			"completed_at":       time.Now(),
-		})
+func syncLogResponse(entry SyncLog) *SyncLogResponse {
+	return &SyncLogResponse{
+		ID: entry.ID, Type: entry.Type, Status: entry.Status, TotalChannels: entry.TotalChannels,
+		ProcessedChannels: entry.ProcessedChannels, TotalVideosAdded: entry.TotalVideosAdded,
+		ErrorMessage: entry.ErrorMessage, StartedAt: entry.StartedAt, CompletedAt: entry.CompletedAt,
 	}
 }
 
-// GetSyncStatus returns the sync status for a user
 func (s *Service) GetSyncStatus(userID uint) (*SyncStatusResponse, error) {
-	var currentSync SyncLog
-	err := s.db.Where("user_id = ? AND status = ?", userID, "running").
-		Order("created_at DESC").
-		First(&currentSync).Error
-
-	isSyncing := err == nil
-
-	var lastSync SyncLog
-	err = s.db.Where("user_id = ? AND status IN ?", userID, []string{"completed", "failed"}).
-		Order("created_at DESC").
-		First(&lastSync).Error
-
-	var lastSyncResponse *SyncLogResponse
-	if err == nil {
-		lastSyncResponse = &SyncLogResponse{
-			ID:                lastSync.ID,
-			Type:              lastSync.Type,
-			Status:            lastSync.Status,
-			TotalChannels:     lastSync.TotalChannels,
-			ProcessedChannels: lastSync.ProcessedChannels,
-			TotalVideosAdded:  lastSync.TotalVideosAdded,
-			ErrorMessage:      lastSync.ErrorMessage,
-			StartedAt:         lastSync.StartedAt,
-			CompletedAt:       lastSync.CompletedAt,
-		}
+	if err := expireSyncs(s.db, userID); err != nil {
+		return nil, err
 	}
-
-	var currentSyncResponse *SyncLogResponse
-	if isSyncing {
-		currentSyncResponse = &SyncLogResponse{
-			ID:                currentSync.ID,
-			Type:              currentSync.Type,
-			Status:            currentSync.Status,
-			TotalChannels:     currentSync.TotalChannels,
-			ProcessedChannels: currentSync.ProcessedChannels,
-			TotalVideosAdded:  currentSync.TotalVideosAdded,
-			StartedAt:         currentSync.StartedAt,
-		}
+	response := &SyncStatusResponse{}
+	var current SyncLog
+	result := s.db.Where("user_id = ? AND status IN ?", userID, []string{"pending", "running"}).Order("created_at DESC").Limit(1).Find(&current)
+	if result.Error != nil {
+		return nil, result.Error
 	}
-
-	return &SyncStatusResponse{
-		IsSyncing:   isSyncing,
-		LastSync:    lastSyncResponse,
-		CurrentSync: currentSyncResponse,
-	}, nil
+	if result.RowsAffected > 0 {
+		response.IsSyncing = true
+		response.CurrentSync = syncLogResponse(current)
+	}
+	var last SyncLog
+	result = s.db.Where("user_id = ? AND status IN ?", userID, []string{"completed", "failed"}).Order("created_at DESC").Limit(1).Find(&last)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected > 0 {
+		response.LastSync = syncLogResponse(last)
+	}
+	return response, nil
 }

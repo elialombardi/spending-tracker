@@ -4,7 +4,7 @@ import { Box, Paper } from '@mui/material';
 import { DateNavigator } from '../../components/Diary/DateNavigator';
 import { EntryEditor } from '../../components/Diary/EntryEditor';
 import { parseDateInput, isToday } from '../../helpers/diary';
-import { DiaryEntry, useListEntriesQuery } from '../../api/diaryApi';
+import { useListEntriesQuery } from '../../api/diaryApi';
 
 import { useAutoSave } from './hooks/useAutoSave';
 import { useDiaryNavigation } from './hooks/useDiaryNavigation';
@@ -26,8 +26,6 @@ const DiaryPage: React.FC = () => {
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<DiaryEntry[]>([]);
-  const [searchError, setSearchError] = useState<string | null>(null);
 
   const { data: searchData, isLoading: searchLoading, error: searchQueryError } =
     useListEntriesQuery(
@@ -35,17 +33,8 @@ const DiaryPage: React.FC = () => {
       { skip: !searchQuery.trim() }
     );
 
-  // Update search results
-  React.useEffect(() => {
-    if (searchData) {
-      setSearchResults(searchData.data);
-    }
-    if (searchQueryError) {
-      setSearchError('Search failed.');
-    } else {
-      setSearchError(null);
-    }
-  }, [searchData, searchQueryError]);
+  const searchResults = searchQuery.trim() ? searchData?.data || [] : [];
+  const searchError = searchQueryError ? 'Search failed.' : null;
 
   // Update URL when date changes
   React.useEffect(() => {

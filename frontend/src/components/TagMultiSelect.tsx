@@ -1,6 +1,5 @@
 import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
-import Chip from '@mui/material/Chip';
 
 function TagMultiSelect({ options = [], value = [], onChange, placeholder = 'Add tags...' }) {
     // MUI Autocomplete handles keyboard, focus, and freeSolo nicely
@@ -13,13 +12,12 @@ function TagMultiSelect({ options = [], value = [], onChange, placeholder = 'Add
             onChange={(e, newValue) => {
                 // ensure strings
                 const normalized = (arr) => (Array.isArray(arr) ? arr.map((v) => String(v).trim()).filter(Boolean) : []);
-                onChange && onChange(normalized(newValue));
+                onChange?.(normalized(newValue));
             }}
             renderInput={(params) => {
-                const { renderTags: _rt, ...inputParams } = params || {}
                 return (
                     <TextField
-                        {...inputParams}
+                        {...params}
                         placeholder={placeholder}
                         variant="outlined"
                         size="medium"

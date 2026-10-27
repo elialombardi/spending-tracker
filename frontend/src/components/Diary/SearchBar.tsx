@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, TextField, InputAdornment, Paper, List, ListItem, ListItemText, Typography, CircularProgress, Alert } from '@mui/material';
+import { Box, TextField, InputAdornment, Paper, List, ListItemButton, ListItemText, Typography, CircularProgress, Alert } from '@mui/material';
 import { Search } from '@mui/icons-material';
 import { DiaryEntry } from '../../api/diary';
 
@@ -49,13 +49,13 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             color: 'text.disabled',
           }
         }}
-        InputProps={{
+         slotProps={{ input: {
           startAdornment: (
             <InputAdornment position="start">
               <Search />
             </InputAdornment>
           ),
-        }}
+        } }}
       />
       {searchLoading && <CircularProgress size={20} sx={{ mt: 1, color: 'text.disabled' }} />}
       {searchError && (
@@ -86,9 +86,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         >
           <List sx={{ p: 0 }}>
             {searchResults.map((result) => (
-              <ListItem
+              <ListItemButton
                 key={result.id}
-                button
                 onClick={() => onResultClick(result.date)}
                 sx={{
                   borderBottom: (theme) => `1px solid ${theme.palette.divider}`,
@@ -120,7 +119,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                   })}
                   secondary={result.content.substring(0, 120) + (result.content.length > 120 ? '...' : '')}
                 />
-              </ListItem>
+              </ListItemButton>
             ))}
           </List>
         </Paper>

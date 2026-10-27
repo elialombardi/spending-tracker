@@ -178,14 +178,14 @@ export default function CurrentMonthTrendsSection({
                 anchor="bottom"
                 open={Boolean(selectedWeek)}
                 onClose={() => setSelectedWeekKey(null)}
-                PaperProps={{
+                 slotProps={{ paper: {
                     sx: {
                         borderTopLeftRadius: 12,
                         borderTopRightRadius: 12,
                         maxHeight: '75vh',
                         boxShadow: '0 -24px 80px rgba(0,0,0,0.45)',
                     },
-                }}
+                } }}
             >
                 {selectedWeek ? (
                     <Box sx={{ p: { xs: 2, sm: 3 }, overflow: 'auto' }}>
@@ -201,9 +201,9 @@ export default function CurrentMonthTrendsSection({
                         />
                         <Stack
                             direction="row"
-                            justifyContent="space-between"
+
                             spacing={2}
-                            sx={{ mb: 2, alignItems: 'flex-start' }}
+                            sx={{ justifyContent: "space-between", ...({ mb: 2, alignItems: 'flex-start' }) }}
                         >
                             <Box>
                                 <Typography variant="overline" sx={{ color: 'text.secondary', letterSpacing: '0.08em' }}>
@@ -235,7 +235,7 @@ export default function CurrentMonthTrendsSection({
                                 <CloseIcon />
                             </IconButton>
                         </Stack>
-                        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 2.5 }}>
+                        <Stack direction="row" spacing={1} useFlexGap  sx={{ flexWrap: "wrap", ...({ mb: 2.5 }) }}>
                             <Chip label={`${selectedWeekTransactions.length} transactions`} size="small" variant="outlined" />
                             <Chip label={`Spent ${formatMoney(selectedWeek.totalSpent)}`} size="small" variant="outlined" />
                             <Chip label={`Budget ${formatMoney(selectedWeek.availableBudget)}`} size="small" variant="outlined" />
@@ -330,7 +330,7 @@ export default function CurrentMonthTrendsSection({
                                             border: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
                                         }}
                                     >
-                                        <Stack direction="row" justifyContent="space-between" spacing={2} sx={{ alignItems: 'flex-start' }}>
+                                        <Stack direction="row"  spacing={2} sx={{ justifyContent: "space-between", ...({ alignItems: 'flex-start' }) }}>
                                             <Box sx={{ minWidth: 0 }}>
                                                 <Typography variant="subtitle2" sx={{ fontSize: '0.98rem', lineHeight: 1.3 }}>
                                                     {getTransactionTitle(transaction)}
@@ -343,7 +343,7 @@ export default function CurrentMonthTrendsSection({
                                                 {formatSignedMoney(transaction.amount)}
                                             </Typography>
                                         </Stack>
-                                        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.25 }}>
+                                        <Stack direction="row" spacing={1} useFlexGap  sx={{ flexWrap: "wrap", ...({ mt: 1.25 }) }}>
                                             <Chip label={transaction.category || 'Uncategorized'} size="small" variant="outlined" />
                                             {transaction.needsReview ? <Chip label="Needs review" size="small" variant="outlined" /> : null}
                                         </Stack>
@@ -374,7 +374,7 @@ export default function CurrentMonthTrendsSection({
                 anchor="right"
                 open={isIncomeDrawerOpen}
                 onClose={() => setIsIncomeDrawerOpen(false)}
-                PaperProps={{
+                 slotProps={{ paper: {
                     sx: {
                         width: { xs: '100%', sm: 460 },
                         backgroundColor: 'background.paper',
@@ -382,14 +382,14 @@ export default function CurrentMonthTrendsSection({
                         borderLeft: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
                         boxShadow: '-24px 0 80px rgba(0,0,0,0.45)',
                     },
-                }}
+                } }}
             >
                 <Box sx={{ p: { xs: 2, sm: 3 }, overflow: 'auto', height: '100%' }}>
                     <Stack
                         direction="row"
-                        justifyContent="space-between"
+
                         spacing={2}
-                        sx={{ mb: 2, alignItems: 'flex-start' }}
+                        sx={{ justifyContent: "space-between", ...({ mb: 2, alignItems: 'flex-start' }) }}
                     >
                         <Box>
                             <Typography variant="overline" sx={{ color: 'text.secondary', letterSpacing: '0.08em' }}>
@@ -421,7 +421,7 @@ export default function CurrentMonthTrendsSection({
                             <CloseIcon />
                         </IconButton>
                     </Stack>
-                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 2.5 }}>
+                    <Stack direction="row" spacing={1} useFlexGap  sx={{ flexWrap: "wrap", ...({ mb: 2.5 }) }}>
                         <Chip label={`${cycleIncomeTransactions.length} incomes`} size="small" variant="outlined" />
                         <Chip label={`Budget ${formatMoney(cycleBudget)}`} size="small" variant="outlined" />
                     </Stack>
@@ -444,7 +444,7 @@ export default function CurrentMonthTrendsSection({
                                             border: `1px solid ${alpha(theme.palette.common.white, 0.06)}`,
                                         }}
                                     >
-                                        <Stack direction="row" justifyContent="space-between" spacing={2} sx={{ alignItems: 'flex-start' }}>
+                                        <Stack direction="row"  spacing={2} sx={{ justifyContent: "space-between", ...({ alignItems: 'flex-start' }) }}>
                                             <Box sx={{ minWidth: 0 }}>
                                                 <Typography variant="subtitle2" sx={{ fontSize: '0.98rem', lineHeight: 1.3 }}>
                                                     {getTransactionTitle(transaction)}
@@ -457,7 +457,7 @@ export default function CurrentMonthTrendsSection({
                                                 {formatSignedMoney(transaction.amount)}
                                             </Typography>
                                         </Stack>
-                                        <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1.25 }}>
+                                        <Stack direction="row" spacing={1} useFlexGap  sx={{ flexWrap: "wrap", ...({ mt: 1.25 }) }}>
                                             <Chip
                                                 label={isRelatedToCycle ? 'Included in cycle' : 'Excluded from cycle'}
                                                 size="small"

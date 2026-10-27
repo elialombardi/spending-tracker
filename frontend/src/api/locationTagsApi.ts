@@ -6,30 +6,30 @@ export const locationTagsApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
         listTags: builder.query<string[], void>({
             query: () => '/tags',
-            providesTags: ['Location'],
+            providesTags: ['LocationTag'],
         }),
-        createTag: builder.mutation<string, string>({
+        createLocationTag: builder.mutation<string, string>({
             query: (name) => ({
                 url: '/tags',
                 method: 'POST',
                 body: { name },
             }),
-            invalidatesTags: ['Location'],
+            invalidatesTags: ['LocationTag'],
         }),
-        renameTag: builder.mutation<string, { oldName: string; newName: string }>({
+        renameLocationTag: builder.mutation<string, { oldName: string; newName: string }>({
             query: ({ oldName, newName }) => ({
-                url: `/tags/${oldName}`,
+                url: `/tags/${encodeURIComponent(oldName)}`,
                 method: 'PATCH',
                 body: { newName },
             }),
-            invalidatesTags: ['Location'],
+            invalidatesTags: ['Location', 'LocationTag'],
         }),
-        deleteTag: builder.mutation<void, string>({
+        deleteLocationTag: builder.mutation<void, string>({
             query: (name) => ({
-                url: `/tags/${name}`,
+                url: `/tags/${encodeURIComponent(name)}`,
                 method: 'DELETE',
             }),
-            invalidatesTags: ['Location'],
+            invalidatesTags: ['Location', 'LocationTag'],
         }),
     }),
     overrideExisting: false,
@@ -37,4 +37,4 @@ export const locationTagsApi = baseApi.injectEndpoints({
 
 // Export hooks for usage in functional components, which are
 // auto-generated based on the defined endpoints
-export const { useListTagsQuery, useCreateTagMutation, useRenameTagMutation, useDeleteTagMutation } = locationTagsApi
+export const { useListTagsQuery, useCreateLocationTagMutation, useRenameLocationTagMutation, useDeleteLocationTagMutation } = locationTagsApi

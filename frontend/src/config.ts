@@ -1,5 +1,5 @@
-const runtimeEnv = (typeof window !== 'undefined' && window.__ENV__) || {}
-const viteEnv = (typeof import.meta !== 'undefined' && import.meta.env) || {}
+const runtimeEnv: Record<string, string | boolean | undefined> = (typeof window !== 'undefined' && window.__ENV__) || {}
+const viteEnv: ImportMetaEnv = import.meta.env
 const processEnv = (typeof globalThis !== 'undefined' && globalThis.process && globalThis.process.env) || {}
 
 // Prefer Vite-provided envs during dev/build, allow optional runtime overrides via window.__ENV__

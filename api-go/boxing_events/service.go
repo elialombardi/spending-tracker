@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/jobs"
 	"gorm.io/gorm"
 )
 
@@ -19,7 +20,7 @@ type Service interface {
 	Delete(ctx context.Context, id, userID uint) error
 	Export(ctx context.Context, userID uint, filter Filter, format string) ([]byte, string, error) // returns data, filename, error
 	SyncFromPinnacle(ctx context.Context) (int, error)
-	StartBackgroundSync(stopCh <-chan struct{})
+	StartBackgroundSync(ctx context.Context) <-chan struct{}
 }
 
 type Filter struct {
@@ -197,7 +198,7 @@ func (s *service) Export(ctx context.Context, userID uint, filter Filter, format
 }
 
 func (s *service) SyncFromPinnacle(ctx context.Context) (int, error) {
-	events, err := s.pinnacleClient.FetchPrematchBoxingEvents()
+	events, err := s.pinnacleClient.FetchPrematchBoxingEvents(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -253,30 +254,14 @@ func (s *service) SyncFromPinnacle(ctx context.Context) (int, error) {
 	return created + updated, nil
 }
 
-func (s *service) StartBackgroundSync(stopCh <-chan struct{}) {
-	go func() {
-		// Run immediately on start
-		runSync(s)
-
-		ticker := time.NewTicker(6 * time.Hour)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ticker.C:
-				runSync(s)
-			case <-stopCh:
-				log.Println("Background sync stopped")
-				return
-			}
-		}
-	}()
+func (s *service) StartBackgroundSync(ctx context.Context) <-chan struct{} {
+	return jobs.Start(ctx, 6*time.Hour, func(ctx context.Context) { runSync(ctx, s) })
 }
 
 // Separate function for the actual sync with logging and locking
 var syncMutex sync.Mutex
 
-func runSync(s *service) {
+func runSync(parent context.Context, s *service) {
 	// Prevent overlapping runs (if sync takes longer than interval)
 	if !syncMutex.TryLock() {
 		log.Println("Sync already in progress, skipping")
@@ -284,7 +269,7 @@ func runSync(s *service) {
 	}
 	defer syncMutex.Unlock()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(parent, 2*time.Minute)
 	defer cancel()
 
 	count, err := s.SyncFromPinnacle(ctx)

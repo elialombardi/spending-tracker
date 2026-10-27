@@ -8,24 +8,24 @@ type Tabler interface {
 }
 
 type Transaction struct {
-	ID                      string  `gorm:"column:id;primaryKey"`
+	ID                      string  `gorm:"column:id;primaryKey;index:idx_transactions_booking_imported_id,priority:3,sort:desc"`
 	AccountNumber           string  `gorm:"column:account_number"`
-	BookingDate             string  `gorm:"column:booking_date"`
+	BookingDate             string  `gorm:"column:booking_date;index:idx_transactions_booking_imported_id,priority:1,sort:desc"`
 	ValueDate               string  `gorm:"column:value_date"`
 	Amount                  float64 `gorm:"column:amount"`
 	DebitAmount             float64 `gorm:"column:debit_amount"`
 	CreditAmount            float64 `gorm:"column:credit_amount"`
 	RawDescription          string  `gorm:"column:raw_description"`
 	NormalizedDescription   string  `gorm:"column:normalized_description"`
-	MerchantKey             string  `gorm:"column:merchant_key"`
+	MerchantKey             string  `gorm:"column:merchant_key;index:idx_transactions_merchant_expense,where:amount < 0 AND exclude_from_calculations = false"`
 	Category                string  `gorm:"column:category"`
 	SuggestedCategory       string  `gorm:"column:suggested_category"`
 	SuggestionConfidence    float64 `gorm:"column:suggestion_confidence"`
 	NeedsReview             bool    `gorm:"column:needs_review"`
 	ExcludeFromCalculations bool    `gorm:"column:exclude_from_calculations"`
-	SourceFingerprint       string  `gorm:"column:source_fingerprint"`
+	SourceFingerprint       string  `gorm:"column:source_fingerprint;index:idx_transactions_fingerprint"`
 	SourceFileName          string  `gorm:"column:source_file_name"`
-	ImportedAtUtc           string  `gorm:"column:imported_at_utc"`
+	ImportedAtUtc           string  `gorm:"column:imported_at_utc;index:idx_transactions_booking_imported_id,priority:2,sort:desc"`
 	IsMonthlyRecurring      bool    `gorm:"column:is_monthly_recurring"`
 	IsSending               bool    `gorm:"column:is_sending"`
 }
@@ -34,7 +34,7 @@ func (Transaction) TableName() string { return "transactions" }
 
 type CategoryRule struct {
 	ID           string `gorm:"column:id;primaryKey"`
-	MerchantKey  string `gorm:"column:merchant_key"`
+	MerchantKey  string `gorm:"column:merchant_key;index:idx_category_rules_merchant"`
 	Category     string `gorm:"column:category"`
 	Behavior     string `gorm:"column:behavior"`
 	AppliedCount int    `gorm:"column:applied_count"`

@@ -10,7 +10,7 @@ type SnackbarContextType = {
 
 const SnackbarContext = createContext<SnackbarContextType | undefined>(undefined)
 
-const SnackbarProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
+const SnackbarProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
     const [open, setOpen] = useState(false)
     const [message, setMessage] = useState('')
     const [severity, setSeverity] = useState<AlertColor>('success')

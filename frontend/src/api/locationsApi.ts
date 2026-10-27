@@ -21,7 +21,10 @@ export const locationsApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
         listLocations: builder.query<Location[], void>({
             query: () => '/locations',
-            providesTags: ['Location'],
+            providesTags: (locations = []) => [
+                { type: 'Location', id: 'LIST' },
+                ...locations.map(({ id }) => ({ type: 'Location' as const, id })),
+            ],
         }),
         getLocation: builder.query<Location, number>({
             query: (id) => `/locations/${id}`,
@@ -33,6 +36,7 @@ export const locationsApi = baseApi.injectEndpoints({
                 method: 'POST',
                 body: location,
             }),
+            invalidatesTags: [{ type: 'Location', id: 'LIST' }, 'LocationTag'],
         }),
         toggleLocationTag: builder.mutation<Location, { id: number; tag: string; present: boolean }>({
             query: ({ id, tag, present }) => ({
@@ -40,7 +44,7 @@ export const locationsApi = baseApi.injectEndpoints({
                 method: 'POST',
                 body: { tag, present },
             }),
-            invalidatesTags: (result, error, { id }) => [{ type: 'Location', id }],
+            invalidatesTags: (result, error, { id }) => [{ type: 'Location', id }, { type: 'Location', id: 'LIST' }, 'LocationTag'],
         }),
         updateLocation: builder.mutation<Location, { id: number; location: Partial<LocationPayload> }>({
             query: ({ id, location }) => ({
@@ -48,14 +52,14 @@ export const locationsApi = baseApi.injectEndpoints({
                 method: 'PUT',
                 body: location,
             }),
-            invalidatesTags: (result, error, { id }) => [{ type: 'Location', id }],
+            invalidatesTags: (result, error, { id }) => [{ type: 'Location', id }, { type: 'Location', id: 'LIST' }, 'LocationTag'],
         }),
         deleteLocation: builder.mutation<void, number>({
             query: (id) => ({
                 url: `/locations/${id}`,
                 method: 'DELETE',
             }),
-            invalidatesTags: (result, error, id) => [{ type: 'Location', id }],
+            invalidatesTags: (result, error, id) => [{ type: 'Location', id }, { type: 'Location', id: 'LIST' }],
         }),
     }),
     overrideExisting: false,

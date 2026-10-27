@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { canWrite, useAuthSession } from '../../../auth'
+import type { CycleOption, CycleReport, ReportTransaction, ReportCategory, CategoryMapping, CycleIncomeCategories } from '../../../types/reports'
+import { createCycleRequests, type DashboardFetcher } from '../lib/cycleRequests'
 import { fetchJson, fetchApiResponse, downloadFile, readError } from '../lib/api'
 import {
     CORRECTION_PAGE_SIZE,
@@ -82,7 +84,7 @@ function getCycleEndFromStart(cycleStart) {
     }
 }
 
-async function fetchCurrentCycleData(cycleOptions, existingReports = []) {
+async function fetchCurrentCycleData(cycleOptions: CycleOption[], requests: ReturnType<typeof createCycleRequests>, existingReports: CycleReport[] = []) {
     const today = formatDateOnly(getTodayDateOnly())
     const currentCycleOption = getCurrentCycleOption(cycleOptions, today)
     const existingCurrentCycleReport = currentCycleOption
@@ -94,10 +96,10 @@ async function fetchCurrentCycleData(cycleOptions, existingReports = []) {
 
     const [currentCycleReport, currentCycleTransactions] = await Promise.all([
         currentCycleOption && !existingCurrentCycleReport
-            ? fetchJson(`/api/reports/cycle?cycleStart=${encodeURIComponent(currentCycleOption.from)}`)
+            ? requests.report(currentCycleOption.from)
             : Promise.resolve(existingCurrentCycleReport),
         currentCycleRange
-            ? fetchJson(`/api/transactions?direction=expense&from=${currentCycleRange.from}&to=${currentCycleRange.to}`)
+            ? requests.transactions(currentCycleRange.from, currentCycleRange.to).then(transactions => transactions.filter(transaction => transaction.amount < 0))
             : Promise.resolve([]),
     ])
 
@@ -128,7 +130,7 @@ function buildComparableCycleEnd(referenceCycle, comparedCycle) {
         : todayDate > referenceCycleEnd
             ? referenceCycleEnd
             : todayDate
-    const elapsedDays = Math.max(0, Math.floor((effectiveCurrentDate - referenceCycleStart) / 86400000))
+    const elapsedDays = Math.max(0, Math.floor((effectiveCurrentDate.getTime() - referenceCycleStart.getTime()) / 86400000))
     const comparableCycleEnd = new Date(comparedCycleStart)
 
     comparableCycleEnd.setUTCDate(comparableCycleEnd.getUTCDate() + elapsedDays)
@@ -139,7 +141,7 @@ function buildComparableCycleEnd(referenceCycle, comparedCycle) {
 }
 
 function buildCategorySpendLookup(transactions) {
-    const totalsInCents = {}
+    const totalsInCents: Record<string, number> = {}
 
     transactions.forEach((transaction) => {
         const categoryName = transaction.category || 'Uncategorized'
@@ -182,18 +184,19 @@ function normalizeCategoryNames(categoryNames) {
 
 // use `fetchJson` from ../lib/api which prefixes the shared API base
 
-async function fetchDashboardData(selectedCycleStart) {
+export async function fetchDashboardData(selectedCycleStart: string, signal?: AbortSignal, fetcher: DashboardFetcher = fetchJson) {
+    const requests = createCycleRequests(fetcher, signal)
     const [categories, categoryMappings, cycleIncomeCategories, cycleOptions, incomeTransactions] = await Promise.all([
-        fetchJson('/api/categories'),
-        fetchJson('/api/categories/mappings'),
-        fetchJson('/api/categories/cycle-income'),
-        fetchJson('/api/reports/cycles'),
-        fetchJson('/api/transactions?direction=income'),
+        fetcher<ReportCategory[]>('/api/categories', { signal }),
+        fetcher<CategoryMapping[]>('/api/categories/mappings', { signal }),
+        fetcher<CycleIncomeCategories>('/api/categories/cycle-income', { signal }),
+        fetcher<CycleOption[]>('/api/reports/cycles', { signal }),
+        fetcher<ReportTransaction[]>('/api/transactions?direction=income', { signal }),
     ])
 
     const effectiveCycleStart = getEffectiveSelectedCycleStart(selectedCycleStart, cycleOptions)
     if (!effectiveCycleStart) {
-        const { currentCycleReport, currentCycleTransactions } = await fetchCurrentCycleData(cycleOptions)
+        const { currentCycleReport, currentCycleTransactions } = await fetchCurrentCycleData(cycleOptions, requests)
 
         return {
             categories,
@@ -217,11 +220,12 @@ async function fetchDashboardData(selectedCycleStart) {
     const comparisonCycleStarts = buildComparisonCycleStarts(effectiveCycleStart, cycleOptions)
     const comparisonCycleReports = await Promise.all(
         comparisonCycleStarts.map((cycleStart) =>
-            fetchJson(`/api/reports/cycle?cycleStart=${encodeURIComponent(cycleStart)}`),
+            requests.report(cycleStart),
         ),
     )
     const { currentCycleReport, currentCycleTransactions } = await fetchCurrentCycleData(
         cycleOptions,
+        requests,
         comparisonCycleReports,
     )
     const monthlyReport = comparisonCycleReports.find((report) => report.from === effectiveCycleStart) ?? null
@@ -253,24 +257,21 @@ async function fetchDashboardData(selectedCycleStart) {
     const previousCycleComparableTo = previousCycleOption
         ? buildComparableCycleEnd(monthlyReport, previousCycleOption)
         : ''
-    const [reviewQueue, cycleTransactions, comparisonCycleTransactions] = await Promise.all([
-        fetchJson(`/api/transactions?needsReview=true&from=${monthlyReport.from}&to=${monthlyReport.to}`),
-        fetchJson(`/api/transactions?from=${monthlyReport.from}&to=${monthlyReport.to}`).then((transactions) =>
-            transactions.filter((transaction) => !transaction.excludeFromCalculations),
-        ),
+    const [selectedCycleTransactions, comparisonCycleTransactions] = await Promise.all([
+        requests.transactions(monthlyReport.from, monthlyReport.to),
         Promise.all(
             comparisonCycleReports.map(async (report) => {
-                const transactions = await fetchJson(
-                    `/api/transactions?direction=expense&from=${report.from}&to=${report.to}`,
-                )
+                const transactions = await requests.transactions(report.from, report.to)
 
                 return {
                     from: report.from,
-                    transactions: transactions.filter((transaction) => !transaction.excludeFromCalculations),
+                    transactions: transactions.filter((transaction) => transaction.amount < 0 && !transaction.excludeFromCalculations),
                 }
             }),
         ),
     ])
+    const reviewQueue = selectedCycleTransactions.filter(transaction => transaction.needsReview)
+    const cycleTransactions = selectedCycleTransactions.filter(transaction => !transaction.excludeFromCalculations)
     const previousCycleComparisonEntry = previousCycleOption
         ? comparisonCycleTransactions.find((entry) => entry.from === previousCycleOption.from) ?? null
         : null
@@ -749,17 +750,20 @@ export function useDashboard() {
         window.history.replaceState(null, '', nextUrl)
     }, [activeTab, selectedCycleStart])
 
+    const applyLoadedDashboard = useEffectEvent(data => applyDashboardData(data))
+
     useEffect(() => {
         let cancelled = false
+        const controller = new AbortController()
 
         async function loadDashboard() {
             setIsBusy(true)
 
             try {
-                const data = await fetchDashboardData(selectedCycleStart)
+                const data = await fetchDashboardData(selectedCycleStart, controller.signal)
 
                 if (!cancelled) {
-                    applyDashboardData(data)
+                    applyLoadedDashboard(data)
                 }
             } catch (error) {
                 if (!cancelled) {
@@ -776,8 +780,9 @@ export function useDashboard() {
 
         return () => {
             cancelled = true
+            controller.abort()
         }
-    }, [selectedCycleStart, applyDashboardData, handleError])
+    }, [selectedCycleStart, handleError])
 
     useEffect(
         () => () => {

@@ -75,6 +75,7 @@ export const baseApi = createApi({
   endpoints: () => ({}),
   tagTypes: [
     "Location",
+    "LocationTag",
     "Fuel",
     "Diary",
     "Channels",

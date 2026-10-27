@@ -30,13 +30,13 @@ export function WorkoutHeader({ workoutName, onFinish }) {
 
       <Typography
         variant="h6"
-        fontWeight="800"
+
         noWrap
-        sx={{
+        sx={{ fontWeight: "800", ...({
           textAlign: 'center',
           fontSize: '1.15rem',
           letterSpacing: 0.5,
-        }}
+        }) }}
       >
         {workoutName || 'Workout'}
       </Typography>

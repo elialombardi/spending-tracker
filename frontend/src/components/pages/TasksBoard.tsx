@@ -19,7 +19,7 @@ import EmptyState from '../Tasks/EmptyState';
 import StatCard from '../Tasks/StatCard';
 import NotSentSection from '../Tasks/NotSentSection';
 import HistorySection from '../Tasks/HistorySection';
-import type { ViewType, Project as TaskProject, Task, TaskPayload, ProjectPayload } from '../../types/tasks';
+import type { ViewType, Project, Project as TaskProject, Task, TaskPayload, ProjectPayload, AssignProjectPayload } from '../../types/tasks';
 
 const VIEW_NOT_SENT: ViewType = 'not-sent';
 const VIEW_PREPARE: ViewType = 'prepare';

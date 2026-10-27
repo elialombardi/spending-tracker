@@ -67,7 +67,7 @@ export function NoteEditor({
                     value={selectedFolderID ?? ''}
                     onChange={(e) => {
                         const val = e.target.value as number | string;
-                        onFolderChange && onFolderChange(val === '' ? null : Number(val));
+                        onFolderChange?.(val === '' ? null : Number(val));
                     }}
                     disabled={!canWrite}
                 >

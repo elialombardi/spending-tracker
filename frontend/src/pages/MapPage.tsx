@@ -11,10 +11,12 @@ import FilterAltOffIcon from '@mui/icons-material/FilterAltOff'
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined'
 import SearchIcon from '@mui/icons-material/Search'
 import ZoomOutMapIcon from '@mui/icons-material/ZoomOutMap'
+import LocalOfferOutlinedIcon from '@mui/icons-material/LocalOfferOutlined'
+import { Link as RouterLink } from 'react-router-dom'
 import { useListLocationsQuery, useCreateLocationMutation, useUpdateLocationMutation } from '../api/locationsApi'
 import { useListTagsQuery } from '../api/locationTagsApi'
 import type { Location, LocationPayload } from '../types/domain'
-import { useAuthSession, canWrite } from '../auth'
+import { useAuthSession, canWrite, isAdmin } from '../auth'
 import LocationFormDialog from '../components/Locations/LocationFormDialog'
 import LocationMap from '../components/Locations/LocationMap'
 import { filterLocations, isMappableLocation, UNTAGGED } from './mapLocations'
@@ -101,11 +103,18 @@ export default function MapPage() {
                         Find a favorite, discover a connection, or save somewhere new.
                     </Typography>
                 </Box>
-                {writable && (
-                    <Button variant="contained" startIcon={<AddIcon />} onClick={() => openForm()} sx={{ flexShrink: 0 }}>
-                        Add location
-                    </Button>
-                )}
+                <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
+                    {isAdmin(session) && (
+                        <Button component={RouterLink} to="/admin/tags" variant="outlined" startIcon={<LocalOfferOutlinedIcon />}>
+                            Manage tags
+                        </Button>
+                    )}
+                    {writable && (
+                        <Button variant="contained" startIcon={<AddIcon />} onClick={() => openForm()}>
+                            Add location
+                        </Button>
+                    )}
+                </Stack>
             </Stack>
 
             {appError && <Alert severity="error" onClose={() => setAppError('')}>{appError}</Alert>}

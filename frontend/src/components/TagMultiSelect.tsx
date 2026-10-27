@@ -1,7 +1,7 @@
 import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
 
-function TagMultiSelect({ options = [], value = [], onChange, placeholder = 'Add tags...' }) {
+function TagMultiSelect({ options = [], value = [], onChange, placeholder = 'Add tags...', label = undefined, helperText = undefined }) {
     // MUI Autocomplete handles keyboard, focus, and freeSolo nicely
     return (
         <Autocomplete
@@ -18,6 +18,8 @@ function TagMultiSelect({ options = [], value = [], onChange, placeholder = 'Add
                 return (
                     <TextField
                         {...params}
+                        label={label}
+                        helperText={helperText}
                         placeholder={placeholder}
                         variant="outlined"
                         size="medium"

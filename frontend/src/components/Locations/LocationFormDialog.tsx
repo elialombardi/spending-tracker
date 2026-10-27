@@ -10,11 +10,6 @@ import IconButton from '@mui/material/IconButton'
 import Typography from '@mui/material/Typography'
 import Button from '@mui/material/Button'
 import TextField from '@mui/material/TextField'
-import Select from '@mui/material/Select'
-import MenuItem from '@mui/material/MenuItem'
-import FormControl from '@mui/material/FormControl'
-import InputLabel from '@mui/material/InputLabel'
-import Chip from '@mui/material/Chip'
 import Box from '@mui/material/Box'
 import CloseIcon from '@mui/icons-material/Close'
 import Alert from '@mui/material/Alert'
@@ -27,6 +22,7 @@ import { useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import LocationMap from './LocationMap'
 import SearchBox from './SearchBox'
+import TagMultiSelect from '../TagMultiSelect'
 
 const EMPTY_LOCATION = {
     title: '',
@@ -237,10 +233,10 @@ export default function LocationFormDialog({
         if (error) setError('')
     }
 
-    const handleTagChange = (event) => {
+    const handleTagChange = (tags: string[]) => {
         setFormData(prev => ({
             ...prev,
-            tags: event.target.value
+            tags
         }))
         if (error) setError('')
     }
@@ -298,27 +294,15 @@ export default function LocationFormDialog({
                 placeholder="Enter description (optional)"
             />
 
-            <FormControl fullWidth margin="dense">
-                <InputLabel>Tags</InputLabel>
-                <Select
-                    multiple
+            <Box sx={{ my: 1 }}>
+                <TagMultiSelect
+                    label="Tags"
+                    helperText="Select existing tags or type a new tag and press Enter. Remove a tag with its X, then save the location."
+                    options={tagOptions}
                     value={formData.tags}
                     onChange={handleTagChange}
-                    renderValue={(selected) => (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                            {selected.map((value) => (
-                                <Chip key={value} label={value} size="small" />
-                            ))}
-                        </Box>
-                    )}
-                >
-                    {tagOptions.map((tag) => (
-                        <MenuItem key={tag} value={tag}>
-                            {tag}
-                        </MenuItem>
-                    ))}
-                </Select>
-            </FormControl>
+                />
+            </Box>
 
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', mt: 1 }}>
                 <Box sx={{ flex: 1 }}>
@@ -438,9 +422,9 @@ export default function LocationFormDialog({
                             </AccordionDetails>
                         </Accordion>
 
-                        <Accordion>
+                        <Accordion defaultExpanded>
                             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                                <Typography>Form</Typography>
+                                <Typography>Location details and tags</Typography>
                             </AccordionSummary>
                             <AccordionDetails>
                                 {renderFormFields()}

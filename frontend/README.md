@@ -74,6 +74,12 @@ current results. Locations with invalid coordinates remain in the list with a
 warning so writable accounts can correct them. On small screens the map appears
 above the scrollable list. Reader accounts can explore but cannot add or edit.
 
+Choose **Add location** or the pencil beside a saved place to edit its **Tags**.
+Select existing tags, or type a new name and press Enter; use a tag's X to remove
+it, then save the location. On mobile, **Location details and tags** starts
+expanded. Admins can use **Manage tags** beside **Add location** to create,
+rename, or delete tags globally; renaming updates all linked locations.
+
 To check the browser flow, sign in with a writable account and choose the edit
 button beside a place. Change the title, description, URL,
 coordinates, and tags, then save. Verify that the request has a nonempty JSON

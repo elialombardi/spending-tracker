@@ -3,7 +3,7 @@ package workouts
 import (
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
 	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type WorkoutHandler struct {

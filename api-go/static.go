@@ -6,7 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/static"
 )
 
 func configureStaticApp(app *fiber.App) {
@@ -17,8 +18,8 @@ func configureStaticApp(app *fiber.App) {
 		return
 	}
 
-	app.Static("/", staticDir)
-	app.Get("*", func(c *fiber.Ctx) error {
+	app.Get("/*", static.New(staticDir))
+	app.Get("*", func(c fiber.Ctx) error {
 		if c.Method() != fiber.MethodGet && c.Method() != fiber.MethodHead {
 			return c.SendStatus(fiber.StatusNotFound)
 		}

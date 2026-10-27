@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // AuthMiddleware handles authentication
@@ -37,7 +37,7 @@ const (
 )
 
 // Authenticate validates the JWT token and sets user in context
-func (m *AuthMiddleware) Authenticate(c *fiber.Ctx) error {
+func (m *AuthMiddleware) Authenticate(c fiber.Ctx) error {
 	// Use constant for header name
 	authorization := c.Get(HeaderAuthorization)
 	if !strings.HasPrefix(authorization, BearerPrefix) {
@@ -61,7 +61,7 @@ func (m *AuthMiddleware) Authenticate(c *fiber.Ctx) error {
 
 // Authorize checks if the user has the required role
 func (m *AuthMiddleware) Authorize(allowedRoles ...string) fiber.Handler {
-	return func(c *fiber.Ctx) error {
+	return func(c fiber.Ctx) error {
 		role, ok := c.Locals(RoleKey).(string)
 		if !ok {
 			return c.SendStatus(fiber.StatusUnauthorized)

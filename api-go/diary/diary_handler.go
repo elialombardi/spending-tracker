@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type Handler struct {
@@ -17,7 +17,7 @@ func NewHandler(service Service) *Handler {
 }
 
 // getUserID extracts the authenticated user ID from context (set by auth middleware).
-func (h *Handler) getUserID(c *fiber.Ctx) (uint, error) {
+func (h *Handler) getUserID(c fiber.Ctx) (uint, error) {
 	userID, ok := c.Locals(user.UserIDKey).(uint)
 	if !ok {
 		return 0, fiber.ErrUnauthorized
@@ -25,14 +25,14 @@ func (h *Handler) getUserID(c *fiber.Ctx) (uint, error) {
 	return userID, nil
 }
 
-func (h *Handler) ListEntries(c *fiber.Ctx) error {
+func (h *Handler) ListEntries(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
 	}
 
 	var req ListEntriesRequest
-	if err := c.QueryParser(&req); err != nil {
+	if err := c.Bind().Query(&req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid query parameters")
 	}
 
@@ -49,7 +49,7 @@ func (h *Handler) ListEntries(c *fiber.Ctx) error {
 	})
 }
 
-func (h *Handler) GetEntry(c *fiber.Ctx) error {
+func (h *Handler) GetEntry(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
@@ -71,14 +71,14 @@ func (h *Handler) GetEntry(c *fiber.Ctx) error {
 	return c.JSON(entry)
 }
 
-func (h *Handler) CreateEntry(c *fiber.Ctx) error {
+func (h *Handler) CreateEntry(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
 	}
 
 	var req CreateEntryRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}
 	// Validate date
@@ -97,7 +97,7 @@ func (h *Handler) CreateEntry(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(entry)
 }
 
-func (h *Handler) UpdateEntry(c *fiber.Ctx) error {
+func (h *Handler) UpdateEntry(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
@@ -110,7 +110,7 @@ func (h *Handler) UpdateEntry(c *fiber.Ctx) error {
 	}
 
 	var req UpdateEntryRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}
 

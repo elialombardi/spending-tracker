@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"github.com/joho/godotenv"
 )
 
@@ -77,10 +77,10 @@ type GeoapifyProxy struct {
 }
 
 // proxyRequest handles the actual proxying to Geoapify
-func (p *GeoapifyProxy) proxyRequest(c *fiber.Ctx, path string) error {
+func (p *GeoapifyProxy) proxyRequest(c fiber.Ctx, path string) error {
 	// Parse query parameters
 	var req GeoapifyRequest
-	if err := c.QueryParser(&req); err != nil {
+	if err := c.Bind().Query(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid query parameters",
 		})
@@ -238,39 +238,39 @@ func min(a, b int) int {
 // Router handles routing to different Geoapify endpoints
 func (p *GeoapifyProxy) Router(app *fiber.App) {
 	// Geocoding endpoints
-	app.Get("/v1/geocode/search", func(c *fiber.Ctx) error {
+	app.Get("/v1/geocode/search", func(c fiber.Ctx) error {
 		return p.proxyRequest(c, "/v1/geocode/search")
 	})
 
-	app.Get("/v1/geocode/reverse", func(c *fiber.Ctx) error {
+	app.Get("/v1/geocode/reverse", func(c fiber.Ctx) error {
 		return p.proxyRequest(c, "/v1/geocode/reverse")
 	})
 
-	app.Get("/v1/geocode/autocomplete", func(c *fiber.Ctx) error {
+	app.Get("/v1/geocode/autocomplete", func(c fiber.Ctx) error {
 		return p.proxyRequest(c, "/v1/geocode/autocomplete")
 	})
 
 	// Places endpoints
-	app.Get("/v2/places", func(c *fiber.Ctx) error {
+	app.Get("/v2/places", func(c fiber.Ctx) error {
 		return p.proxyRequest(c, "/v2/places")
 	})
 
 	// Routing endpoints
-	app.Get("/v1/routing", func(c *fiber.Ctx) error {
+	app.Get("/v1/routing", func(c fiber.Ctx) error {
 		return p.proxyRequest(c, "/v1/routing")
 	})
 
-	app.Get("/v1/routing/waypoints", func(c *fiber.Ctx) error {
+	app.Get("/v1/routing/waypoints", func(c fiber.Ctx) error {
 		return p.proxyRequest(c, "/v1/routing/waypoints")
 	})
 
 	// Isoline endpoints
-	app.Get("/v1/isoline", func(c *fiber.Ctx) error {
+	app.Get("/v1/isoline", func(c fiber.Ctx) error {
 		return p.proxyRequest(c, "/v1/isoline")
 	})
 
 	// Catch-all for any other Geoapify endpoint
-	app.All("/*", func(c *fiber.Ctx) error {
+	app.All("/*", func(c fiber.Ctx) error {
 		path := c.Path()
 		// Only proxy if the path starts with /v1/ or /v2/
 		if strings.HasPrefix(path, "/v1/") || strings.HasPrefix(path, "/v2/") {

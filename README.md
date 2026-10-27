@@ -76,8 +76,8 @@ Follow all repository guidelines below.
 
 ## Backend Guidelines
 
-- Language: Go, as declared in `api-go/go.mod` (currently Go 1.25).
-- HTTP framework: Fiber v2. Database access: GORM, using SQLite or PostgreSQL drivers already configured by the application.
+- Language: Go, as declared in `api-go/go.mod` (currently Go 1.26).
+- HTTP framework: Fiber v3. Use `fiber.Ctx` (not a pointer) for handlers, `c.Bind().Body(...)` / `c.Bind().Query(...)` for request binding, and the static middleware for file serving. Database access: GORM, using SQLite or PostgreSQL drivers already configured by the application.
 - Dependency injection: use `samber/do/v2` and register new dependencies through the existing DI setup when required.
 - DI example, following `api-go/di/di.go`:
 

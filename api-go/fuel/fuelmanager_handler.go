@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 	"gorm.io/gorm"
 )
 
@@ -20,7 +20,7 @@ func NewHandler(service *Service) *Handler {
 }
 
 // getUserID extracts user ID from context (set by auth middleware)
-func (h *Handler) getUserID(c *fiber.Ctx) (uint, error) {
+func (h *Handler) getUserID(c fiber.Ctx) (uint, error) {
 	userID, ok := c.Locals(user.UserIDKey).(uint)
 	if !ok {
 		return 0, fiber.ErrUnauthorized
@@ -29,14 +29,14 @@ func (h *Handler) getUserID(c *fiber.Ctx) (uint, error) {
 }
 
 // CreateFuelRecord handles POST /api/fuel/records
-func (h *Handler) CreateFuelRecord(c *fiber.Ctx) error {
+func (h *Handler) CreateFuelRecord(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
 	}
 
 	var req CreateFuelRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid request body")
 	}
 
@@ -75,7 +75,7 @@ func (h *Handler) CreateFuelRecord(c *fiber.Ctx) error {
 }
 
 // GetUserStats handles GET /api/fuel/stats
-func (h *Handler) GetUserStats(c *fiber.Ctx) error {
+func (h *Handler) GetUserStats(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
@@ -90,7 +90,7 @@ func (h *Handler) GetUserStats(c *fiber.Ctx) error {
 }
 
 // GetUserRecords handles GET /api/fuel/records
-func (h *Handler) GetUserRecords(c *fiber.Ctx) error {
+func (h *Handler) GetUserRecords(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
@@ -110,7 +110,7 @@ func (h *Handler) GetUserRecords(c *fiber.Ctx) error {
 }
 
 // GetLastRecord handles GET /api/fuel/records/last
-func (h *Handler) GetLastRecord(c *fiber.Ctx) error {
+func (h *Handler) GetLastRecord(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
@@ -132,7 +132,7 @@ func (h *Handler) GetLastRecord(c *fiber.Ctx) error {
 
 // DeleteRecord handles DELETE /api/fuel/records/:id
 // Admin only
-func (h *Handler) DeleteRecord(c *fiber.Ctx) error {
+func (h *Handler) DeleteRecord(c fiber.Ctx) error {
 	recordID := c.Params("id")
 	if recordID == "" {
 		return fiber.NewError(fiber.StatusBadRequest, "record ID is required")
@@ -150,7 +150,7 @@ func (h *Handler) DeleteRecord(c *fiber.Ctx) error {
 
 // DeleteUserRecords handles DELETE /api/fuel/records
 // Admin only
-func (h *Handler) DeleteUserRecords(c *fiber.Ctx) error {
+func (h *Handler) DeleteUserRecords(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
@@ -164,7 +164,7 @@ func (h *Handler) DeleteUserRecords(c *fiber.Ctx) error {
 }
 
 // GetRecordsInDateRange handles GET /api/fuel/records/range
-func (h *Handler) GetRecordsInDateRange(c *fiber.Ctx) error {
+func (h *Handler) GetRecordsInDateRange(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err

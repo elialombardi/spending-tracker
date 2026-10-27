@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 // UserHandler handles user HTTP requests
@@ -25,10 +25,10 @@ func NewUserHandler(userService UserService, authService AuthService) *UserHandl
 }
 
 // Login handles POST /api/auth/login
-func (h *UserHandler) Login(c *fiber.Ctx) error {
+func (h *UserHandler) Login(c fiber.Ctx) error {
 	var req LoginRequest
 
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request body",
 		})
@@ -61,10 +61,10 @@ func (h *UserHandler) Login(c *fiber.Ctx) error {
 }
 
 // CreateUser handles POST /api/users
-func (h *UserHandler) CreateUser(c *fiber.Ctx) error {
+func (h *UserHandler) CreateUser(c fiber.Ctx) error {
 	var req CreateUserRequest
 
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request body",
 		})
@@ -91,7 +91,7 @@ func (h *UserHandler) CreateUser(c *fiber.Ctx) error {
 }
 
 // GetUser handles GET /api/users/:id
-func (h *UserHandler) GetUser(c *fiber.Ctx) error {
+func (h *UserHandler) GetUser(c fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
@@ -112,7 +112,7 @@ func (h *UserHandler) GetUser(c *fiber.Ctx) error {
 }
 
 // GetUserByUsername handles GET /api/users/username/:username
-func (h *UserHandler) GetUserByUsername(c *fiber.Ctx) error {
+func (h *UserHandler) GetUserByUsername(c fiber.Ctx) error {
 	username := c.Params("username")
 	if username == "" {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
@@ -133,7 +133,7 @@ func (h *UserHandler) GetUserByUsername(c *fiber.Ctx) error {
 }
 
 // GetAllUsers handles GET /api/users
-func (h *UserHandler) GetAllUsers(c *fiber.Ctx) error {
+func (h *UserHandler) GetAllUsers(c fiber.Ctx) error {
 	page, err := strconv.Atoi(c.Query("page", "1"))
 	if err != nil || page < 1 {
 		page = 1
@@ -162,7 +162,7 @@ func (h *UserHandler) GetAllUsers(c *fiber.Ctx) error {
 }
 
 // UpdateUser handles PUT /api/users/:id
-func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
+func (h *UserHandler) UpdateUser(c fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
@@ -171,7 +171,7 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 	}
 
 	var req UpdateUserRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request body",
 		})
@@ -198,7 +198,7 @@ func (h *UserHandler) UpdateUser(c *fiber.Ctx) error {
 }
 
 // DeleteUser handles DELETE /api/users/:id
-func (h *UserHandler) DeleteUser(c *fiber.Ctx) error {
+func (h *UserHandler) DeleteUser(c fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(http.StatusBadRequest).JSON(fiber.Map{

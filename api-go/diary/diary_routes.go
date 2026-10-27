@@ -2,7 +2,7 @@ package diary
 
 import (
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 func (h *Handler) RegisterRoutes(app *fiber.App, authMiddleware *user.AuthMiddleware) {

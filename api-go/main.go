@@ -7,8 +7,8 @@ import (
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/di"
 	"github.com/joho/godotenv"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/cors"
 	_ "modernc.org/sqlite"
 )
 
@@ -59,7 +59,7 @@ func main() {
 
 	}
 
-	app.Get("/api/version", func(c *fiber.Ctx) error {
+	app.Get("/api/version", func(c fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"version": os.Getenv("APP_VERSION"),
 		})
@@ -71,7 +71,7 @@ func main() {
 	// keyFile := os.Getenv("TLS_KEY")
 	// if certFile != "" && keyFile != "" {
 	// 	log.Printf("starting Go API (HTTPS) on :%s\n", port)
-	// 	log.Fatal(app.ListenTLS(":"+port, certFile, keyFile))
+	// 	log.Fatal(app.Listen(":"+port, fiber.ListenConfig{CertFile: certFile, CertKeyFile: keyFile}))
 	// }
 	log.Printf("starting Go API (HTTP) on :%s\n", port)
 	log.Fatal(app.Listen(":" + port))

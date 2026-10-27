@@ -5,7 +5,7 @@ import (
 
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
 	"github.com/go-playground/validator/v10"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type NotesHandler struct {
@@ -35,7 +35,7 @@ func (h *NotesHandler) RegisterRoutes(app *fiber.App, authMiddleware *user.AuthM
 	notes.Delete("/:id", h.DeleteNote)
 }
 
-func (h *NotesHandler) ListFolderTree(c *fiber.Ctx) error {
+func (h *NotesHandler) ListFolderTree(c fiber.Ctx) error {
 	tree, err := h.service.ListFolderTree()
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
@@ -43,9 +43,9 @@ func (h *NotesHandler) ListFolderTree(c *fiber.Ctx) error {
 	return c.JSON(tree)
 }
 
-func (h *NotesHandler) CreateFolder(c *fiber.Ctx) error {
+func (h *NotesHandler) CreateFolder(c fiber.Ctx) error {
 	var req CreateFolderRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid JSON body"})
 	}
 	if err := h.validate.Struct(&req); err != nil {
@@ -59,14 +59,14 @@ func (h *NotesHandler) CreateFolder(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(resp)
 }
 
-func (h *NotesHandler) UpdateFolder(c *fiber.Ctx) error {
+func (h *NotesHandler) UpdateFolder(c fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid ID parameter"})
 	}
 
 	var req UpdateFolderRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid JSON body"})
 	}
 	if err := h.validate.Struct(&req); err != nil {
@@ -80,7 +80,7 @@ func (h *NotesHandler) UpdateFolder(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-func (h *NotesHandler) DeleteFolder(c *fiber.Ctx) error {
+func (h *NotesHandler) DeleteFolder(c fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid ID parameter"})
@@ -92,9 +92,9 @@ func (h *NotesHandler) DeleteFolder(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-func (h *NotesHandler) CreateNote(c *fiber.Ctx) error {
+func (h *NotesHandler) CreateNote(c fiber.Ctx) error {
 	var req CreateNoteRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid JSON body"})
 	}
 	if err := h.validate.Struct(&req); err != nil {
@@ -108,14 +108,14 @@ func (h *NotesHandler) CreateNote(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(resp)
 }
 
-func (h *NotesHandler) UpdateNote(c *fiber.Ctx) error {
+func (h *NotesHandler) UpdateNote(c fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid ID parameter"})
 	}
 
 	var req UpdateNoteRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid JSON body"})
 	}
 	if err := h.validate.Struct(&req); err != nil {
@@ -129,7 +129,7 @@ func (h *NotesHandler) UpdateNote(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-func (h *NotesHandler) DeleteNote(c *fiber.Ctx) error {
+func (h *NotesHandler) DeleteNote(c fiber.Ctx) error {
 	id, err := strconv.ParseUint(c.Params("id"), 10, 32)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid ID parameter"})

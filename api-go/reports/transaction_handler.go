@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type TransactionHandler struct {
@@ -55,7 +55,7 @@ func (h *TransactionHandler) RegisterRoutes(app *fiber.App, authMiddleware *user
 
 }
 
-func (h *TransactionHandler) listCategoryMappings(c *fiber.Ctx) error {
+func (h *TransactionHandler) listCategoryMappings(c fiber.Ctx) error {
 	rules, err := h.transactionService.FetchCategoryMappings()
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
@@ -81,7 +81,7 @@ func (h *TransactionHandler) listCategoryMappings(c *fiber.Ctx) error {
 	return c.JSON(responses)
 }
 
-func (h *TransactionHandler) listTransactions(c *fiber.Ctx) error {
+func (h *TransactionHandler) listTransactions(c fiber.Ctx) error {
 
 	from, err := parseOptionalDate(c.Query("from"))
 	if err != nil {
@@ -119,14 +119,14 @@ func (h *TransactionHandler) listTransactions(c *fiber.Ctx) error {
 	return c.JSON(responses)
 }
 
-func (h *TransactionHandler) categorizeTransaction(c *fiber.Ctx) error {
+func (h *TransactionHandler) categorizeTransaction(c fiber.Ctx) error {
 	transactionID := strings.TrimSpace(c.Params("transactionId"))
 	if transactionID == "" {
 		return fiber.ErrBadRequest
 	}
 
 	var request CategorizeTransactionRequest
-	if err := c.BodyParser(&request); err != nil {
+	if err := c.Bind().Body(&request); err != nil {
 		return fiber.ErrBadRequest
 	}
 	category := collapseWhitespace(request.Category)
@@ -144,10 +144,10 @@ func (h *TransactionHandler) categorizeTransaction(c *fiber.Ctx) error {
 	return c.JSON(h.mapTransaction(txRow, behavior))
 }
 
-func (h *TransactionHandler) sendTransactions(c *fiber.Ctx) error {
+func (h *TransactionHandler) sendTransactions(c fiber.Ctx) error {
 	// get ids of transactions to send from request body
 	var request SendTransactionsRequest
-	if err := c.BodyParser(&request); err != nil {
+	if err := c.Bind().Body(&request); err != nil {
 		log.Printf("Error parsing request body: %v", err)
 		return fiber.ErrBadRequest
 	}
@@ -167,7 +167,7 @@ func (h *TransactionHandler) sendTransactions(c *fiber.Ctx) error {
 
 }
 
-func (h *TransactionHandler) listCategories(c *fiber.Ctx) error {
+func (h *TransactionHandler) listCategories(c fiber.Ctx) error {
 	responses, err := h.transactionService.FetchCategories()
 	if err != nil {
 		log.Printf("Error fetching categories: %v", err)
@@ -176,7 +176,7 @@ func (h *TransactionHandler) listCategories(c *fiber.Ctx) error {
 	return c.JSON(responses)
 }
 
-func (h *TransactionHandler) getCycleIncomeCategories(c *fiber.Ctx) error {
+func (h *TransactionHandler) getCycleIncomeCategories(c fiber.Ctx) error {
 	response, err := h.transactionService.FetchCycleIncomeCategories()
 	if err != nil {
 		log.Printf("Error fetching cycle income categories: %v", err)
@@ -185,9 +185,9 @@ func (h *TransactionHandler) getCycleIncomeCategories(c *fiber.Ctx) error {
 	return c.JSON(response)
 }
 
-func (h *TransactionHandler) updateCycleIncomeCategories(c *fiber.Ctx) error {
+func (h *TransactionHandler) updateCycleIncomeCategories(c fiber.Ctx) error {
 	var request UpdateCycleIncomeCategoriesRequest
-	if err := c.BodyParser(&request); err != nil {
+	if err := c.Bind().Body(&request); err != nil {
 		return fiber.ErrBadRequest
 	}
 
@@ -199,10 +199,10 @@ func (h *TransactionHandler) updateCycleIncomeCategories(c *fiber.Ctx) error {
 	return c.JSON(response)
 }
 
-func (h *TransactionHandler) updateCategoryMapping(c *fiber.Ctx) error {
+func (h *TransactionHandler) updateCategoryMapping(c fiber.Ctx) error {
 	mappingID := strings.TrimSpace(c.Params("mappingId"))
 	var request UpdateCategoryMappingRequest
-	if err := c.BodyParser(&request); err != nil {
+	if err := c.Bind().Body(&request); err != nil {
 		return fiber.ErrBadRequest
 	}
 	behavior := normalizeBehavior(request.Behavior)
@@ -223,14 +223,14 @@ func (h *TransactionHandler) updateCategoryMapping(c *fiber.Ctx) error {
 	}
 	return c.JSON(response)
 }
-func (h *TransactionHandler) updateTransactionAmount(c *fiber.Ctx) error {
+func (h *TransactionHandler) updateTransactionAmount(c fiber.Ctx) error {
 	transactionID := strings.TrimSpace(c.Params("transactionId"))
 	if transactionID == "" {
 		return fiber.ErrBadRequest
 	}
 
 	var req UpdateAmountRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return fiber.ErrBadRequest
 	}
 
@@ -270,7 +270,7 @@ func (h *TransactionHandler) mapTransaction(transaction Transaction, behavior st
 	}
 }
 
-func (h *TransactionHandler) deleteCategoryMapping(c *fiber.Ctx) error {
+func (h *TransactionHandler) deleteCategoryMapping(c fiber.Ctx) error {
 	deleted, err := h.transactionService.RemoveCategoryMapping(strings.TrimSpace(c.Params("mappingId")))
 	if err != nil {
 		log.Printf("Error deleting category mapping: %v", err)
@@ -282,7 +282,7 @@ func (h *TransactionHandler) deleteCategoryMapping(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-func (h *TransactionHandler) importPosteItaliane(c *fiber.Ctx) error {
+func (h *TransactionHandler) importPosteItaliane(c fiber.Ctx) error {
 	fileHeader, err := c.FormFile("file")
 	if err != nil || fileHeader == nil {
 		return c.Status(fiber.StatusBadRequest).SendString("A non-empty Excel file is required.")
@@ -312,7 +312,7 @@ func (h *TransactionHandler) importPosteItaliane(c *fiber.Ctx) error {
 	return c.JSON(result)
 }
 
-func (h *TransactionHandler) getReportCycles(c *fiber.Ctx) error {
+func (h *TransactionHandler) getReportCycles(c fiber.Ctx) error {
 	cycles, err := h.transactionService.FetchCycleOptions()
 	if err != nil {
 		log.Printf("Error fetching cycle options: %v", err)
@@ -321,7 +321,7 @@ func (h *TransactionHandler) getReportCycles(c *fiber.Ctx) error {
 	return c.JSON(cycles)
 }
 
-func (h *TransactionHandler) getCycleReport(c *fiber.Ctx) error {
+func (h *TransactionHandler) getCycleReport(c fiber.Ctx) error {
 	cycleStart, err := parseRequiredDate(c.Query("cycleStart"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Cycle start is required.")
@@ -336,7 +336,7 @@ func (h *TransactionHandler) getCycleReport(c *fiber.Ctx) error {
 	return c.JSON(report)
 }
 
-func (h *TransactionHandler) exportCycleReport(c *fiber.Ctx) error {
+func (h *TransactionHandler) exportCycleReport(c fiber.Ctx) error {
 	cycleStart, err := parseRequiredDate(c.Query("cycleStart"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Cycle start is required.")
@@ -357,7 +357,7 @@ func (h *TransactionHandler) exportCycleReport(c *fiber.Ctx) error {
 	return c.Send(content)
 }
 
-func (h *TransactionHandler) getMonthlyReport(c *fiber.Ctx) error {
+func (h *TransactionHandler) getMonthlyReport(c fiber.Ctx) error {
 	year, err := strconv.Atoi(c.Query("year"))
 	if err != nil || year < 2000 || year > 2100 {
 		return c.Status(fiber.StatusBadRequest).SendString("Year must be between 2000 and 2100.")
@@ -373,7 +373,7 @@ func (h *TransactionHandler) getMonthlyReport(c *fiber.Ctx) error {
 	return c.JSON(report)
 }
 
-func (h *TransactionHandler) exportMonthlyReport(c *fiber.Ctx) error {
+func (h *TransactionHandler) exportMonthlyReport(c fiber.Ctx) error {
 	year, err := strconv.Atoi(c.Query("year"))
 	if err != nil || year < 2000 || year > 2100 {
 		return c.Status(fiber.StatusBadRequest).SendString("Year must be between 2000 and 2100.")
@@ -395,7 +395,7 @@ func (h *TransactionHandler) exportMonthlyReport(c *fiber.Ctx) error {
 	return c.Send(content)
 }
 
-func (h *TransactionHandler) getTransactionsSummary(c *fiber.Ctx) error {
+func (h *TransactionHandler) getTransactionsSummary(c fiber.Ctx) error {
 	from, err := parseOptionalDate(c.Query("from"))
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid from date. Expected yyyy-MM-dd.")

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type Handler struct {
@@ -28,7 +28,7 @@ func (h *Handler) RegisterRoutes(app fiber.Router, authMiddleware *user.AuthMidd
 }
 
 // Helper to get user ID from context (JWT)
-func (h *Handler) getUserID(c *fiber.Ctx) (uint, error) {
+func (h *Handler) getUserID(c fiber.Ctx) (uint, error) {
 	userID, ok := c.Locals(user.UserIDKey).(uint)
 	if !ok {
 		return 0, fiber.ErrUnauthorized
@@ -36,7 +36,7 @@ func (h *Handler) getUserID(c *fiber.Ctx) (uint, error) {
 	return userID, nil
 }
 
-func (h *Handler) List(c *fiber.Ctx) error {
+func (h *Handler) List(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
@@ -72,7 +72,7 @@ func (h *Handler) List(c *fiber.Ctx) error {
 	})
 }
 
-func (h *Handler) Get(c *fiber.Ctx) error {
+func (h *Handler) Get(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
@@ -91,13 +91,13 @@ func (h *Handler) Get(c *fiber.Ctx) error {
 	return c.JSON(event)
 }
 
-func (h *Handler) Create(c *fiber.Ctx) error {
+func (h *Handler) Create(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
 	}
 	var req CreateEventRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request"})
 	}
 	event, err := h.service.Create(c.Context(), userID, req)
@@ -107,7 +107,7 @@ func (h *Handler) Create(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(event)
 }
 
-func (h *Handler) Update(c *fiber.Ctx) error {
+func (h *Handler) Update(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
@@ -117,7 +117,7 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid ID"})
 	}
 	var req UpdateEventRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request"})
 	}
 	event, err := h.service.Update(c.Context(), uint(id), userID, req)
@@ -130,7 +130,7 @@ func (h *Handler) Update(c *fiber.Ctx) error {
 	return c.JSON(event)
 }
 
-func (h *Handler) Delete(c *fiber.Ctx) error {
+func (h *Handler) Delete(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
@@ -151,7 +151,7 @@ func (h *Handler) Delete(c *fiber.Ctx) error {
 // Update validates ID and request.
 // Delete: service.Delete.
 
-func (h *Handler) Export(c *fiber.Ctx) error {
+func (h *Handler) Export(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
@@ -182,7 +182,7 @@ func (h *Handler) Export(c *fiber.Ctx) error {
 	}
 	return c.Send(data)
 }
-func (h *Handler) Sync(c *fiber.Ctx) error {
+func (h *Handler) Sync(c fiber.Ctx) error {
 	// Authorization check: only admins can sync (optional)
 	// user := c.Locals("user")
 	// if !isAdmin(user) { return c.Status(403).JSON(...) }

@@ -4,7 +4,7 @@ import (
 	"strconv"
 
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
-	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v3"
 )
 
 type Handler struct {
@@ -43,7 +43,7 @@ func (h *Handler) RegisterRoutes(app *fiber.App, authMiddleware *user.AuthMiddle
 	group.Get("/sync/status", h.GetSyncStatus)
 }
 
-func (h *Handler) getUserID(c *fiber.Ctx) (uint, error) {
+func (h *Handler) getUserID(c fiber.Ctx) (uint, error) {
 	userID, ok := c.Locals(user.UserIDKey).(uint)
 	if !ok {
 		return 0, fiber.ErrUnauthorized
@@ -51,7 +51,7 @@ func (h *Handler) getUserID(c *fiber.Ctx) (uint, error) {
 	return userID, nil
 }
 
-func (h *Handler) GetChannels(c *fiber.Ctx) error {
+func (h *Handler) GetChannels(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
@@ -75,7 +75,7 @@ func (h *Handler) GetChannels(c *fiber.Ctx) error {
 	return c.JSON(response)
 }
 
-func (h *Handler) GetUntaggedChannels(c *fiber.Ctx) error {
+func (h *Handler) GetUntaggedChannels(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
@@ -96,7 +96,7 @@ func (h *Handler) GetUntaggedChannels(c *fiber.Ctx) error {
 	return c.JSON(response)
 }
 
-func (h *Handler) GetChannel(c *fiber.Ctx) error {
+func (h *Handler) GetChannel(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
@@ -120,7 +120,7 @@ func (h *Handler) GetChannel(c *fiber.Ctx) error {
 	return c.JSON(h.toChannelResponse(channel, true))
 }
 
-func (h *Handler) AddTagsToChannel(c *fiber.Ctx) error {
+func (h *Handler) AddTagsToChannel(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
@@ -135,7 +135,7 @@ func (h *Handler) AddTagsToChannel(c *fiber.Ctx) error {
 	}
 
 	var req AddTagsRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request body",
 		})
@@ -152,7 +152,7 @@ func (h *Handler) AddTagsToChannel(c *fiber.Ctx) error {
 	})
 }
 
-func (h *Handler) RemoveTagsFromChannel(c *fiber.Ctx) error {
+func (h *Handler) RemoveTagsFromChannel(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
@@ -167,7 +167,7 @@ func (h *Handler) RemoveTagsFromChannel(c *fiber.Ctx) error {
 	}
 
 	var req RemoveTagsRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request body",
 		})
@@ -184,7 +184,7 @@ func (h *Handler) RemoveTagsFromChannel(c *fiber.Ctx) error {
 	})
 }
 
-func (h *Handler) GetTags(c *fiber.Ctx) error {
+func (h *Handler) GetTags(c fiber.Ctx) error {
 	tags, err := h.service.GetTags()
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -200,14 +200,14 @@ func (h *Handler) GetTags(c *fiber.Ctx) error {
 	return c.JSON(response)
 }
 
-func (h *Handler) CreateTag(c *fiber.Ctx) error {
+func (h *Handler) CreateTag(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
 	}
 
 	var req CreateTagRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request body",
 		})
@@ -230,7 +230,7 @@ func (h *Handler) CreateTag(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(h.toTagResponse(tag))
 }
 
-func (h *Handler) UpdateTag(c *fiber.Ctx) error {
+func (h *Handler) UpdateTag(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
@@ -245,7 +245,7 @@ func (h *Handler) UpdateTag(c *fiber.Ctx) error {
 	}
 
 	var req UpdateTagRequest
-	if err := c.BodyParser(&req); err != nil {
+	if err := c.Bind().Body(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request body",
 		})
@@ -261,7 +261,7 @@ func (h *Handler) UpdateTag(c *fiber.Ctx) error {
 	return c.JSON(h.toTagResponse(tag))
 }
 
-func (h *Handler) DeleteTag(c *fiber.Ctx) error {
+func (h *Handler) DeleteTag(c fiber.Ctx) error {
 	tagIDstring := c.Params("id")
 
 	if err := h.service.DeleteTag(tagIDstring); err != nil {
@@ -275,7 +275,7 @@ func (h *Handler) DeleteTag(c *fiber.Ctx) error {
 	})
 }
 
-func (h *Handler) GetLatestVideos(c *fiber.Ctx) error {
+func (h *Handler) GetLatestVideos(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
@@ -301,7 +301,7 @@ func (h *Handler) GetLatestVideos(c *fiber.Ctx) error {
 	return c.JSON(response)
 }
 
-func (h *Handler) GetLatestVideosForTag(c *fiber.Ctx) error {
+func (h *Handler) GetLatestVideosForTag(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
@@ -328,7 +328,7 @@ func (h *Handler) GetLatestVideosForTag(c *fiber.Ctx) error {
 	return c.JSON(response)
 }
 
-func (h *Handler) SyncAll(c *fiber.Ctx) error {
+func (h *Handler) SyncAll(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
@@ -347,7 +347,7 @@ func (h *Handler) SyncAll(c *fiber.Ctx) error {
 	})
 }
 
-func (h *Handler) SyncChannel(c *fiber.Ctx) error {
+func (h *Handler) SyncChannel(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
@@ -366,7 +366,7 @@ func (h *Handler) SyncChannel(c *fiber.Ctx) error {
 	})
 }
 
-func (h *Handler) SyncTagChannels(c *fiber.Ctx) error {
+func (h *Handler) SyncTagChannels(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err
@@ -387,7 +387,7 @@ func (h *Handler) SyncTagChannels(c *fiber.Ctx) error {
 	})
 }
 
-func (h *Handler) GetSyncStatus(c *fiber.Ctx) error {
+func (h *Handler) GetSyncStatus(c fiber.Ctx) error {
 	userID, err := h.getUserID(c)
 	if err != nil {
 		return err

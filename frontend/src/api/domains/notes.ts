@@ -4,16 +4,19 @@ import type { Note, NoteFolderTree, NoteStyle } from '../../types/notes';
 
 type CreateFolderPayload = {
   name: string
+  position?: number
   parentId?: number
 }
 
 type UpdateFolderPayload = {
   name?: string
+  position?: number
   parentId?: number
 }
 
 type CreateNotePayload = {
   folderId: number
+  position?: number
   title: string
   content: string
   style: NoteStyle
@@ -21,6 +24,7 @@ type CreateNotePayload = {
 
 type UpdateNotePayload = {
   folderId?: number
+  position?: number
   title?: string
   content?: string
   style?: NoteStyle

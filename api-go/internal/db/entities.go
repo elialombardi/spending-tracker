@@ -57,6 +57,7 @@ func (TaskEntity) TableName() string { return "tasks" }
 type NoteFolderEntity struct {
 	ID       uint              `gorm:"column:id;primaryKey;autoIncrement"`
 	Name     string            `gorm:"column:name;not null"`
+	Position int               `gorm:"column:position;not null;default:0"`
 	ParentID *uint             `gorm:"column:parent_id;index"`
 	Parent   *NoteFolderEntity `gorm:"foreignKey:ParentID;references:ID;constraint:OnDelete:CASCADE"`
 }
@@ -66,6 +67,7 @@ func (NoteFolderEntity) TableName() string { return "note_folders" }
 type NoteEntity struct {
 	ID        uint      `gorm:"column:id;primaryKey;autoIncrement"`
 	FolderID  uint      `gorm:"column:folder_id;not null;index"`
+	Position  int       `gorm:"column:position;not null;default:0"`
 	Title     string    `gorm:"column:title;not null"`
 	Content   string    `gorm:"column:content;type:text;not null"`
 	StyleJSON string    `gorm:"column:style_json;type:text;not null;default:'{}'"`

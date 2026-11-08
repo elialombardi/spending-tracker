@@ -9,6 +9,7 @@ export interface NoteStyle {
 export interface Note {
   id: number;
   folderId: number;
+  position: number;
   title: string;
   content: string;
   style: NoteStyle;
@@ -19,6 +20,7 @@ export interface Note {
 export interface NoteFolderTree {
   id: number;
   name: string;
+  position: number;
   parentId?: number | null;
   children: NoteFolderTree[];
   notes: Note[];

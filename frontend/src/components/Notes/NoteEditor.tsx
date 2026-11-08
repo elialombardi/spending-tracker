@@ -12,6 +12,8 @@ import { NoteFolderTree } from '../../types/notes';
 
 type NoteEditorProps = {
     title: string;
+    position: string;
+    onPositionChange: (value: string) => void;
     content: string;
     style: NoteStyle;
     canWrite: boolean;
@@ -26,6 +28,8 @@ type NoteEditorProps = {
 
 export function NoteEditor({
     title,
+    position,
+    onPositionChange,
     content,
     style,
     canWrite,
@@ -77,6 +81,16 @@ export function NoteEditor({
                     ))}
                 </Select>
             </FormControl>
+
+            <TextField
+                label="Position"
+                type="number"
+                value={position}
+                disabled={!canWrite}
+                onChange={(e) => onPositionChange(e.target.value)}
+                slotProps={{ htmlInput: { min: 0, step: 1 } }}
+                helperText="Lower positions appear first in this folder."
+            />
 
             <NoteEditorToolbar
                 style={style}

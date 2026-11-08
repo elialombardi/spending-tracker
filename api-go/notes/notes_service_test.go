@@ -128,7 +128,172 @@ func TestListFolderTreeEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if tree == nil || len(tree) != 0 {
 		t.Fatalf("got %+v, want an empty array", tree)
+	}
+}
+
+func TestPositionsPersistAndOrderWithinSiblingGroups(t *testing.T) {
+	database := newNotesTestDB(t)
+	service := NewNotesService(database)
+	root, err := service.CreateFolder(&CreateFolderRequest{Name: "A root", Position: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := service.CreateFolder(&CreateFolderRequest{Name: "Z root", Position: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	child, err := service.CreateFolder(&CreateFolderRequest{Name: "A child", ParentID: &root.ID, Position: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	firstChild, err := service.CreateFolder(&CreateFolderRequest{Name: "Z child", ParentID: &root.ID, Position: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if root.Position != 10 || first.Position != 1 || child.Position != 10 || firstChild.Position != 1 {
+		t.Fatal("create folder responses did not include positions")
+	}
+	later, err := service.CreateNote(&CreateNoteRequest{FolderID: child.ID, Title: "Later", Position: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	earlier, err := service.CreateNote(&CreateNoteRequest{FolderID: child.ID, Title: "Earlier", Position: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if later.Position != 10 || earlier.Position != 1 {
+		t.Fatal("create note responses did not include positions")
+	}
+	tree, err := service.ListFolderTree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tree) != 2 || tree[0].ID != first.ID || tree[1].ID != root.ID || tree[1].Position != 10 {
+		t.Fatalf("unexpected roots: %+v", tree)
+	}
+	children := tree[1].Children
+	if len(children) != 2 || children[0].ID != firstChild.ID || children[1].ID != child.ID || children[1].Position != 10 {
+		t.Fatalf("unexpected children: %+v", children)
+	}
+	notes := children[1].Notes
+	if len(notes) != 2 || notes[0].ID != earlier.ID || notes[1].ID != later.ID || notes[1].Position != 10 {
+		t.Fatalf("unexpected notes: %+v", notes)
+	}
+
+	newPosition := 20
+	updatedFolder, err := service.UpdateFolder(first.ID, &UpdateFolderRequest{Position: &newPosition})
+	if err != nil || updatedFolder.Position != newPosition {
+		t.Fatalf("update folder: %+v, %v", updatedFolder, err)
+	}
+	updatedNote, err := service.UpdateNote(earlier.ID, &UpdateNoteRequest{Position: &newPosition})
+	if err != nil || updatedNote.Position != newPosition {
+		t.Fatalf("update note: %+v, %v", updatedNote, err)
+	}
+	name, title := "Renamed folder", "Renamed note"
+	updatedFolder, err = service.UpdateFolder(first.ID, &UpdateFolderRequest{Name: &name})
+	if err != nil || updatedFolder.Position != newPosition {
+		t.Fatalf("omitted folder position: %+v, %v", updatedFolder, err)
+	}
+	updatedNote, err = service.UpdateNote(earlier.ID, &UpdateNoteRequest{Title: &title})
+	if err != nil || updatedNote.Position != newPosition {
+		t.Fatalf("omitted note position: %+v, %v", updatedNote, err)
+	}
+	tree, err = service.ListFolderTree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tree[0].ID != root.ID || tree[0].Children[1].Notes[0].ID != later.ID {
+		t.Fatalf("positions did not reorder tree: %+v", tree)
+	}
+
+	zero := 0
+	updatedFolder, err = service.UpdateFolder(first.ID, &UpdateFolderRequest{Position: &zero})
+	if err != nil || updatedFolder.Position != 0 {
+		t.Fatalf("zero folder position: %+v, %v", updatedFolder, err)
+	}
+	updatedNote, err = service.UpdateNote(earlier.ID, &UpdateNoteRequest{Position: &zero})
+	if err != nil || updatedNote.Position != 0 {
+		t.Fatalf("zero note position: %+v, %v", updatedNote, err)
+	}
+	tree, err = service.ListFolderTree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tree[0].ID != first.ID || tree[1].Children[1].Notes[0].ID != earlier.ID {
+		t.Fatalf("zero positions did not reorder tree: %+v", tree)
+	}
+
+	negative := -1
+	if _, err := service.CreateFolder(&CreateFolderRequest{Name: "Invalid", Position: negative}); err == nil {
+		t.Error("negative create folder position accepted")
+	}
+	if _, err := service.CreateNote(&CreateNoteRequest{FolderID: root.ID, Title: "Invalid", Position: negative}); err == nil {
+		t.Error("negative create note position accepted")
+	}
+	if _, err := service.UpdateFolder(first.ID, &UpdateFolderRequest{Position: &negative}); err == nil {
+		t.Error("negative update folder position accepted")
+	}
+	if _, err := service.UpdateNote(earlier.ID, &UpdateNoteRequest{Position: &negative}); err == nil {
+		t.Error("negative update note position accepted")
+	}
+}
+
+func TestPositionTiesUseDeterministicIDs(t *testing.T) {
+	database := newNotesTestDB(t)
+	folders := []db.NoteFolderEntity{{ID: 2, Name: "Same", Position: 3}, {ID: 1, Name: "Same", Position: 3}}
+	if err := database.Create(&folders).Error; err != nil {
+		t.Fatal(err)
+	}
+	updatedAt := time.Date(2026, 11, 8, 12, 0, 0, 0, time.UTC)
+	notes := []db.NoteEntity{
+		{ID: 2, FolderID: 1, Title: "Same", Position: 3, UpdatedAt: updatedAt},
+		{ID: 1, FolderID: 1, Title: "Same", Position: 3, UpdatedAt: updatedAt},
+	}
+	if err := database.Create(&notes).Error; err != nil {
+		t.Fatal(err)
+	}
+	tree, err := NewNotesService(database).ListFolderTree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tree) != 2 || tree[0].ID != 1 || tree[1].ID != 2 {
+		t.Fatalf("unexpected folder ties: %+v", tree)
+	}
+	if len(tree[0].Notes) != 2 || tree[0].Notes[0].ID != 1 || tree[0].Notes[1].ID != 2 {
+		t.Fatalf("unexpected note ties: %+v", tree[0].Notes)
+	}
+}
+
+func TestPositionMigrationDefaultsExistingRecords(t *testing.T) {
+	database := newNotesTestDB(t)
+	// Recreate the pre-position schema to verify additive migration of existing data.
+	statements := []string{
+		"DROP TABLE notes",
+		"DROP TABLE note_folders",
+		"CREATE TABLE note_folders (id integer PRIMARY KEY AUTOINCREMENT, name text NOT NULL, parent_id integer)",
+		"CREATE TABLE notes (id integer PRIMARY KEY AUTOINCREMENT, folder_id integer NOT NULL, title text NOT NULL, content text NOT NULL, style_json text NOT NULL DEFAULT '{}', created_at datetime, updated_at datetime)",
+		"INSERT INTO note_folders (id, name) VALUES (1, 'Existing folder')",
+		"INSERT INTO notes (id, folder_id, title, content) VALUES (1, 1, 'Existing note', 'Existing content')",
+	}
+	for _, statement := range statements {
+		if err := database.Exec(statement).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	for attempt := 0; attempt < 2; attempt++ {
+		if err := database.AutoMigrate(&db.NoteFolderEntity{}, &db.NoteEntity{}); err != nil {
+			t.Fatal(err)
+		}
+		tree, err := NewNotesService(database).ListFolderTree()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(tree) != 1 || tree[0].Position != 0 || tree[0].Name != "Existing folder" ||
+			len(tree[0].Notes) != 1 || tree[0].Notes[0].Position != 0 || tree[0].Notes[0].Content != "Existing content" {
+			t.Fatalf("migration changed existing data: %+v", tree)
+		}
 	}
 }

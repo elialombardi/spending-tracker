@@ -5,6 +5,21 @@
 Run `cd api-go && go test ./notes ./reports ./locations` to check nested note
 folders, transaction summaries, and location update persistence.
 
+### Note and folder ordering
+
+Notes and folders have a non-negative integer `position`, editable in the note
+editor and the folder's Edit dialog. Lower positions appear first: folders among
+siblings (including roots), and notes within their folder. Notes and child
+folders remain separate groups. Equal folder positions sort by name then ID;
+equal note positions sort by last update descending then ID.
+
+Create and update requests for `/api/notes` and `/api/note-folders` accept
+`position`, and their responses and `/api/note-folders/tree` include it. Omitted
+create positions default to 0; omitted update positions preserve the stored
+value, and explicit 0 resets it. Negative or fractional positions are rejected.
+Startup AutoMigrate adds the columns with default 0 to existing records,
+preserving their previous ordering except for deterministic ID tie-breaks.
+
 The transaction summary's category counts represent individual expense
 transactions, not category groups. Empty, whitespace-only, and null categories
 are combined as `Uncategorized`; date bounds and calculation exclusions apply

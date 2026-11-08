@@ -64,7 +64,7 @@ export function FolderActions({
                     </IconButton>
                 </span>
             </Tooltip>
-            <Tooltip title="Rename folder">
+            <Tooltip title="Edit folder">
                 <span>
                     <IconButton
                         size="small"

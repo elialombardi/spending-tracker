@@ -32,12 +32,14 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
   const [selectedNoteID, setSelectedNoteID] = useState<number | null>(null);
 
   const [title, setTitle] = useState('');
+  const [position, setPosition] = useState('0');
   const [content, setContent] = useState('');
   const [style, setStyle] = useState<NoteStyle>(defaultStyle);
 
   const [isFolderDialogOpen, setIsFolderDialogOpen] = useState(false);
   const [folderDialogMode, setFolderDialogMode] = useState<'create' | 'rename'>('create');
   const [folderNameDraft, setFolderNameDraft] = useState('');
+  const [folderPositionDraft, setFolderPositionDraft] = useState('0');
 
   const selectedFolder = useMemo(
     () => (selectedFolderID ? findFolderByID(tree, selectedFolderID) : null),
@@ -65,6 +67,7 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
           setSelectedNoteID(selected.note.id);
           setSelectedFolderID(selected.folderId);
           setTitle(selected.note.title);
+          setPosition(String(selected.note.position));
           setContent(selected.note.content);
           setStyle(selected.note.style || defaultStyle);
         }
@@ -79,6 +82,7 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
   function startNewNote() {
     setSelectedNoteID(null);
     setTitle('');
+    setPosition('0');
     setContent('');
     setStyle(defaultStyle);
   }
@@ -87,6 +91,7 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
     setSelectedFolderID(folderID);
     setSelectedNoteID(note.id);
     setTitle(note.title);
+    setPosition(String(note.position));
     setContent(note.content);
     setStyle(note.style || defaultStyle);
   }
@@ -96,10 +101,15 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
       setErrorMessage('Select a folder first.');
       return;
     }
+    const nextPosition = Number(position);
+    if (!position.trim() || !Number.isSafeInteger(nextPosition) || nextPosition < 0) {
+      setErrorMessage('Position must be a non-negative integer.');
+      return;
+    }
     setIsSaving(true);
     setErrorMessage('');
     try {
-      const payload = { folderId: selectedFolderID, title, content, style };
+      const payload = { folderId: selectedFolderID, title, content, style, position: nextPosition };
       if (selectedNoteID) {
         const updated = await api.updateNote(selectedNoteID, payload);
         await reloadTree(updated?.id);
@@ -147,19 +157,26 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
 
   async function submitFolderDialog() {
     if (!folderNameDraft.trim()) return;
+    const nextPosition = Number(folderPositionDraft);
+    if (!folderPositionDraft.trim() || !Number.isSafeInteger(nextPosition) || nextPosition < 0) {
+      setErrorMessage('Folder position must be a non-negative integer.');
+      return;
+    }
     setIsSaving(true);
     setErrorMessage('');
     try {
       if (folderDialogMode === 'create') {
         await api.createNoteFolder({
           name: folderNameDraft.trim(),
+          position: nextPosition,
           parentId: selectedFolderID || undefined,
         });
       } else if (selectedFolderID) {
-        await api.updateNoteFolder(selectedFolderID, { name: folderNameDraft.trim() });
+        await api.updateNoteFolder(selectedFolderID, { name: folderNameDraft.trim(), position: nextPosition });
       }
       setIsFolderDialogOpen(false);
       setFolderNameDraft('');
+      setFolderPositionDraft('0');
       await reloadTree();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to save folder.');
@@ -196,6 +213,7 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
               onOpenCreateDialog={() => {
                 setFolderDialogMode('create');
                 setFolderNameDraft('');
+                setFolderPositionDraft('0');
                 setIsFolderDialogOpen(true);
               }}
               onOpenCreateRootDialog={() => {
@@ -207,6 +225,7 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
               onOpenRenameDialog={(name) => {
                 setFolderDialogMode('rename');
                 setFolderNameDraft(name);
+                setFolderPositionDraft(String(selectedFolder?.position ?? 0));
                 setIsFolderDialogOpen(true);
               }}
               onDeleteFolder={handleDeleteFolder}
@@ -244,6 +263,8 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
 
           <NoteEditor
             title={title}
+            position={position}
+            onPositionChange={setPosition}
             content={content}
             style={style}
             canWrite={canWrite}
@@ -263,6 +284,8 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
         open={isFolderDialogOpen}
         mode={folderDialogMode}
         folderName={folderNameDraft}
+        position={folderPositionDraft}
+        onPositionChange={setFolderPositionDraft}
         isSaving={isSaving}
         onClose={() => setIsFolderDialogOpen(false)}
         onChange={setFolderNameDraft}

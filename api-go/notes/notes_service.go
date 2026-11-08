@@ -31,10 +31,10 @@ func (s *notesService) ListFolderTree() ([]NoteFolderTreeResponse, error) {
 	var folders []db.NoteFolderEntity
 	var notes []db.NoteEntity
 
-	if err := s.db.Order("name ASC").Find(&folders).Error; err != nil {
+	if err := s.db.Order("position ASC").Order("name ASC").Order("id ASC").Find(&folders).Error; err != nil {
 		return nil, err
 	}
-	if err := s.db.Order("updated_at DESC").Find(&notes).Error; err != nil {
+	if err := s.db.Order("position ASC").Order("updated_at DESC").Order("id ASC").Find(&notes).Error; err != nil {
 		return nil, err
 	}
 
@@ -46,6 +46,7 @@ func (s *notesService) ListFolderTree() ([]NoteFolderTreeResponse, error) {
 		folderNode := &NoteFolderTreeResponse{
 			ID:       folder.ID,
 			Name:     folder.Name,
+			Position: folder.Position,
 			ParentID: folder.ParentID,
 			Children: []NoteFolderTreeResponse{},
 			Notes:    []NoteResponse{},
@@ -83,6 +84,9 @@ func (s *notesService) ListFolderTree() ([]NoteFolderTreeResponse, error) {
 }
 
 func (s *notesService) CreateFolder(req *CreateFolderRequest) (*NoteFolderTreeResponse, error) {
+	if req.Position < 0 {
+		return nil, errors.New("position must be a non-negative integer")
+	}
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
 		return nil, errors.New("folder name is required")
@@ -93,7 +97,7 @@ func (s *notesService) CreateFolder(req *CreateFolderRequest) (*NoteFolderTreeRe
 		}
 	}
 
-	entity := db.NoteFolderEntity{Name: name, ParentID: req.ParentID}
+	entity := db.NoteFolderEntity{Name: name, ParentID: req.ParentID, Position: req.Position}
 	if err := s.db.Create(&entity).Error; err != nil {
 		return nil, err
 	}
@@ -101,6 +105,7 @@ func (s *notesService) CreateFolder(req *CreateFolderRequest) (*NoteFolderTreeRe
 	return &NoteFolderTreeResponse{
 		ID:       entity.ID,
 		Name:     entity.Name,
+		Position: entity.Position,
 		ParentID: entity.ParentID,
 		Children: []NoteFolderTreeResponse{},
 		Notes:    []NoteResponse{},
@@ -108,6 +113,9 @@ func (s *notesService) CreateFolder(req *CreateFolderRequest) (*NoteFolderTreeRe
 }
 
 func (s *notesService) UpdateFolder(id uint, req *UpdateFolderRequest) (*NoteFolderTreeResponse, error) {
+	if req.Position != nil && *req.Position < 0 {
+		return nil, errors.New("position must be a non-negative integer")
+	}
 	var entity db.NoteFolderEntity
 	if err := s.db.First(&entity, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -139,6 +147,9 @@ func (s *notesService) UpdateFolder(id uint, req *UpdateFolderRequest) (*NoteFol
 		entity.ParentID = req.ParentID
 	}
 
+	if req.Position != nil {
+		entity.Position = *req.Position
+	}
 	if err := s.db.Save(&entity).Error; err != nil {
 		return nil, err
 	}
@@ -146,6 +157,7 @@ func (s *notesService) UpdateFolder(id uint, req *UpdateFolderRequest) (*NoteFol
 	return &NoteFolderTreeResponse{
 		ID:       entity.ID,
 		Name:     entity.Name,
+		Position: entity.Position,
 		ParentID: entity.ParentID,
 		Children: []NoteFolderTreeResponse{},
 		Notes:    []NoteResponse{},
@@ -164,6 +176,9 @@ func (s *notesService) DeleteFolder(id uint) error {
 }
 
 func (s *notesService) CreateNote(req *CreateNoteRequest) (*NoteResponse, error) {
+	if req.Position < 0 {
+		return nil, errors.New("position must be a non-negative integer")
+	}
 	if err := s.ensureFolderExists(req.FolderID); err != nil {
 		return nil, err
 	}
@@ -180,6 +195,7 @@ func (s *notesService) CreateNote(req *CreateNoteRequest) (*NoteResponse, error)
 
 	entity := db.NoteEntity{
 		FolderID:  req.FolderID,
+		Position:  req.Position,
 		Title:     title,
 		Content:   req.Content,
 		StyleJSON: styleJSON,
@@ -193,6 +209,9 @@ func (s *notesService) CreateNote(req *CreateNoteRequest) (*NoteResponse, error)
 }
 
 func (s *notesService) UpdateNote(id uint, req *UpdateNoteRequest) (*NoteResponse, error) {
+	if req.Position != nil && *req.Position < 0 {
+		return nil, errors.New("position must be a non-negative integer")
+	}
 	var entity db.NoteEntity
 	if err := s.db.First(&entity, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -216,6 +235,9 @@ func (s *notesService) UpdateNote(id uint, req *UpdateNoteRequest) (*NoteRespons
 	}
 	if req.Content != nil {
 		entity.Content = *req.Content
+	}
+	if req.Position != nil {
+		entity.Position = *req.Position
 	}
 	if req.Style != nil {
 		styleJSON, err := marshalStyle(*req.Style)
@@ -287,6 +309,7 @@ func mapNoteEntity(entity db.NoteEntity) NoteResponse {
 	return NoteResponse{
 		ID:        entity.ID,
 		FolderID:  entity.FolderID,
+		Position:  entity.Position,
 		Title:     entity.Title,
 		Content:   entity.Content,
 		Style:     style,

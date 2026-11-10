@@ -3,7 +3,7 @@ import Box from '@mui/material/Box';
 import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import { alpha } from '@mui/material/styles';
-import { NoteFolderTree, folderTypeLabels } from '../../types/notes';
+import { NoteFolderTree } from '../../types/notes';
 import { folderTypeAppearance } from './types';
 
 type NoteTreeProps = {
@@ -23,7 +23,7 @@ export function NoteTree({ tree, selectedFolderID, onSelectFolder }: NoteTreePro
                     selected={selected}
                     aria-current={selected ? 'page' : undefined}
                     sx={(theme) => ({
-                        gap: 1.25, px: 1.25, py: 1, mb: 0.5, minHeight: 64,
+                        gap: 1.25, px: 1.25, py: 1, mb: 0.5, minHeight: 52,
                         borderRadius: '12px', border: '1px solid', borderColor: 'transparent',
                         transition: theme.transitions.create(['background-color', 'border-color']),
                         '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05) },
@@ -45,16 +45,15 @@ export function NoteTree({ tree, selectedFolderID, onSelectFolder }: NoteTreePro
                     </Box>
                     <ListItemText
                         primary={folder.name}
-                        secondary={folderTypeLabels[folder.type]}
                         sx={{ minWidth: 0, my: 0 }}
                         slotProps={{
-                            primary: { noWrap: true, title: folder.name, sx: { fontWeight: selected ? 750 : 600, fontSize: '0.85rem' } },
-                            secondary: { sx: { fontSize: '0.72rem', mt: 0.25 } },
+                            primary: { variant: 'body2', noWrap: true, title: folder.name, sx: { fontWeight: selected ? 600 : 400 } },
                         }}
                     />
                     <Box component="span" aria-label={`${folder.notes.length} ${folder.notes.length === 1 ? 'item' : 'items'}`} sx={{
+                        typography: 'caption',
                         flexShrink: 0, minWidth: 24, px: 0.75, py: 0.25, textAlign: 'center',
-                        borderRadius: '7px', fontSize: '0.7rem', fontWeight: 700,
+                        borderRadius: '7px', fontWeight: 600,
                         bgcolor: selected ? 'primary.main' : 'action.hover',
                         color: selected ? 'primary.contrastText' : 'text.secondary',
                     }}>

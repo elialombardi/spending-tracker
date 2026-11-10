@@ -115,8 +115,12 @@ the list; selecting another folder closes the editor. Empty folders show an
 empty-state message and still allow adding items.
 
 The Notes workspace uses theme-aware cards, type-specific folder icons, item-count
-badges, and highlighted selection states. **New folder** creates a root folder;
-**Subfolder**, edit, and delete apply to the selected folder. Collapse the sidebar
+badges, and highlighted selection states.
+Sidebar rows show the folder icon, name, and count without repeating the type
+label; the selected folder's type remains in the main header. Notes use the
+theme's compact heading, body, and caption sizes for consistent typography.
+**New folder** creates a root folder; **Subfolder**, edit, and delete apply to the
+selected folder. Collapse the sidebar
 for more room and use **Show folders** to restore it. All icon-only actions have
 accessible labels, and the layout stacks on small screens.
 

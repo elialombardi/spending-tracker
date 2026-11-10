@@ -83,8 +83,8 @@ export function NoteList({ folder, selectedNoteID, canWrite, isBusy, onSelectNot
                             primary={note.title}
                             sx={{ my: 0 }}
                             slotProps={{
-                                primary: { sx: { fontWeight: 650, fontSize: '0.95rem', textDecoration: folder.type !== 'diary' && note.completed ? 'line-through' : 'none', overflowWrap: 'anywhere' } },
-                                secondary: { sx: { mt: 0.5, fontSize: '0.8rem', overflowWrap: 'anywhere' } },
+                                primary: { variant: 'body2', sx: { fontWeight: 500, textDecoration: folder.type !== 'diary' && note.completed ? 'line-through' : 'none', overflowWrap: 'anywhere' } },
+                                secondary: { variant: 'caption', sx: { mt: 0.5, overflowWrap: 'anywhere' } },
                             }}
                             secondary={folder.type === 'diary'
                                 ? (note.updatedAt ? `Updated ${new Date(note.updatedAt).toLocaleString()}` : undefined)

@@ -318,13 +318,13 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
                       <FolderTypeIcon sx={{ fontSize: 28 }} />
                     </Box>
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography variant="h5" sx={{ fontWeight: 800, letterSpacing: '-0.035em', overflowWrap: 'anywhere', mb: 0.75 }}>{selectedFolder.name}</Typography>
+                      <Typography variant="h6" component="h2" sx={{ fontWeight: 600, overflowWrap: 'anywhere', mb: 0.75 }}>{selectedFolder.name}</Typography>
                       <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
                         <Chip size="small" label={folderTypeLabels[folderType]} sx={{
-                          height: 23, borderRadius: '6px', fontSize: '0.7rem', fontWeight: 700,
+                          height: 23, borderRadius: '6px', typography: 'caption', fontWeight: 600,
                           color: 'text.primary', bgcolor: alpha(folderAccent, 0.1),
                         }} />
-                        <Typography color="text.secondary" sx={{ fontSize: '0.8rem' }}>
+                        <Typography variant="caption" color="text.secondary">
                           {selectedFolder.notes.length} {folderType === 'diary'
                             ? (selectedFolder.notes.length === 1 ? 'note' : 'notes')
                             : (selectedFolder.notes.length === 1 ? 'item' : 'items')}
@@ -333,7 +333,7 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
                     </Box>
                   </Stack>
                   {!isEditorOpen && (
-                    <Button variant="contained" startIcon={<NoteAddIcon />} onClick={startNewNote} disabled={!canWrite || isSaving || isLoading} sx={{ flexShrink: 0, borderRadius: '12px', px: 2.5, py: 1.2, fontWeight: 700 }}>
+                    <Button variant="contained" startIcon={<NoteAddIcon />} onClick={startNewNote} disabled={!canWrite || isSaving || isLoading} sx={{ flexShrink: 0, borderRadius: '12px', px: 2.5, py: 1.2, fontWeight: 600 }}>
                       {folderType === 'diary' ? 'New note' : 'New item'}
                     </Button>
                   )}

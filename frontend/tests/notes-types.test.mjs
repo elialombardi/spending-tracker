@@ -45,7 +45,7 @@ test('note editors show only the fields for their folder type', async () => {
     }
 })
 
-test('sidebar tree displays nested folders and types but never items or completion controls', async () => {
+test('sidebar tree displays nested folders with type icons but no type labels, items or completion controls', async () => {
     const server = await createServer(serverOptions)
     try {
         const { NoteTree } = await server.ssrLoadModule('/src/components/Notes/NoteTree.tsx')
@@ -60,9 +60,11 @@ test('sidebar tree displays nested folders and types but never items or completi
         const markup = renderToStaticMarkup(createElement(NoteTree, {
             tree, selectedFolderID: 1, onSelectFolder() {},
         }))
-        assert.match(markup, /Buy list/)
-        assert.match(markup, /Tasks list/)
-        assert.match(markup, /Diary/)
+        for (const icon of ['ShoppingBagOutlined', 'ChecklistRounded', 'AutoStoriesOutlined']) {
+            assert.match(markup, new RegExp(`data-testid="${icon}Icon"`))
+        }
+        assert.doesNotMatch(markup, /Buy list|Tasks list|Diary|class="[^"]*MuiListItemText-secondary/)
+        assert.equal((markup.match(/MuiTypography-body2/g) || []).length, 4)
         assert.match(markup, /Nested folder/)
         assert.equal((markup.match(/aria-label="1 item"/g) || []).length, 4)
         assert.equal((markup.match(/aria-current="page"/g) || []).length, 1)

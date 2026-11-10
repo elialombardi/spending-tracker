@@ -37,10 +37,10 @@ export function FolderActions({
         <Stack spacing={2} sx={{ p: 2.5, pb: 1.5 }}>
             <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
-                    <Typography sx={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.14em', color: 'text.secondary', mb: 0.5 }}>
+                    <Typography variant="overline" sx={{ fontWeight: 600, color: 'text.secondary' }}>
                         YOUR WORKSPACE
                     </Typography>
-                    <Typography variant="h6" sx={{ fontWeight: 800, letterSpacing: '-0.03em' }}>Folders</Typography>
+                    <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 600 }}>Folders</Typography>
                 </Box>
                 <Tooltip title={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}>
                     <IconButton
@@ -60,7 +60,7 @@ export function FolderActions({
                 startIcon={<CreateNewFolderOutlinedIcon />}
                 disabled={!canWrite}
                 onClick={onOpenCreateRootDialog}
-                sx={{ py: 1.2, borderRadius: '12px', fontWeight: 700 }}
+                sx={{ py: 1.2, borderRadius: '12px', fontWeight: 600 }}
             >
                 New folder
             </Button>
@@ -71,7 +71,7 @@ export function FolderActions({
                     startIcon={<FolderCopyOutlinedIcon sx={{ fontSize: '18px !important' }} />}
                     disabled={!canWrite || !selectedFolder}
                     onClick={onOpenCreateDialog}
-                    sx={{ color: 'text.secondary', fontSize: '0.75rem', borderRadius: '8px' }}
+                    sx={{ color: 'text.secondary', borderRadius: '8px' }}
                 >
                     Subfolder
                 </Button>

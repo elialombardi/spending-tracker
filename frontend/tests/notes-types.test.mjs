@@ -59,6 +59,7 @@ test('sidebar tree displays nested folders with type icons but no type labels, i
         })
         const markup = renderToStaticMarkup(createElement(NoteTree, {
             tree, selectedFolderID: 1, onSelectFolder() {},
+            canWrite: false, isBusy: false, onMoveFolder() {},
         }))
         for (const icon of ['ShoppingBagOutlined', 'ChecklistRounded', 'AutoStoriesOutlined']) {
             assert.match(markup, new RegExp(`data-testid="${icon}Icon"`))
@@ -112,7 +113,7 @@ test('main item list shows only the selected folder and preserves type-specific 
                     }],
                     notes: [{ id: 1, title: 'Selected item', completed: true, endDate: '2026-11-30' }],
                 },
-                selectedNoteID: 1, isBusy: false, onSelectNote() {}, onToggleCompleted() {},
+                selectedNoteID: 1, isBusy: false, onSelectNote() {}, onToggleCompleted() {}, onMoveNote() {},
             }
             const writable = renderToStaticMarkup(createElement(NoteList, { ...props, canWrite: true }))
             assert.match(writable, /Selected item/)
@@ -134,7 +135,7 @@ test('main item list shows only the selected folder and preserves type-specific 
             const empty = renderToStaticMarkup(createElement(NoteList, {
                 folder: { id: 1, name: 'Empty', type, notes: [] },
                 selectedNoteID: null, canWrite: true, isBusy: false,
-                onSelectNote() {}, onToggleCompleted() {},
+                onSelectNote() {}, onToggleCompleted() {}, onMoveNote() {},
             }))
             assert.match(empty, type === 'diary' ? /No notes in this folder/ : /No items in this folder/)
         }

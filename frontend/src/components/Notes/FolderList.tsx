@@ -10,6 +10,9 @@ type FolderListProps = {
     isLoading: boolean;
     selectedFolderID: number | null;
     onSelectFolder: (folderId: number) => void;
+    canWrite: boolean;
+    isBusy: boolean;
+    onMoveFolder: (siblings: NoteFolderTree[], folderId: number, direction: -1 | 1) => void;
 };
 
 export function FolderList({
@@ -17,6 +20,9 @@ export function FolderList({
     isLoading,
     selectedFolderID,
     onSelectFolder,
+    canWrite,
+    isBusy,
+    onMoveFolder,
 }: FolderListProps) {
     if (isLoading) {
         return (
@@ -40,6 +46,9 @@ export function FolderList({
                 tree={tree}
                 selectedFolderID={selectedFolderID}
                 onSelectFolder={onSelectFolder}
+                canWrite={canWrite}
+                isBusy={isBusy}
+                onMoveFolder={onMoveFolder}
             />
         </List>
     );

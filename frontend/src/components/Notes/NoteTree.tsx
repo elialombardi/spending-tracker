@@ -5,25 +5,31 @@ import ListItemText from '@mui/material/ListItemText';
 import { alpha } from '@mui/material/styles';
 import { NoteFolderTree } from '../../types/notes';
 import { folderTypeAppearance } from './types';
+import { ReorderButtons } from './ReorderButtons';
 
 type NoteTreeProps = {
     tree: NoteFolderTree[];
     selectedFolderID: number | null;
     onSelectFolder: (folderId: number) => void;
+    canWrite: boolean;
+    isBusy: boolean;
+    onMoveFolder: (siblings: NoteFolderTree[], folderId: number, direction: -1 | 1) => void;
 };
 
-export function NoteTree({ tree, selectedFolderID, onSelectFolder }: NoteTreeProps) {
+export function NoteTree({ tree, selectedFolderID, onSelectFolder, canWrite, isBusy, onMoveFolder }: NoteTreeProps) {
     function renderTree(nodes: NoteFolderTree[]): ReactNode {
-        return nodes.map((folder) => {
+        return nodes.map((folder, index) => {
             const { icon: FolderTypeIcon, color } = folderTypeAppearance[folder.type];
             const selected = selectedFolderID === folder.id;
             return (
             <Box component="li" key={folder.id} sx={{ listStyle: 'none' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
                 <ListItemButton
+                    disabled={isBusy}
                     selected={selected}
                     aria-current={selected ? 'page' : undefined}
                     sx={(theme) => ({
-                        gap: 1.25, px: 1.25, py: 1, mb: 0.5, minHeight: 52,
+                        gap: 1.25, px: 1.25, py: 1, minHeight: 52, minWidth: 0,
                         borderRadius: '12px', border: '1px solid', borderColor: 'transparent',
                         transition: theme.transitions.create(['background-color', 'border-color']),
                         '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05) },
@@ -60,6 +66,16 @@ export function NoteTree({ tree, selectedFolderID, onSelectFolder }: NoteTreePro
                         {folder.notes.length}
                     </Box>
                 </ListItemButton>
+                {canWrite && (
+                    <ReorderButtons
+                        label={`folder ${folder.name}`}
+                        index={index}
+                        count={nodes.length}
+                        isBusy={isBusy}
+                        onMove={(direction) => onMoveFolder(nodes, folder.id, direction)}
+                    />
+                )}
+                </Box>
                 {folder.children?.length > 0 && (
                     <Box component="ul" sx={{ m: 0, ml: 2, pl: 1, borderLeft: '1px solid', borderColor: 'divider' }}>
                         {renderTree(folder.children)}

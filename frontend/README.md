@@ -124,6 +124,14 @@ selected folder. Collapse the sidebar
 for more room and use **Show folders** to restore it. All icon-only actions have
 accessible labels, and the layout stacks on small screens.
 
+Use the up/down arrows beside folders or items to reorder them without editing
+numeric positions. Folders move within their current parent (including root
+folders); items move within their current folder. Order is saved to the server
+and survives reloads, including when existing positions are tied. Reordering
+keeps the selection and open editor drafts. Controls are hidden for readers and
+disabled while loading or saving; the first/last item cannot move past the ends.
+If saving fails, an error is shown and the list reloads the server's actual order.
+
 Changing a folder's type or moving an item never clears its hidden fields.
 Switch back to recover diary content/style, task descriptions/end dates, and
 completion state. End dates do not send reminders.

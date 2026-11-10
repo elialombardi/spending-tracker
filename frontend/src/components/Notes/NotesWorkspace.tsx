@@ -15,7 +15,7 @@ import { useTheme, alpha } from '@mui/material/styles';
 import api from '../../api';
 import { Note, NoteFolderTree, NoteFolderType, NoteStyle, folderTypeLabels } from '../../types/notes';
 import { NotesWorkspaceProps, defaultStyle, folderTypeAppearance } from './types';
-import { findFolderByID, findNoteByID } from './utils/noteTreeUtils';
+import { findFolderByID, findNoteByID, reorderItems } from './utils/noteTreeUtils';
 import { FolderActions } from './FolderActions';
 import { FolderDialog } from './FolderDialog';
 import { FolderList } from './FolderList';
@@ -86,6 +86,7 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
           loadNote(selected.note);
         }
       }
+      return nextTree;
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to load notes.');
     } finally {
@@ -172,6 +173,39 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
       await reloadTree();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to update item.');
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleReorder(
+    items: (Note | NoteFolderTree)[],
+    id: number,
+    direction: -1 | 1,
+    kind: 'folder' | 'note',
+  ) {
+    if (!canWrite || isSaving || isLoading) return;
+    setIsSaving(true);
+    setErrorMessage('');
+    try {
+      await reorderItems(items, id, direction, (itemID, nextPosition) => (
+        kind === 'folder'
+          ? api.updateNoteFolder(itemID, { position: nextPosition })
+          : api.updateNote(itemID, { position: nextPosition })
+      ));
+      const nextTree = await reloadTree();
+      if (kind === 'note' && selectedNoteID && nextTree) {
+        const selected = findNoteByID(nextTree, selectedNoteID);
+        if (selected) setPosition(String(selected.note.position));
+      }
+    } catch (error) {
+      // Earlier writes may have succeeded; reconcile without discarding editor drafts.
+      const nextTree = await reloadTree();
+      if (kind === 'note' && selectedNoteID && nextTree) {
+        const selected = findNoteByID(nextTree, selectedNoteID);
+        if (selected) setPosition(String(selected.note.position));
+      }
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to reorder items.');
     } finally {
       setIsSaving(false);
     }
@@ -282,6 +316,9 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
           <FolderList
             tree={tree}
             isLoading={isLoading}
+            canWrite={canWrite}
+            isBusy={isSaving || isLoading}
+            onMoveFolder={(siblings, id, direction) => handleReorder(siblings, id, direction, 'folder')}
             selectedFolderID={selectedFolderID}
             onSelectFolder={(id) => {
               resetEditor();
@@ -345,6 +382,7 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
                   isBusy={isSaving || isLoading}
                   onSelectNote={(note) => pickNote(note, selectedFolder.id)}
                   onToggleCompleted={handleToggleCompleted}
+                  onMoveNote={(id, direction) => handleReorder(selectedFolder.notes, id, direction, 'note')}
                 />
               </Paper>
               {isEditorOpen && (

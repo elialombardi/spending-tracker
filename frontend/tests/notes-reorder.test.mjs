@@ -61,6 +61,40 @@ test('reordering stops and reports a failed save instead of returning success', 
     }
 })
 
+test('drag moves insert at any sibling position without swapping or disturbing the other siblings', async () => {
+    const server = await createServer(serverOptions)
+    try {
+        const { reorderItems } = await server.ssrLoadModule('/src/components/Notes/utils/noteTreeUtils.ts')
+        for (const positions of [[0, 0, 0, 0, 0], [3, 10, 25, 30, 70], [0, 1, 2, 3, 4]]) {
+            for (let source = 0; source < positions.length; source++) {
+                for (let target = 0; target < positions.length; target++) {
+                    if (source === target) continue
+                    const items = positions.map((position, index) => ({ id: index + 1, position }))
+                    const original = structuredClone(items)
+                    const stored = structuredClone(items)
+                    const expected = items.map(item => item.id)
+                    const [moved] = expected.splice(source, 1)
+                    expected.splice(target, 0, moved)
+                    await reorderItems(items, source + 1, target - source, async (id, position) => {
+                        stored.find(item => item.id === id).position = position
+                    })
+                    assert.deepEqual(stored.sort((a, b) => a.position - b.position).map(item => item.id), expected)
+                    assert.deepEqual(stored.map(item => item.position), [0, 1, 2, 3, 4])
+                    assert.deepEqual(items, original)
+                }
+            }
+        }
+        for (const offset of [0, -1, 5, 0.5, NaN, Infinity]) {
+            assert.deepEqual(await reorderItems(
+                [1, 2, 3, 4, 5].map((id, position) => ({ id, position })),
+                1, offset, () => assert.fail('invalid or unchanged destination must not save'),
+            ), [])
+        }
+    } finally {
+        await server.close()
+    }
+})
+
 test('reorder controls respect sibling boundaries, nested folders, permissions and busy state', async () => {
     const server = await createServer(serverOptions)
     try {
@@ -83,11 +117,16 @@ test('reorder controls respect sibling boundaries, nested folders, permissions a
         assert.doesNotMatch(button(writable, 'Move folder First down'), /disabled=""/)
         assert.doesNotMatch(button(writable, 'Move folder Last up'), /disabled=""/)
         assert.match(button(writable, 'Move folder Last down'), /disabled=""/)
+        assert.match(button(writable, 'Drag folder First to reorder'), /draggable="true"/)
+        assert.match(button(writable, 'Drag folder Only child to reorder'), /disabled=""/)
+        assert.match(button(renderTree(true, true), 'Drag folder First to reorder'), /disabled=""/)
+        assert.match(button(renderTree(true, true), 'Drag folder First to reorder'), /draggable="false"/)
         for (const direction of ['up', 'down']) {
             assert.match(button(writable, `Move folder Only child ${direction}`), /disabled=""/)
             assert.match(button(renderTree(true, true), `Move folder First ${direction}`), /disabled=""/)
         }
         assert.doesNotMatch(renderTree(false), /aria-label="Move folder/)
+        assert.doesNotMatch(renderTree(false), /aria-label="Drag folder/)
 
         for (const type of ['buy_list', 'tasks_list', 'diary']) {
             const listProps = {
@@ -105,8 +144,12 @@ test('reorder controls respect sibling boundaries, nested folders, permissions a
             assert.doesNotMatch(button(markup, 'Move item First item down'), /disabled=""/)
             assert.doesNotMatch(button(markup, 'Move item Last item up'), /disabled=""/)
             assert.match(button(markup, 'Move item Last item down'), /disabled=""/)
+            assert.match(button(markup, 'Drag item First item to reorder'), /draggable="true"/)
+            assert.match(button(renderList(true, true), 'Drag item First item to reorder'), /disabled=""/)
+            assert.match(button(renderList(true, true), 'Drag item First item to reorder'), /draggable="false"/)
             assert.match(button(renderList(true, true), 'Move item First item down'), /disabled=""/)
             assert.doesNotMatch(renderList(false), /aria-label="Move item/)
+            assert.doesNotMatch(renderList(false), /aria-label="Drag item/)
         }
     } finally {
         await server.close()

@@ -181,14 +181,14 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
   async function handleReorder(
     items: (Note | NoteFolderTree)[],
     id: number,
-    direction: -1 | 1,
+    offset: number,
     kind: 'folder' | 'note',
   ) {
     if (!canWrite || isSaving || isLoading) return;
     setIsSaving(true);
     setErrorMessage('');
     try {
-      await reorderItems(items, id, direction, (itemID, nextPosition) => (
+      await reorderItems(items, id, offset, (itemID, nextPosition) => (
         kind === 'folder'
           ? api.updateNoteFolder(itemID, { position: nextPosition })
           : api.updateNote(itemID, { position: nextPosition })
@@ -318,7 +318,7 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
             isLoading={isLoading}
             canWrite={canWrite}
             isBusy={isSaving || isLoading}
-            onMoveFolder={(siblings, id, direction) => handleReorder(siblings, id, direction, 'folder')}
+            onMoveFolder={(siblings, id, offset) => handleReorder(siblings, id, offset, 'folder')}
             selectedFolderID={selectedFolderID}
             onSelectFolder={(id) => {
               resetEditor();
@@ -382,7 +382,7 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
                   isBusy={isSaving || isLoading}
                   onSelectNote={(note) => pickNote(note, selectedFolder.id)}
                   onToggleCompleted={handleToggleCompleted}
-                  onMoveNote={(id, direction) => handleReorder(selectedFolder.notes, id, direction, 'note')}
+                  onMoveNote={(id, offset) => handleReorder(selectedFolder.notes, id, offset, 'note')}
                 />
               </Paper>
               {isEditorOpen && (

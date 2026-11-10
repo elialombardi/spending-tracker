@@ -124,8 +124,10 @@ selected folder. Collapse the sidebar
 for more room and use **Show folders** to restore it. All icon-only actions have
 accessible labels, and the layout stacks on small screens.
 
-Use the up/down arrows beside folders or items to reorder them without editing
-numeric positions. Folders move within their current parent (including root
+Drag the grip beside a folder or item onto another row to move it directly to
+that position; the destination row is highlighted while dragging. The up/down
+arrows remain available for keyboard and touch use, without editing numeric
+positions. Folders move within their current parent (including root
 folders); items move within their current folder. Order is saved to the server
 and survives reloads, including when existing positions are tied. Reordering
 keeps the selection and open editor drafts. Controls are hidden for readers and

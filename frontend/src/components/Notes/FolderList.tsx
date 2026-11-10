@@ -12,7 +12,7 @@ type FolderListProps = {
     onSelectFolder: (folderId: number) => void;
     canWrite: boolean;
     isBusy: boolean;
-    onMoveFolder: (siblings: NoteFolderTree[], folderId: number, direction: -1 | 1) => void;
+    onMoveFolder: (siblings: NoteFolderTree[], folderId: number, offset: number) => void;
 };
 
 export function FolderList({

@@ -5,15 +5,16 @@ type PositionedItem = { id: number; position: number };
 export async function reorderItems(
     items: readonly PositionedItem[],
     id: number,
-    direction: -1 | 1,
+    offset: number,
     savePosition: (id: number, position: number) => Promise<unknown>,
 ): Promise<PositionedItem[]> {
     const index = items.findIndex((item) => item.id === id);
-    const target = index + direction;
-    if (index < 0 || target < 0 || target >= items.length) return [];
+    const target = index + offset;
+    if (!Number.isInteger(offset) || offset === 0 || index < 0 || target < 0 || target >= items.length) return [];
 
     const reordered = [...items];
-    [reordered[index], reordered[target]] = [reordered[target], reordered[index]];
+    const [moved] = reordered.splice(index, 1);
+    reordered.splice(target, 0, moved);
     const updates = reordered.flatMap((item, position) => (
         item.position === position ? [] : [{ id: item.id, position }]
     ));

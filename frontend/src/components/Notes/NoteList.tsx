@@ -12,6 +12,7 @@ import Typography from '@mui/material/Typography';
 import { Note, NoteFolderTree } from '../../types/notes';
 import { folderTypeAppearance } from './types';
 import { ReorderButtons } from './ReorderButtons';
+import { useReorderDrag } from './useReorderDrag';
 
 type NoteListProps = {
     folder: NoteFolderTree;
@@ -20,10 +21,11 @@ type NoteListProps = {
     isBusy: boolean;
     onSelectNote: (note: Note) => void;
     onToggleCompleted: (note: Note) => void;
-    onMoveNote: (noteId: number, direction: -1 | 1) => void;
+    onMoveNote: (noteId: number, offset: number) => void;
 };
 
 export function NoteList({ folder, selectedNoteID, canWrite, isBusy, onSelectNote, onToggleCompleted, onMoveNote }: NoteListProps) {
+    const drag = useReorderDrag<Note>(canWrite && !isBusy, (_siblings, id, offset) => onMoveNote(id, offset));
     const { icon: FolderTypeIcon, color } = folderTypeAppearance[folder.type];
     if (folder.notes.length === 0) {
         return (
@@ -45,8 +47,10 @@ export function NoteList({ folder, selectedNoteID, canWrite, isBusy, onSelectNot
     return (
         <List disablePadding aria-label="Folder items">
             {folder.notes.map((note, index) => (
-                <ListItem key={note.id} disablePadding sx={(theme) => ({
+                <ListItem key={note.id} disablePadding {...drag.rowProps(note.id, folder.notes)} sx={(theme) => ({
                     mb: 1, border: '1px solid', borderRadius: '14px', overflow: 'hidden',
+                    outline: drag.dropTargetID === note.id ? '2px solid' : undefined,
+                    outlineColor: 'primary.main',
                     borderColor: selectedNoteID === note.id ? alpha(theme.palette.primary.main, 0.3) : 'divider',
                     bgcolor: 'background.default',
                     transition: theme.transitions.create(['border-color', 'box-shadow']),
@@ -100,6 +104,7 @@ export function NoteList({ folder, selectedNoteID, canWrite, isBusy, onSelectNot
                             index={index}
                             count={folder.notes.length}
                             isBusy={isBusy}
+                            dragHandleProps={drag.handleProps(note.id, folder.notes.length)}
                             onMove={(direction) => onMoveNote(note.id, direction)}
                         />
                     )}

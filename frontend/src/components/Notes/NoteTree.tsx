@@ -6,6 +6,7 @@ import { alpha } from '@mui/material/styles';
 import { NoteFolderTree } from '../../types/notes';
 import { folderTypeAppearance } from './types';
 import { ReorderButtons } from './ReorderButtons';
+import { useReorderDrag } from './useReorderDrag';
 
 type NoteTreeProps = {
     tree: NoteFolderTree[];
@@ -13,17 +14,25 @@ type NoteTreeProps = {
     onSelectFolder: (folderId: number) => void;
     canWrite: boolean;
     isBusy: boolean;
-    onMoveFolder: (siblings: NoteFolderTree[], folderId: number, direction: -1 | 1) => void;
+    onMoveFolder: (siblings: NoteFolderTree[], folderId: number, offset: number) => void;
 };
 
 export function NoteTree({ tree, selectedFolderID, onSelectFolder, canWrite, isBusy, onMoveFolder }: NoteTreeProps) {
+    const drag = useReorderDrag(canWrite && !isBusy, onMoveFolder);
     function renderTree(nodes: NoteFolderTree[]): ReactNode {
         return nodes.map((folder, index) => {
             const { icon: FolderTypeIcon, color } = folderTypeAppearance[folder.type];
             const selected = selectedFolderID === folder.id;
             return (
             <Box component="li" key={folder.id} sx={{ listStyle: 'none' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                <Box
+                    {...drag.rowProps(folder.id, nodes)}
+                    sx={{
+                        display: 'flex', alignItems: 'center', mb: 0.5, borderRadius: '12px',
+                        outline: drag.dropTargetID === folder.id ? '2px solid' : undefined,
+                        outlineColor: 'primary.main',
+                    }}
+                >
                 <ListItemButton
                     disabled={isBusy}
                     selected={selected}
@@ -72,6 +81,7 @@ export function NoteTree({ tree, selectedFolderID, onSelectFolder, canWrite, isB
                         index={index}
                         count={nodes.length}
                         isBusy={isBusy}
+                        dragHandleProps={drag.handleProps(folder.id, nodes.length)}
                         onMove={(direction) => onMoveFolder(nodes, folder.id, direction)}
                     />
                 )}

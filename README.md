@@ -1,5 +1,13 @@
 # Spending Tracker: AI Section Implementation Prompt
 
+## Mobile app handoffs
+
+- [Notes & Lists](MOBILE_NOTES_HANDOFF.md): folder types, typed editors,
+  folder-only navigation, modern UI direction, API contracts, and QA checklist.
+- [Tasks](MOBILE_TASKS_HANDOFF.md): project/work tasks and the Not sent / Sent
+  workflow; distinct from a Notes folder of type `tasks_list`.
+- [Fuel Manager](MOBILE_FUEL_HANDOFF.md): fill-cycle rules, statistics, and history.
+
 ## Correctness regression checks
 
 Run `cd api-go && go test ./notes ./reports ./locations` to check nested note
@@ -102,6 +110,34 @@ Cancellation and partial failures persist failed status rather than claiming
 success. Individual channel sync now returns its queued job's `syncId` with
 HTTP 202, matching subscription/tag sync. Poll the existing status endpoint for
 completion.
+
+## Telegram client
+
+Configure both `TELEGRAM_BOT_TOKEN` (from Telegram's BotFather) and
+`TELEGRAM_CHAT_ID` to make the reusable client available in the app container.
+With neither variable set the client is nil; partial or malformed configuration
+fails startup. Never commit tokens or log token-bearing URLs. Task reminders
+have been removed: no scheduled Telegram messages are sent. Any existing
+`task_reminders` table is left untouched but is no longer used or migrated.
+
+## Notes folder types
+
+Folders expose `type`: `buy_list`, `tasks_list`, or `diary` (the default).
+Create/edit it in the folder dialog. Nested folders have independent types.
+Existing folders migrate to diary without changing notes, ordering, or styles.
+
+- **Buy list:** item title and purchased checkbox.
+- **Tasks list:** title, description, optional end date, and done checkbox.
+- **Diary:** the existing content editor, styling, and preview.
+
+The existing folder create/update endpoints accept `type`; omitted update
+values preserve the current type. Invalid types are rejected. Notes expose
+`description`, nullable `endDate` (`YYYY-MM-DD`), and `completed` alongside their
+existing fields. Note create/update accepts these fields; omitted update fields
+are preserved, `completed: false` reopens an item, and `endDate: ""` clears the
+date. Invalid dates are rejected. Switching folder types only changes which
+fields are shown; hidden content, description, date, completion, and styles
+are preserved. No reminder is attached to a note's end date.
 
 ## YouTube configuration
 

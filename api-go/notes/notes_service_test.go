@@ -292,8 +292,110 @@ func TestPositionMigrationDefaultsExistingRecords(t *testing.T) {
 			t.Fatal(err)
 		}
 		if len(tree) != 1 || tree[0].Position != 0 || tree[0].Name != "Existing folder" ||
-			len(tree[0].Notes) != 1 || tree[0].Notes[0].Position != 0 || tree[0].Notes[0].Content != "Existing content" {
+			tree[0].Type != FolderTypeDiary || len(tree[0].Notes) != 1 ||
+			tree[0].Notes[0].Position != 0 || tree[0].Notes[0].Content != "Existing content" ||
+			tree[0].Notes[0].Description != "" || tree[0].Notes[0].EndDate != nil || tree[0].Notes[0].Completed {
 			t.Fatalf("migration changed existing data: %+v", tree)
 		}
+	}
+}
+
+func TestFolderTypesAndHiddenNoteFieldsSurviveConversion(t *testing.T) {
+	service := NewNotesService(newNotesTestDB(t))
+	folder, err := service.CreateFolder(&CreateFolderRequest{Name: "Diary"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if folder.Type != FolderTypeDiary {
+		t.Fatalf("default type = %q", folder.Type)
+	}
+	child, err := service.CreateFolder(&CreateFolderRequest{Name: "Child", ParentID: &folder.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	endDate := "2026-11-30"
+	note, err := service.CreateNote(&CreateNoteRequest{
+		FolderID: folder.ID, Title: "Title", Content: "Diary content",
+		Description: "Task description", EndDate: &endDate, Completed: true,
+		Style: NoteStyle{Bold: true, Italic: true, TextColor: "#123456", FontSize: 24},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, folderType := range []string{FolderTypeBuyList, FolderTypeTasksList, FolderTypeDiary} {
+		updated, err := service.UpdateFolder(folder.ID, &UpdateFolderRequest{Type: &folderType})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if updated.Type != folderType {
+			t.Fatalf("updated type = %q", updated.Type)
+		}
+		tree, err := service.ListFolderTree()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if tree[0].Type != folderType || tree[0].Children[0].Type != FolderTypeDiary {
+			t.Fatalf("folder conversion affected child type: %+v", tree)
+		}
+		if !reflect.DeepEqual(tree[0].Notes[0], *note) {
+			t.Fatalf("conversion changed note: %+v", tree[0].Notes[0])
+		}
+	}
+	buyList := FolderTypeBuyList
+	if _, err := service.UpdateFolder(folder.ID, &UpdateFolderRequest{Type: &buyList}); err != nil {
+		t.Fatal(err)
+	}
+	name := "Renamed"
+	updated, err := service.UpdateFolder(folder.ID, &UpdateFolderRequest{Name: &name})
+	if err != nil || updated.Type != FolderTypeBuyList {
+		t.Fatalf("omitted type was not preserved: %+v, %v", updated, err)
+	}
+	completed := false
+	updatedNote, err := service.UpdateNote(note.ID, &UpdateNoteRequest{Completed: &completed, FolderID: &child.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updatedNote.Completed || updatedNote.Description != note.Description || updatedNote.Content != note.Content ||
+		updatedNote.EndDate == nil || *updatedNote.EndDate != endDate || updatedNote.Style != note.Style {
+		t.Fatalf("partial update lost hidden fields: %+v", updatedNote)
+	}
+	clear := ""
+	updatedNote, err = service.UpdateNote(note.ID, &UpdateNoteRequest{EndDate: &clear, Description: &clear})
+	if err != nil || updatedNote.EndDate != nil || updatedNote.Description != "" || updatedNote.Content != note.Content {
+		t.Fatalf("clear date/description: %+v, %v", updatedNote, err)
+	}
+}
+
+func TestNotesRejectInvalidTypesAndDates(t *testing.T) {
+	service := NewNotesService(newNotesTestDB(t))
+	folder, err := service.CreateFolder(&CreateFolderRequest{Name: "Tasks", Type: FolderTypeTasksList})
+	if err != nil {
+		t.Fatal(err)
+	}
+	note, err := service.CreateNote(&CreateNoteRequest{FolderID: folder.ID, Title: "Task"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, value := range []string{"unknown", "buy list", "DIARY", ""} {
+		if value != "" {
+			if _, err := service.CreateFolder(&CreateFolderRequest{Name: "Invalid", Type: value}); err == nil {
+				t.Fatalf("accepted folder type %q on create", value)
+			}
+		}
+		if _, err := service.UpdateFolder(folder.ID, &UpdateFolderRequest{Type: &value}); err == nil {
+			t.Fatalf("accepted folder type %q on update", value)
+		}
+	}
+	for _, value := range []string{"2026-02-29", "2026-11-31", "2026-1-01", "tomorrow", "2026-11-10T07:00:00Z"} {
+		if _, err := service.CreateNote(&CreateNoteRequest{FolderID: folder.ID, Title: "Bad", EndDate: &value}); err == nil {
+			t.Fatalf("accepted date %q on create", value)
+		}
+		if _, err := service.UpdateNote(note.ID, &UpdateNoteRequest{EndDate: &value}); err == nil {
+			t.Fatalf("accepted date %q on update", value)
+		}
+	}
+	valid := "2028-02-29"
+	if _, err := service.UpdateNote(note.ID, &UpdateNoteRequest{EndDate: &valid}); err != nil {
+		t.Fatalf("rejected valid leap day: %v", err)
 	}
 }

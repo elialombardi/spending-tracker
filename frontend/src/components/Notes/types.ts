@@ -1,4 +1,13 @@
-import { Note, NoteFolderTree, NoteStyle } from '../../types/notes';
+import ShoppingBagOutlinedIcon from '@mui/icons-material/ShoppingBagOutlined';
+import ChecklistRoundedIcon from '@mui/icons-material/ChecklistRounded';
+import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined';
+import { NoteStyle } from '../../types/notes';
+
+export const folderTypeAppearance = {
+    buy_list: { icon: ShoppingBagOutlinedIcon, color: 'success' },
+    tasks_list: { icon: ChecklistRoundedIcon, color: 'primary' },
+    diary: { icon: AutoStoriesOutlinedIcon, color: 'secondary' },
+} as const;
 
 export type NotesWorkspaceProps = {
     canWrite: boolean;

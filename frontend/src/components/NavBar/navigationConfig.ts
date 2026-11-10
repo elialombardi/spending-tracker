@@ -15,7 +15,7 @@ import { NavSection } from "../../types/navigation";
 export const NAV_SECTIONS: NavSection[] = [
   {
     title: "Main",
-    items: [{ path: "/", label: "Map", icon: Home }],
+    items: [{ path: "/map", label: "Map", icon: Home }],
     roles: ["User", "Admin"],
   },
   {

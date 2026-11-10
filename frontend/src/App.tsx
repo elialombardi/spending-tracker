@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react';
 import NavBar from './components/NavBar';
 import LoginScreen from './components/LoginScreen';
-import { Routes, Route } from 'react-router-dom';
+import { Navigate, Routes, Route } from 'react-router-dom';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import { bootstrapDevelopmentSession, canWrite, isSessionExpired, login, logout, useAuthSession, isAdmin } from './auth';
@@ -48,7 +48,8 @@ function App({ themeName, setThemeName }) {
         <NavBar canWrite={canModify} onLogout={() => logout()} session={session} themeName={themeName} setThemeName={setThemeName} />
         <Suspense fallback={<Box sx={{ p: 3 }}>Loading…</Box>}>
           <Routes>
-            <Route path="/" element={<MapPage />} />
+            <Route path="/" element={<Navigate to={isAdminUser ? "/tasks" : "/map"} replace />} />
+            <Route path="/map" element={<MapPage />} />
             <Route path="/cognitive" element={<CognitiveTraining />} />
             <Route path="/workout" element={<WorkoutPage />} />
             <Route path="/notes" element={<NotesPage canWrite={canModify} />} />

@@ -1,15 +1,17 @@
 import { fetchJSON } from '../client';
 import { endpoints } from '../endpoints';
-import type { Note, NoteFolderTree, NoteStyle } from '../../types/notes';
+import type { Note, NoteFolderTree, NoteFolderType, NoteStyle } from '../../types/notes';
 
 type CreateFolderPayload = {
   name: string
+  type?: NoteFolderType
   position?: number
   parentId?: number
 }
 
 type UpdateFolderPayload = {
   name?: string
+  type?: NoteFolderType
   position?: number
   parentId?: number
 }
@@ -18,8 +20,11 @@ type CreateNotePayload = {
   folderId: number
   position?: number
   title: string
-  content: string
-  style: NoteStyle
+  content?: string
+  style?: NoteStyle
+  description?: string
+  endDate?: string
+  completed?: boolean
 }
 
 type UpdateNotePayload = {
@@ -28,6 +33,9 @@ type UpdateNotePayload = {
   title?: string
   content?: string
   style?: NoteStyle
+  description?: string
+  endDate?: string
+  completed?: boolean
 }
 
 export const notesApi = {

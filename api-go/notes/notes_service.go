@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"
 	"gorm.io/gorm"
@@ -46,6 +47,7 @@ func (s *notesService) ListFolderTree() ([]NoteFolderTreeResponse, error) {
 		folderNode := &NoteFolderTreeResponse{
 			ID:       folder.ID,
 			Name:     folder.Name,
+			Type:     folder.Type,
 			Position: folder.Position,
 			ParentID: folder.ParentID,
 			Children: []NoteFolderTreeResponse{},
@@ -84,6 +86,13 @@ func (s *notesService) ListFolderTree() ([]NoteFolderTreeResponse, error) {
 }
 
 func (s *notesService) CreateFolder(req *CreateFolderRequest) (*NoteFolderTreeResponse, error) {
+	folderType := req.Type
+	if folderType == "" {
+		folderType = FolderTypeDiary
+	}
+	if err := validateFolderType(folderType); err != nil {
+		return nil, err
+	}
 	if req.Position < 0 {
 		return nil, errors.New("position must be a non-negative integer")
 	}
@@ -97,7 +106,7 @@ func (s *notesService) CreateFolder(req *CreateFolderRequest) (*NoteFolderTreeRe
 		}
 	}
 
-	entity := db.NoteFolderEntity{Name: name, ParentID: req.ParentID, Position: req.Position}
+	entity := db.NoteFolderEntity{Name: name, Type: folderType, ParentID: req.ParentID, Position: req.Position}
 	if err := s.db.Create(&entity).Error; err != nil {
 		return nil, err
 	}
@@ -105,6 +114,7 @@ func (s *notesService) CreateFolder(req *CreateFolderRequest) (*NoteFolderTreeRe
 	return &NoteFolderTreeResponse{
 		ID:       entity.ID,
 		Name:     entity.Name,
+		Type:     entity.Type,
 		Position: entity.Position,
 		ParentID: entity.ParentID,
 		Children: []NoteFolderTreeResponse{},
@@ -113,6 +123,11 @@ func (s *notesService) CreateFolder(req *CreateFolderRequest) (*NoteFolderTreeRe
 }
 
 func (s *notesService) UpdateFolder(id uint, req *UpdateFolderRequest) (*NoteFolderTreeResponse, error) {
+	if req.Type != nil {
+		if err := validateFolderType(*req.Type); err != nil {
+			return nil, err
+		}
+	}
 	if req.Position != nil && *req.Position < 0 {
 		return nil, errors.New("position must be a non-negative integer")
 	}
@@ -150,6 +165,9 @@ func (s *notesService) UpdateFolder(id uint, req *UpdateFolderRequest) (*NoteFol
 	if req.Position != nil {
 		entity.Position = *req.Position
 	}
+	if req.Type != nil {
+		entity.Type = *req.Type
+	}
 	if err := s.db.Save(&entity).Error; err != nil {
 		return nil, err
 	}
@@ -157,6 +175,7 @@ func (s *notesService) UpdateFolder(id uint, req *UpdateFolderRequest) (*NoteFol
 	return &NoteFolderTreeResponse{
 		ID:       entity.ID,
 		Name:     entity.Name,
+		Type:     entity.Type,
 		Position: entity.Position,
 		ParentID: entity.ParentID,
 		Children: []NoteFolderTreeResponse{},
@@ -176,6 +195,10 @@ func (s *notesService) DeleteFolder(id uint) error {
 }
 
 func (s *notesService) CreateNote(req *CreateNoteRequest) (*NoteResponse, error) {
+	endDate, err := normalizeEndDate(req.EndDate)
+	if err != nil {
+		return nil, err
+	}
 	if req.Position < 0 {
 		return nil, errors.New("position must be a non-negative integer")
 	}
@@ -194,11 +217,14 @@ func (s *notesService) CreateNote(req *CreateNoteRequest) (*NoteResponse, error)
 	}
 
 	entity := db.NoteEntity{
-		FolderID:  req.FolderID,
-		Position:  req.Position,
-		Title:     title,
-		Content:   req.Content,
-		StyleJSON: styleJSON,
+		FolderID:    req.FolderID,
+		Position:    req.Position,
+		Title:       title,
+		Content:     req.Content,
+		Description: req.Description,
+		EndDate:     endDate,
+		Completed:   req.Completed,
+		StyleJSON:   styleJSON,
 	}
 	if err := s.db.Create(&entity).Error; err != nil {
 		return nil, err
@@ -235,6 +261,19 @@ func (s *notesService) UpdateNote(id uint, req *UpdateNoteRequest) (*NoteRespons
 	}
 	if req.Content != nil {
 		entity.Content = *req.Content
+	}
+	if req.Description != nil {
+		entity.Description = *req.Description
+	}
+	if req.EndDate != nil {
+		endDate, err := normalizeEndDate(req.EndDate)
+		if err != nil {
+			return nil, err
+		}
+		entity.EndDate = endDate
+	}
+	if req.Completed != nil {
+		entity.Completed = *req.Completed
 	}
 	if req.Position != nil {
 		entity.Position = *req.Position
@@ -307,15 +346,37 @@ func mapNoteEntity(entity db.NoteEntity) NoteResponse {
 		_ = json.Unmarshal([]byte(entity.StyleJSON), &style)
 	}
 	return NoteResponse{
-		ID:        entity.ID,
-		FolderID:  entity.FolderID,
-		Position:  entity.Position,
-		Title:     entity.Title,
-		Content:   entity.Content,
-		Style:     style,
-		CreatedAt: entity.CreatedAt,
-		UpdatedAt: entity.UpdatedAt,
+		ID:          entity.ID,
+		FolderID:    entity.FolderID,
+		Position:    entity.Position,
+		Title:       entity.Title,
+		Content:     entity.Content,
+		Description: entity.Description,
+		EndDate:     entity.EndDate,
+		Completed:   entity.Completed,
+		Style:       style,
+		CreatedAt:   entity.CreatedAt,
+		UpdatedAt:   entity.UpdatedAt,
 	}
+}
+
+func validateFolderType(value string) error {
+	switch value {
+	case FolderTypeDiary, FolderTypeBuyList, FolderTypeTasksList:
+		return nil
+	default:
+		return errors.New("folder type must be buy_list, tasks_list or diary")
+	}
+}
+
+func normalizeEndDate(value *string) (*string, error) {
+	if value == nil || *value == "" {
+		return nil, nil
+	}
+	if _, err := time.Parse(time.DateOnly, *value); err != nil {
+		return nil, errors.New("end date must be a valid date in YYYY-MM-DD format")
+	}
+	return value, nil
 }
 
 func marshalStyle(style NoteStyle) (string, error) {

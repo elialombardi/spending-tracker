@@ -10,6 +10,7 @@ import (
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/diary"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/fuel"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/telegram"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/locations"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/notes"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/reports"
@@ -23,6 +24,7 @@ type AppContainer struct {
 	DB                 *gorm.DB
 	ProjectTaskService *tasks.ProjectTaskService
 	ProjectTaskHandler *tasks.ProjectTaskHandler
+	TelegramClient     *telegram.Client
 	LocationService    *locations.LocationService
 	LocationTagHandler *locations.LocationTagHandler
 	WorkoutService     workouts.WorkoutService
@@ -47,6 +49,10 @@ type AppContainer struct {
 
 // InitializeApp sets up the dependency graph using samber/do
 func InitializeApp() (*AppContainer, error) {
+	telegramClient, err := telegram.New(os.Getenv("TELEGRAM_BOT_TOKEN"), os.Getenv("TELEGRAM_CHAT_ID"))
+	if err != nil {
+		return nil, err
+	}
 	injector := do.New()
 
 	// 1. Register providers in the injector container
@@ -172,6 +178,7 @@ func InitializeApp() (*AppContainer, error) {
 
 	// 2. Resolve dependencies into your AppContainer struct
 	return &AppContainer{
+		TelegramClient:     telegramClient,
 		DB:                 do.MustInvoke[*gorm.DB](injector),
 		ProjectTaskService: do.MustInvoke[*tasks.ProjectTaskService](injector),
 		ProjectTaskHandler: do.MustInvoke[*tasks.ProjectTaskHandler](injector),

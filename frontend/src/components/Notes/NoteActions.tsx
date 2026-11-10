@@ -7,6 +7,7 @@ type NoteActionsProps = {
     isSaving: boolean;
     hasTitle: boolean;
     hasSelectedNote: boolean;
+    isList: boolean;
     onNewNote: () => void;
     onSaveNote: () => void;
     onDeleteNote: () => void;
@@ -17,6 +18,7 @@ export function NoteActions({
     isSaving,
     hasTitle,
     hasSelectedNote,
+    isList,
     onNewNote,
     onSaveNote,
     onDeleteNote,
@@ -29,14 +31,14 @@ export function NoteActions({
                 onClick={onNewNote}
                 disabled={!canWrite || isSaving}
             >
-                New note
+                {isList ? 'New item' : 'New note'}
             </Button>
             <Button
                 variant="contained"
                 onClick={onSaveNote}
                 disabled={!canWrite || isSaving || !hasTitle}
             >
-                Save note
+                {isList ? 'Save item' : 'Save note'}
             </Button>
             <Button
                 variant="text"

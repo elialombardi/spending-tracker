@@ -18,6 +18,11 @@ Check its peer dependency range before upgrading to TypeScript 7.
 
 ## Quality and performance checks
 
+After signing in at the application root (`/`), admins are redirected to Tasks
+(`/tasks`); other users go to Map (`/map`). Tasks remains admin-only. Map is
+available from navigation for both roles. Direct links to other pages are
+preserved when signing in.
+
 ```sh
 npm run typecheck
 npm run lint
@@ -85,6 +90,36 @@ button beside a place. Change the title, description, URL,
 coordinates, and tags, then save. Verify that the request has a nonempty JSON
 body, the saved values appear in the list and map, and the changes survive a reload.
 If saving fails, the dialog should remain open and show the error.
+
+## Notes folder configuration
+
+Use **Add root folder**, **Add child folder**, or **Edit folder** in Notes to
+choose **Buy list**, **Tasks list**, or **Diary**. New and existing folders
+default to Diary; children have independent types. Folder position and name
+remain editable for all types.
+
+Buy-list items have a title and Purchased checkbox. Task-list items have a title,
+description, optional clearable end date, and Done checkbox. Toggle checkboxes
+in the main item list to save immediately, or edit the checkbox in the editor and
+choose **Save item**. Reader accounts cannot edit or toggle items. Diary retains
+the content editor, styling, and preview. Item position and folder assignment
+remain available in all editors.
+
+The sidebar contains only folders, including nested folders. Selecting one shows
+only that folder's items in the main section. Select an item to open its editor,
+or choose **New item** / **New note** to create one. **Close editor** returns to
+the list; selecting another folder closes the editor. Empty folders show an
+empty-state message and still allow adding items.
+
+The Notes workspace uses theme-aware cards, type-specific folder icons, item-count
+badges, and highlighted selection states. **New folder** creates a root folder;
+**Subfolder**, edit, and delete apply to the selected folder. Collapse the sidebar
+for more room and use **Show folders** to restore it. All icon-only actions have
+accessible labels, and the layout stacks on small screens.
+
+Changing a folder's type or moving an item never clears its hidden fields.
+Switch back to recover diary content/style, task descriptions/end dates, and
+completion state. End dates do not send reminders.
 
 ## Date pickers
 

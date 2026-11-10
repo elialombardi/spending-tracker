@@ -1,6 +1,9 @@
 package notes
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 const (
 	FolderTypeBuyList   = "buy_list"
@@ -22,7 +25,7 @@ type NoteResponse struct {
 	Position    int       `json:"position"`
 	Title       string    `json:"title"`
 	Content     string    `json:"content"`
-	Description string    `json:"description"`
+	Description *string   `json:"description"`
 	EndDate     *string   `json:"endDate"`
 	Completed   bool      `json:"completed"`
 	Style       NoteStyle `json:"style"`
@@ -59,19 +62,41 @@ type CreateNoteRequest struct {
 	Position    int       `json:"position" validate:"gte=0"`
 	Title       string    `json:"title" validate:"required,min=1,max=200"`
 	Content     string    `json:"content"`
-	Description string    `json:"description"`
+	Description *string   `json:"description"`
 	EndDate     *string   `json:"endDate"`
 	Completed   bool      `json:"completed"`
 	Style       NoteStyle `json:"style"`
 }
 
 type UpdateNoteRequest struct {
-	FolderID    *uint      `json:"folderId,omitempty"`
-	Position    *int       `json:"position,omitempty" validate:"omitempty,gte=0"`
-	Title       *string    `json:"title,omitempty" validate:"omitempty,min=1,max=200"`
-	Content     *string    `json:"content,omitempty"`
-	Description *string    `json:"description,omitempty"`
-	EndDate     *string    `json:"endDate,omitempty"`
-	Completed   *bool      `json:"completed,omitempty"`
-	Style       *NoteStyle `json:"style,omitempty"`
+	FolderID       *uint      `json:"folderId,omitempty"`
+	Position       *int       `json:"position,omitempty" validate:"omitempty,gte=0"`
+	Title          *string    `json:"title,omitempty" validate:"omitempty,min=1,max=200"`
+	Content        *string    `json:"content,omitempty"`
+	Description    *string    `json:"description,omitempty"`
+	EndDate        *string    `json:"endDate,omitempty"`
+	Completed      *bool      `json:"completed,omitempty"`
+	Style          *NoteStyle `json:"style,omitempty"`
+	descriptionSet bool
+}
+
+func (req *UpdateNoteRequest) UnmarshalJSON(data []byte) error {
+	type updateRequest UpdateNoteRequest
+	var payload struct {
+		updateRequest
+		Description json.RawMessage `json:"description"`
+	}
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return err
+	}
+	result := UpdateNoteRequest(payload.updateRequest)
+	// A nil pointer alone cannot distinguish an omitted description from JSON null.
+	if payload.Description != nil {
+		if err := json.Unmarshal(payload.Description, &result.Description); err != nil {
+			return err
+		}
+		result.descriptionSet = true
+	}
+	*req = result
+	return nil
 }

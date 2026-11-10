@@ -47,8 +47,8 @@ Item position and destination folder remain configurable for all types.
 - New folders default to Diary, even when their parent is another type.
 - Existing folders migrate to Diary without changing existing notes or styles.
 - Children have independent types; changing a parent does not change children.
-- `description` is separate from diary `content`. Do not copy one into the
-  other when changing type.
+- `description` is nullable and separate from diary `content`. Display null as
+  blank in the editor; do not copy it into diary content when changing type.
 - `completed` means Purchased for buy-list items and Done for task-list items.
   Preserve it when hidden in Diary. Items can be unchecked again.
 - `endDate` is a date-only value, not a notification time or timestamp.
@@ -67,7 +67,8 @@ Item position and destination folder remain configurable for all types.
 | Item folder | Must reference an existing folder. |
 | End date | Optional real calendar date in `YYYY-MM-DD` format. Invalid dates such as `2026-02-29` are rejected. |
 | Completion | Boolean, default false. Explicit false must be serialized when unchecking. |
-| Description / content | Optional strings; no length limit is declared by these request DTOs. |
+| Description | Optional string or null. Omitted/null on create stores null. No length limit is declared. |
+| Content | Optional string; no length limit is declared by the request DTOs. |
 
 Preserve calendar dates without converting through UTC timestamps. Do not invent
 an end-date ordering rule or disallow past dates; neither rule is implemented.
@@ -204,7 +205,7 @@ plain array (`[]` when empty), without pagination or a `{data: ...}` envelope.
 ]
 ```
 
-`parentId` and `endDate` are nullable. `createdAt`/`updatedAt` are server-generated
+`parentId`, `description`, and `endDate` are nullable. `createdAt`/`updatedAt` are server-generated
 timestamps; `endDate` is not. Preserve hidden response fields in client state.
 
 ### Ordering
@@ -302,14 +303,17 @@ Use `{"completed":false}` to reopen/unpurchase. Other useful bodies:
 | --- | --- |
 | Edit task description | `{"description":"Updated details"}` |
 | Clear end date | `{"endDate":""}` |
-| Clear description | `{"description":""}` |
+| Clear description to null | `{"description":null}` |
 | Move item | `{"folderId":15}` |
 | Reset position | `{"position":0}` |
 
 - Send only relevant/changed fields, especially from typed editors. Do not send
   empty diary content or default style merely because those controls are hidden.
-- For an update, JSON `null` for pointer-backed fields is treated like omission,
-  not clearing. In particular, `endDate: null` does **not** remove a saved date.
+- For `description`, omission preserves the value and explicit JSON null clears
+  it. Existing clients can still store `""`; mobile should send null when the
+  user clears the description. Preserve hidden descriptions during other edits.
+- Other pointer-backed update fields still treat JSON null like omission.
+  In particular, `endDate: null` does **not** remove a saved date; use `""`.
 - A supplied `style` replaces the whole style object after applying server
   defaults. Preserve untouched style properties when changing one property.
 - Item writes return the complete item response.
@@ -369,6 +373,7 @@ clear account-specific client state on logout/account change.
 | Diary | Existing text, formatting, and preview; no completion/end-date controls. |
 | Hidden fields | Diary -> Buy list -> Tasks list -> Diary retains content, style, description, date, completion. |
 | Completion | True and explicit false persist; list toggles do not reset other fields. |
+| Nullable description | Omitted/null create returns null; omitted update preserves; null update clears; empty-string compatibility and hidden values survive. |
 | Clearing dates | Empty string clears; null is not used as a clear operation. |
 | Moving items | New folder list and count update; hidden fields survive; numeric IDs used. |
 | Ordering | Position 0 is serialized; ties match the server's timestamp/numeric-ID order. |

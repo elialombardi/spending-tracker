@@ -168,6 +168,9 @@ test('notes API supports types, title-only items, date clearing and completion w
         await notesApi.createNote({ folderId: 1, title: 'Task', description: 'Details', endDate: '2026-11-30', completed: true })
         await notesApi.updateNote(1, { completed: false })
         await notesApi.updateNote(1, { endDate: '' })
+        await notesApi.createNote({ folderId: 1, title: 'No description', description: null })
+        await notesApi.updateNote(1, { description: null })
+        await notesApi.updateNote(1, { title: 'Preserve description' })
         assert.deepEqual(calls, [
             { method: 'POST', path: '/api/note-folders', payload: { name: 'Shopping', type: 'buy_list' } },
             { method: 'PUT', path: '/api/note-folders/1', payload: { type: 'tasks_list' } },
@@ -175,6 +178,9 @@ test('notes API supports types, title-only items, date clearing and completion w
             { method: 'POST', path: '/api/notes', payload: { folderId: 1, title: 'Task', description: 'Details', endDate: '2026-11-30', completed: true } },
             { method: 'PUT', path: '/api/notes/1', payload: { completed: false } },
             { method: 'PUT', path: '/api/notes/1', payload: { endDate: '' } },
+            { method: 'POST', path: '/api/notes', payload: { folderId: 1, title: 'No description', description: null } },
+            { method: 'PUT', path: '/api/notes/1', payload: { description: null } },
+            { method: 'PUT', path: '/api/notes/1', payload: { title: 'Preserve description' } },
         ])
     } finally {
         await server.close()

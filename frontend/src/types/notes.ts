@@ -12,7 +12,7 @@ export interface Note {
   position: number;
   title: string;
   content: string;
-  description: string;
+  description: string | null;
   endDate: string | null;
   completed: boolean;
   style: NoteStyle;

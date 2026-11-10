@@ -262,8 +262,8 @@ func (s *notesService) UpdateNote(id uint, req *UpdateNoteRequest) (*NoteRespons
 	if req.Content != nil {
 		entity.Content = *req.Content
 	}
-	if req.Description != nil {
-		entity.Description = *req.Description
+	if req.Description != nil || req.descriptionSet {
+		entity.Description = req.Description
 	}
 	if req.EndDate != nil {
 		endDate, err := normalizeEndDate(req.EndDate)

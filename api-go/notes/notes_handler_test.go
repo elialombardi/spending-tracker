@@ -8,8 +8,118 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"
 	"github.com/gofiber/fiber/v3"
 )
+
+func TestNullableNoteDescription(t *testing.T) {
+	database := newNotesTestDB(t)
+	service := NewNotesService(database)
+	folder, err := service.CreateFolder(&CreateFolderRequest{Name: "Tasks", Type: FolderTypeTasksList})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := NewNotesHandler(service)
+	app := fiber.New()
+	app.Post("/notes", handler.CreateNote)
+	app.Put("/notes/:id", handler.UpdateNote)
+	app.Get("/tree", handler.ListFolderTree)
+
+	request := func(method, path, body string, status int) map[string]json.RawMessage {
+		t.Helper()
+		req := httptest.NewRequest(method, path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != status {
+			t.Fatalf("%s %s: status = %d, want %d", method, path, resp.StatusCode, status)
+		}
+		var result map[string]json.RawMessage
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatal(err)
+		}
+		return result
+	}
+	var noteID uint
+	for _, test := range []struct {
+		name, fields, want string
+	}{
+		{"omitted", "", "null"},
+		{"null", `,"description":null`, "null"},
+		{"empty string", `,"description":""`, `""`},
+		{"text", `,"description":"Details"`, `"Details"`},
+	} {
+		t.Run("create/"+test.name, func(t *testing.T) {
+			body := fmt.Sprintf(`{"folderId":%d,"title":"Task","content":"Keep content","endDate":"2026-12-01"%s}`, folder.ID, test.fields)
+			result := request("POST", "/notes", body, 201)
+			if string(result["description"]) != test.want {
+				t.Fatalf("description = %s, want %s", result["description"], test.want)
+			}
+			if err := json.Unmarshal(result["id"], &noteID); err != nil {
+				t.Fatal(err)
+			}
+			var stored db.NoteEntity
+			if err := database.First(&stored, noteID).Error; err != nil {
+				t.Fatal(err)
+			}
+			storedJSON, err := json.Marshal(stored.Description)
+			if err != nil || string(storedJSON) != test.want {
+				t.Fatalf("stored description = %s, error = %v", storedJSON, err)
+			}
+		})
+	}
+	notePath := fmt.Sprintf("/notes/%d", noteID)
+	for _, test := range []struct {
+		name, body, want string
+	}{
+		{"omission preserves text", `{"title":"Updated"}`, `"Details"`},
+		{"null clears text", `{"description":null}`, "null"},
+		{"omission preserves null", `{"completed":true}`, "null"},
+		{"text replaces null", `{"description":"New details"}`, `"New details"`},
+		{"empty string stays supported", `{"description":""}`, `""`},
+		{"null clears empty string", `{"description":null}`, "null"},
+	} {
+		t.Run("update/"+test.name, func(t *testing.T) {
+			result := request("PUT", notePath, test.body, 200)
+			if string(result["description"]) != test.want {
+				t.Fatalf("description = %s, want %s", result["description"], test.want)
+			}
+			if string(result["content"]) != `"Keep content"` || string(result["endDate"]) != `"2026-12-01"` {
+				t.Fatal("description update modified other fields")
+			}
+			var stored db.NoteEntity
+			if err := database.First(&stored, noteID).Error; err != nil {
+				t.Fatal(err)
+			}
+			storedJSON, err := json.Marshal(stored.Description)
+			if err != nil || string(storedJSON) != test.want {
+				t.Fatalf("stored description = %s, error = %v", storedJSON, err)
+			}
+		})
+	}
+	for _, value := range []string{"123", "false", "[]", "{}"} {
+		body := fmt.Sprintf(`{"folderId":%d,"title":"Invalid","description":%s}`, folder.ID, value)
+		request("POST", "/notes", body, 400)
+		request("PUT", notePath, `{"description":`+value+`}`, 400)
+	}
+	resp, err := app.Test(httptest.NewRequest("GET", "/tree", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var tree []NoteFolderTreeResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tree); err != nil {
+		t.Fatal(err)
+	}
+	for _, note := range tree[0].Notes {
+		if note.ID == noteID && note.Description != nil {
+			t.Fatalf("tree description = %q, want null", *note.Description)
+		}
+	}
+}
 
 func TestHandlersBindFolderTypesAndListFields(t *testing.T) {
 	service := NewNotesService(newNotesTestDB(t))
@@ -62,11 +172,11 @@ func TestHandlersBindFolderTypesAndListFields(t *testing.T) {
 	}
 	notePath := fmt.Sprintf("/notes/%d", note.ID)
 	request("PUT", notePath, `{"description":"Details","endDate":"2026-12-01","completed":true}`, 200, &note)
-	if note.Description != "Details" || note.EndDate == nil || *note.EndDate != "2026-12-01" || !note.Completed {
+	if note.Description == nil || *note.Description != "Details" || note.EndDate == nil || *note.EndDate != "2026-12-01" || !note.Completed {
 		t.Fatalf("list fields not bound: %+v", note)
 	}
 	request("PUT", notePath, `{"title":"Updated"}`, 200, &note)
-	if !note.Completed || note.EndDate == nil || note.Description != "Details" {
+	if !note.Completed || note.EndDate == nil || note.Description == nil || *note.Description != "Details" {
 		t.Fatalf("omitted fields were reset: %+v", note)
 	}
 	request("PUT", notePath, `{"completed":false,"endDate":""}`, 200, &note)
@@ -79,7 +189,7 @@ func TestHandlersBindFolderTypesAndListFields(t *testing.T) {
 	var tree []NoteFolderTreeResponse
 	request("GET", "/folders/tree", "", 200, &tree)
 	if len(tree) != 1 || tree[0].Type != FolderTypeDiary || len(tree[0].Notes) != 1 ||
-		tree[0].Notes[0].Completed || tree[0].Notes[0].Description != "Details" || tree[0].Notes[0].EndDate != nil {
+		tree[0].Notes[0].Completed || tree[0].Notes[0].Description == nil || *tree[0].Notes[0].Description != "Details" || tree[0].Notes[0].EndDate != nil {
 		t.Fatalf("tree did not preserve list fields: %+v", tree)
 	}
 }

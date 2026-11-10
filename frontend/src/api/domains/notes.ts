@@ -22,7 +22,7 @@ type CreateNotePayload = {
   title: string
   content?: string
   style?: NoteStyle
-  description?: string
+  description?: string | null
   endDate?: string
   completed?: boolean
 }
@@ -33,7 +33,7 @@ type UpdateNotePayload = {
   title?: string
   content?: string
   style?: NoteStyle
-  description?: string
+  description?: string | null
   endDate?: string
   completed?: boolean
 }

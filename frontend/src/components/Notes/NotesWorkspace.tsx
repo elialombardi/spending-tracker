@@ -121,7 +121,7 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
     setTitle(note.title);
     setPosition(String(note.position));
     setContent(note.content);
-    setDescription(note.description);
+    setDescription(note.description ?? '');
     setEndDate(note.endDate ?? '');
     setCompleted(note.completed);
     setStyle(note.style || defaultStyle);
@@ -145,7 +145,7 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
     setErrorMessage('');
     try {
       const fields = folderType === 'diary' ? { content, style }
-        : folderType === 'tasks_list' ? { description, endDate, completed }
+        : folderType === 'tasks_list' ? { description: description === '' ? null : description, endDate, completed }
           : { completed };
       const payload = { folderId: selectedFolderID, title, position: nextPosition, ...fields };
       if (selectedNoteID) {

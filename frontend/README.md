@@ -99,7 +99,10 @@ default to Diary; children have independent types. Folder position and name
 remain editable for all types.
 
 Buy-list items have a title and Purchased checkbox. Task-list items have a title,
-description, optional clearable end date, and Done checkbox. Toggle checkboxes
+optional nullable description, optional clearable end date, and Done checkbox.
+The editor displays a null description as blank and sends `description: null`
+when the field is cleared. Other folder types leave the hidden description
+untouched. Toggle checkboxes
 in the main item list to save immediately, or edit the checkbox in the editor and
 choose **Save item**. Reader accounts cannot edit or toggle items. Diary retains
 the content editor, styling, and preview. Item position and folder assignment

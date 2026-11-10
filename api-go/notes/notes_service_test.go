@@ -294,7 +294,7 @@ func TestPositionMigrationDefaultsExistingRecords(t *testing.T) {
 		if len(tree) != 1 || tree[0].Position != 0 || tree[0].Name != "Existing folder" ||
 			tree[0].Type != FolderTypeDiary || len(tree[0].Notes) != 1 ||
 			tree[0].Notes[0].Position != 0 || tree[0].Notes[0].Content != "Existing content" ||
-			tree[0].Notes[0].Description != "" || tree[0].Notes[0].EndDate != nil || tree[0].Notes[0].Completed {
+			tree[0].Notes[0].Description != nil || tree[0].Notes[0].EndDate != nil || tree[0].Notes[0].Completed {
 			t.Fatalf("migration changed existing data: %+v", tree)
 		}
 	}
@@ -314,9 +314,10 @@ func TestFolderTypesAndHiddenNoteFieldsSurviveConversion(t *testing.T) {
 		t.Fatal(err)
 	}
 	endDate := "2026-11-30"
+	description := "Task description"
 	note, err := service.CreateNote(&CreateNoteRequest{
 		FolderID: folder.ID, Title: "Title", Content: "Diary content",
-		Description: "Task description", EndDate: &endDate, Completed: true,
+		Description: &description, EndDate: &endDate, Completed: true,
 		Style: NoteStyle{Bold: true, Italic: true, TextColor: "#123456", FontSize: 24},
 	})
 	if err != nil {
@@ -355,15 +356,85 @@ func TestFolderTypesAndHiddenNoteFieldsSurviveConversion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updatedNote.Completed || updatedNote.Description != note.Description || updatedNote.Content != note.Content ||
+	if updatedNote.Completed || !reflect.DeepEqual(updatedNote.Description, note.Description) || updatedNote.Content != note.Content ||
 		updatedNote.EndDate == nil || *updatedNote.EndDate != endDate || updatedNote.Style != note.Style {
 		t.Fatalf("partial update lost hidden fields: %+v", updatedNote)
 	}
 	clear := ""
 	updatedNote, err = service.UpdateNote(note.ID, &UpdateNoteRequest{EndDate: &clear, Description: &clear})
-	if err != nil || updatedNote.EndDate != nil || updatedNote.Description != "" || updatedNote.Content != note.Content {
+	if err != nil || updatedNote.EndDate != nil || updatedNote.Description == nil || *updatedNote.Description != "" || updatedNote.Content != note.Content {
 		t.Fatalf("clear date/description: %+v, %v", updatedNote, err)
 	}
+}
+
+func TestNullableDescriptionMigrationPreservesExistingValues(t *testing.T) {
+	database := newNotesTestDB(t)
+	service := NewNotesService(database)
+	folder, err := service.CreateFolder(&CreateFolderRequest{Name: "Existing"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	statements := []string{
+		"DROP TABLE notes",
+		"CREATE TABLE notes (" +
+			"id integer PRIMARY KEY AUTOINCREMENT, folder_id integer NOT NULL, " +
+			"position integer NOT NULL DEFAULT 0, title text NOT NULL, content text NOT NULL, " +
+			"description text NOT NULL DEFAULT '', end_date text, " +
+			"completed numeric NOT NULL DEFAULT false, style_json text NOT NULL DEFAULT '{}', " +
+			"created_at datetime, updated_at datetime)",
+	}
+	for _, statement := range statements {
+		if err := database.Exec(statement).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, description := range []string{"Existing details", ""} {
+		if err := database.Exec("INSERT INTO notes (folder_id, title, content, description) VALUES (?, ?, ?, ?)",
+			folder.ID, "Existing note", "Keep content", description).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	for range 2 {
+		if err := database.AutoMigrate(&db.NoteEntity{}); err != nil {
+			t.Fatal(err)
+		}
+		var stored []db.NoteEntity
+		if err := database.Order("id ASC").Find(&stored).Error; err != nil {
+			t.Fatal(err)
+		}
+		if stored[0].Description == nil || *stored[0].Description != "Existing details" ||
+			stored[1].Description == nil || *stored[1].Description != "" ||
+			stored[0].Content != "Keep content" || stored[1].Content != "Keep content" {
+			t.Fatalf("migration changed existing notes: %+v", stored)
+		}
+	}
+	note, err := service.CreateNote(&CreateNoteRequest{FolderID: folder.ID, Title: "No description"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stored db.NoteEntity
+	if err := database.First(&stored, note.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if note.Description != nil || stored.Description != nil {
+		t.Fatal("missing description was not stored and returned as NULL after migration")
+	}
+	columns, err := database.Migrator().ColumnTypes(&db.NoteEntity{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, column := range columns {
+		if column.Name() == "description" {
+			if nullable, ok := column.Nullable(); !ok || !nullable {
+				t.Fatal("description column is not nullable")
+			}
+			if _, hasDefault := column.DefaultValue(); hasDefault {
+				t.Fatal("description column still has the old empty-string default")
+			}
+			return
+		}
+	}
+	t.Fatal("description column missing")
 }
 
 func TestNotesRejectInvalidTypesAndDates(t *testing.T) {

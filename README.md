@@ -132,10 +132,15 @@ Existing folders migrate to diary without changing notes, ordering, or styles.
 
 The existing folder create/update endpoints accept `type`; omitted update
 values preserve the current type. Invalid types are rejected. Notes expose
-`description`, nullable `endDate` (`YYYY-MM-DD`), and `completed` alongside their
+nullable `description`, nullable `endDate` (`YYYY-MM-DD`), and `completed` alongside their
 existing fields. Note create/update accepts these fields; omitted update fields
 are preserved, `completed: false` reopens an item, and `endDate: ""` clears the
-date. Invalid dates are rejected. Switching folder types only changes which
+date. A missing or null description on create is stored/returned as null.
+On update, omitted `description` preserves its value; `description: null`
+clears it. Empty strings remain supported for existing clients. Startup
+migration makes the description column nullable without rewriting existing text
+or empty strings. The web editor treats null as blank and saves a blank
+description as null. Invalid dates are rejected. Switching folder types only changes which
 fields are shown; hidden content, description, date, completion, and styles
 are preserved. No reminder is attached to a note's end date.
 

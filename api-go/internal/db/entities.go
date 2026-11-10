@@ -71,7 +71,7 @@ type NoteEntity struct {
 	Position    int       `gorm:"column:position;not null;default:0"`
 	Title       string    `gorm:"column:title;not null"`
 	Content     string    `gorm:"column:content;type:text;not null"`
-	Description string    `gorm:"column:description;type:text;not null;default:''"`
+	Description *string   `gorm:"column:description;type:text"`
 	EndDate     *string   `gorm:"column:end_date"`
 	Completed   bool      `gorm:"column:completed;not null;default:false"`
 	StyleJSON   string    `gorm:"column:style_json;type:text;not null;default:'{}'"`

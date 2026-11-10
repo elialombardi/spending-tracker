@@ -5,7 +5,7 @@ import ListItemText from '@mui/material/ListItemText';
 import { alpha } from '@mui/material/styles';
 import { NoteFolderTree } from '../../types/notes';
 import { folderTypeAppearance } from './types';
-import { ReorderButtons } from './ReorderButtons';
+import { ReorderDragHandle } from './ReorderDragHandle';
 import { useReorderDrag } from './useReorderDrag';
 
 type NoteTreeProps = {
@@ -20,7 +20,7 @@ type NoteTreeProps = {
 export function NoteTree({ tree, selectedFolderID, onSelectFolder, canWrite, isBusy, onMoveFolder }: NoteTreeProps) {
     const drag = useReorderDrag(canWrite && !isBusy, onMoveFolder);
     function renderTree(nodes: NoteFolderTree[]): ReactNode {
-        return nodes.map((folder, index) => {
+        return nodes.map((folder) => {
             const { icon: FolderTypeIcon, color } = folderTypeAppearance[folder.type];
             const selected = selectedFolderID === folder.id;
             return (
@@ -76,13 +76,11 @@ export function NoteTree({ tree, selectedFolderID, onSelectFolder, canWrite, isB
                     </Box>
                 </ListItemButton>
                 {canWrite && (
-                    <ReorderButtons
+                    <ReorderDragHandle
                         label={`folder ${folder.name}`}
-                        index={index}
                         count={nodes.length}
                         isBusy={isBusy}
                         dragHandleProps={drag.handleProps(folder.id, nodes.length)}
-                        onMove={(direction) => onMoveFolder(nodes, folder.id, direction)}
                     />
                 )}
                 </Box>

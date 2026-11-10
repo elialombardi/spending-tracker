@@ -113,18 +113,11 @@ test('reorder controls respect sibling boundaries, nested folders, permissions a
             return tag[0]
         }
         const writable = renderTree(true)
-        assert.match(button(writable, 'Move folder First up'), /disabled=""/)
-        assert.doesNotMatch(button(writable, 'Move folder First down'), /disabled=""/)
-        assert.doesNotMatch(button(writable, 'Move folder Last up'), /disabled=""/)
-        assert.match(button(writable, 'Move folder Last down'), /disabled=""/)
+        assert.doesNotMatch(writable, /aria-label="Move folder/)
         assert.match(button(writable, 'Drag folder First to reorder'), /draggable="true"/)
         assert.match(button(writable, 'Drag folder Only child to reorder'), /disabled=""/)
         assert.match(button(renderTree(true, true), 'Drag folder First to reorder'), /disabled=""/)
         assert.match(button(renderTree(true, true), 'Drag folder First to reorder'), /draggable="false"/)
-        for (const direction of ['up', 'down']) {
-            assert.match(button(writable, `Move folder Only child ${direction}`), /disabled=""/)
-            assert.match(button(renderTree(true, true), `Move folder First ${direction}`), /disabled=""/)
-        }
         assert.doesNotMatch(renderTree(false), /aria-label="Move folder/)
         assert.doesNotMatch(renderTree(false), /aria-label="Drag folder/)
 
@@ -140,14 +133,10 @@ test('reorder controls respect sibling boundaries, nested folders, permissions a
                 ...listProps, canWrite, isBusy,
             }))
             const markup = renderList(true)
-            assert.match(button(markup, 'Move item First item up'), /disabled=""/)
-            assert.doesNotMatch(button(markup, 'Move item First item down'), /disabled=""/)
-            assert.doesNotMatch(button(markup, 'Move item Last item up'), /disabled=""/)
-            assert.match(button(markup, 'Move item Last item down'), /disabled=""/)
+            assert.doesNotMatch(markup, /aria-label="Move item/)
             assert.match(button(markup, 'Drag item First item to reorder'), /draggable="true"/)
             assert.match(button(renderList(true, true), 'Drag item First item to reorder'), /disabled=""/)
             assert.match(button(renderList(true, true), 'Drag item First item to reorder'), /draggable="false"/)
-            assert.match(button(renderList(true, true), 'Move item First item down'), /disabled=""/)
             assert.doesNotMatch(renderList(false), /aria-label="Move item/)
             assert.doesNotMatch(renderList(false), /aria-label="Drag item/)
         }

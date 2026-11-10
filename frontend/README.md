@@ -125,13 +125,13 @@ for more room and use **Show folders** to restore it. All icon-only actions have
 accessible labels, and the layout stacks on small screens.
 
 Drag the grip beside a folder or item onto another row to move it directly to
-that position; the destination row is highlighted while dragging. The up/down
-arrows remain available for keyboard and touch use, without editing numeric
-positions. Folders move within their current parent (including root
+that position; the destination row is highlighted while dragging.
+Numeric positions remain editable in the item editor and folder dialog.
+Folders move within their current parent (including root
 folders); items move within their current folder. Order is saved to the server
 and survives reloads, including when existing positions are tied. Reordering
 keeps the selection and open editor drafts. Controls are hidden for readers and
-disabled while loading or saving; the first/last item cannot move past the ends.
+disabled while loading or saving or when there are fewer than two siblings.
 If saving fails, an error is shown and the list reloads the server's actual order.
 
 Changing a folder's type or moving an item never clears its hidden fields.

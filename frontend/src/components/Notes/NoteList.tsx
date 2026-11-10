@@ -11,7 +11,7 @@ import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 import { Note, NoteFolderTree } from '../../types/notes';
 import { folderTypeAppearance } from './types';
-import { ReorderButtons } from './ReorderButtons';
+import { ReorderDragHandle } from './ReorderDragHandle';
 import { useReorderDrag } from './useReorderDrag';
 
 type NoteListProps = {
@@ -46,7 +46,7 @@ export function NoteList({ folder, selectedNoteID, canWrite, isBusy, onSelectNot
 
     return (
         <List disablePadding aria-label="Folder items">
-            {folder.notes.map((note, index) => (
+            {folder.notes.map((note) => (
                 <ListItem key={note.id} disablePadding {...drag.rowProps(note.id, folder.notes)} sx={(theme) => ({
                     mb: 1, border: '1px solid', borderRadius: '14px', overflow: 'hidden',
                     outline: drag.dropTargetID === note.id ? '2px solid' : undefined,
@@ -99,13 +99,11 @@ export function NoteList({ folder, selectedNoteID, canWrite, isBusy, onSelectNot
                         <ArrowForwardRoundedIcon sx={{ fontSize: 18, color: 'text.secondary', flexShrink: 0 }} />
                     </ListItemButton>
                     {canWrite && (
-                        <ReorderButtons
+                        <ReorderDragHandle
                             label={`item ${note.title}`}
-                            index={index}
                             count={folder.notes.length}
                             isBusy={isBusy}
                             dragHandleProps={drag.handleProps(note.id, folder.notes.length)}
-                            onMove={(direction) => onMoveNote(note.id, direction)}
                         />
                     )}
                 </ListItem>

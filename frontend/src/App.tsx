@@ -20,6 +20,7 @@ const DiaryPage = lazy(() => import('./pages/Diary/DiaryPage'));
 const YoutubeManager = lazy(() => import('./pages/YoutubeManager').then(module => ({ default: module.YoutubeManager })));
 const BoxingEventsPage = lazy(() => import('./pages/BoxingEvents/BoxingEventsPage'));
 const FuelManager = lazy(() => import('./pages/FuelManager'));
+const MarketplaceSearchPage = lazy(() => import('./pages/MarketplaceSearchPage'));
 
 function App({ themeName, setThemeName }) {
   const { message, session, status } = useAuthSession();
@@ -56,6 +57,7 @@ function App({ themeName, setThemeName }) {
             <Route path="/diary" element={<DiaryPage />} />
             <Route path="/boxing-events" element={<BoxingEventsPage />} />
             <Route path="/youtube-manager" element={<YoutubeManager />} />
+            <Route path="/search" element={<MarketplaceSearchPage />} />
             {isAdminUser ? (
               <>
                 <Route path="/users" element={<UsersPage />} />

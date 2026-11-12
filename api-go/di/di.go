@@ -12,6 +12,7 @@ import (
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/telegram"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/locations"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/marketplace"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/notes"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/reports"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/tasks"
@@ -45,11 +46,17 @@ type AppContainer struct {
 	FuelHandler        *fuel.Handler
 	YoutubeService     *youtube.Service
 	YoutubeHandler     *youtube.Handler
+	MarketplaceService *marketplace.Service
+	MarketplaceHandler *marketplace.Handler
 }
 
 // InitializeApp sets up the dependency graph using samber/do
 func InitializeApp() (*AppContainer, error) {
 	telegramClient, err := telegram.New(os.Getenv("TELEGRAM_BOT_TOKEN"), os.Getenv("TELEGRAM_CHAT_ID"))
+	if err != nil {
+		return nil, err
+	}
+	ebay, err := marketplace.NewEbay(os.Getenv("EBAY_CLIENT_ID"), os.Getenv("EBAY_CLIENT_SECRET"))
 	if err != nil {
 		return nil, err
 	}
@@ -175,6 +182,20 @@ func InitializeApp() (*AppContainer, error) {
 		service := do.MustInvoke[*youtube.Service](i)
 		return youtube.NewHandler(service), nil
 	})
+	do.Provide(injector, func(i do.Injector) (*marketplace.Service, error) {
+		var provider marketplace.Provider
+		if ebay != nil {
+			provider = ebay
+		}
+		var notifier marketplace.Notifier
+		if telegramClient != nil {
+			notifier = telegramClient
+		}
+		return marketplace.NewService(do.MustInvoke[*gorm.DB](i), provider, notifier), nil
+	})
+	do.Provide(injector, func(i do.Injector) (*marketplace.Handler, error) {
+		return marketplace.NewHandler(do.MustInvoke[*marketplace.Service](i)), nil
+	})
 
 	// 2. Resolve dependencies into your AppContainer struct
 	return &AppContainer{
@@ -201,5 +222,7 @@ func InitializeApp() (*AppContainer, error) {
 		FuelHandler:        do.MustInvoke[*fuel.Handler](injector),
 		YoutubeService:     do.MustInvoke[*youtube.Service](injector),
 		YoutubeHandler:     do.MustInvoke[*youtube.Handler](injector),
+		MarketplaceService: do.MustInvoke[*marketplace.Service](injector),
+		MarketplaceHandler: do.MustInvoke[*marketplace.Handler](injector),
 	}, nil
 }

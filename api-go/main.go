@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"strconv"
@@ -12,6 +13,8 @@ import (
 	"time"
 
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/di"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/auth"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/middleware"
 	"github.com/joho/godotenv"
 
 	"github.com/gofiber/fiber/v3"
@@ -42,6 +45,14 @@ func run() (runErr error) {
 	if err != nil {
 		return err
 	}
+	searchEnabled, err := envBool("SEARCH_SYNC_ENABLED", !development)
+	if err != nil {
+		return err
+	}
+	biometricEnabled, err := envBool("BIOMETRIC_AUTH_ENABLED", false)
+	if err != nil {
+		return err
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -63,6 +74,16 @@ func run() (runErr error) {
 	app := fiber.New()
 	app.Use(cors.New())
 
+	if biometricEnabled {
+		biometricLog := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+		biometric, tokens, closeChallenges, err := auth.NewFromEnvironment(container.DB, container.UserService, biometricLog)
+		if err != nil {
+			return err
+		}
+		defer func() { runErr = errors.Join(runErr, closeChallenges()) }()
+		biometric.RegisterRoutes(app, middleware.JWT(tokens, container.UserService))
+	}
+
 	container.TransactionHandler.RegisterRoutes(app, container.AuthMiddleware)
 	container.ProjectTaskHandler.RegisterRoutes(app, container.AuthMiddleware)
 	container.LocationTagHandler.RegisterRoutes(app, container.AuthMiddleware)
@@ -73,6 +94,7 @@ func run() (runErr error) {
 	container.BoxingEventHandler.RegisterRoutes(app, container.AuthMiddleware)
 	container.FuelHandler.RegisterRoutes(app, container.AuthMiddleware)
 	container.YoutubeHandler.RegisterRoutes(app, container.AuthMiddleware)
+	container.MarketplaceHandler.RegisterRoutes(app, container.AuthMiddleware, searchEnabled)
 
 	var schedules []<-chan struct{}
 	stopYoutubeCancellation := context.AfterFunc(ctx, container.YoutubeService.Cancel)
@@ -95,6 +117,9 @@ func run() (runErr error) {
 	}
 	if youtubeEnabled {
 		schedules = append(schedules, container.YoutubeService.StartBackgroundSync(ctx))
+	}
+	if searchEnabled {
+		schedules = append(schedules, container.MarketplaceService.StartBackgroundSync(ctx))
 	}
 
 	app.Get("/api/version", func(c fiber.Ctx) error {

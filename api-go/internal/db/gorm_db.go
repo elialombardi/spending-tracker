@@ -8,6 +8,7 @@ import (
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/boxing_events"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/diary"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/fuel"
+	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/marketplace"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/reports"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/user"
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/workouts"
@@ -58,6 +59,8 @@ func NewDatabase() (*gorm.DB, error) {
 		&youtube.ChannelTag{},
 		&youtube.SyncLog{},
 		&youtube.OAuthToken{},
+		&marketplace.Search{},
+		&marketplace.Match{},
 	); err != nil {
 		return nil, err
 	}

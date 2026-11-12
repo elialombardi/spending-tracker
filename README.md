@@ -1,5 +1,80 @@
 # Spending Tracker: AI Section Implementation Prompt
 
+## Biometric device authentication
+
+The implementation uses the repository's existing **Fiber v3 / Go 1.26**
+stack (rather than a separate Fiber v2 / Go 1.22 service).
+
+Enable the endpoints in the full API with `BIOMETRIC_AUTH_ENABLED=true`.
+It defaults to false to preserve existing deployments. Set `JWT_SIGNING_KEY`
+to a securely generated secret of at least 32 bytes; enabling biometric auth
+without it fails startup. Password and biometric tokens share this key and
+the existing `JWT_ISSUER` / `JWT_AUDIENCE` settings. Device public keys and
+ownership are persisted in the database; startup migrates the `devices` table.
+
+Alternatively, `cd api-go && go run ./cmd/api` runs an auth-only entry point
+with password login and biometric endpoints always enabled. It uses
+`SPENDING_TRACKER_CONNECTION_STRING` and `PORT` (default 7004), and expects
+existing user accounts. The root `go run .` remains the full application.
+
+| POST endpoint | Request JSON | Success |
+| --- | --- | --- |
+| `/api/v1/auth/register-device` | `{"device_id":"phone-uuid","public_key_pem":"-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----\n","device_name":"Android"}` | 201 created, 200 updated; `{"device_id":"phone-uuid"}` |
+| `/api/v1/auth/challenge` | `{"device_id":"phone-uuid"}` | `{"challenge":"base64url-nonce","expires_at":"RFC3339 timestamp"}` |
+| `/api/v1/auth/verify-challenge` | `{"device_id":"phone-uuid","signature_b64":"standard-base64-DER-signature"}` | `{"access_token":"JWT","expires_in":900}` |
+
+Registration requires `Authorization: Bearer <password-login-token>` from the
+existing `/api/auth/login` endpoint. Biometric-issued tokens cannot enroll or
+replace keys. Device IDs are 1-128 ASCII letters, digits, hyphens, or underscores;
+device names are nonblank and at most 200 bytes. A device ID cannot be taken
+over by another account. Re-registering the same account/device updates its key
+and name; a key change invalidates outstanding challenges.
+
+### Android signing and security model
+
+1. Generate an ECDSA P-256 key in Android Keystore with
+   `setUserAuthenticationRequired(true)` and biometric authentication required
+   for each signing operation. Use `BiometricPrompt` with a signing `CryptoObject`.
+   Register the X.509 SubjectPublicKeyInfo public key as `PUBLIC KEY` PEM.
+2. Base64url-decode the returned challenge (no padding) into **32 raw bytes**.
+   Sign those bytes using Android `SHA256withECDSA`; encode the resulting ASN.1
+   DER signature with standard padded base64, without line breaks. Do not sign
+   the base64url text or hash twice.
+3. Keep the returned 15-minute JWT **only in memory** and send it as a Bearer
+   token to existing protected API routes. Never persist password-login or
+   biometric JWTs in preferences, files, or a token store. After process death
+   or token expiry, perform a new biometric challenge flow; there is no refresh
+   token. The private key never leaves Keystore.
+
+Challenges expire after 60 seconds. A new challenge replaces the previous one
+for that device. Verification atomically deletes the challenge before decoding
+or checking the signature, including failed/malformed signatures; replay or
+expiry returns 410. Invalid signatures and ownership conflicts return generic
+401 errors. Unknown devices receive indistinguishable challenge responses but
+cannot authenticate. Backend errors return 503. Each public endpoint has separate
+limits of five requests/minute per device ID **and** per IP (429).
+
+Set `REDIS_URL` (including credentials/TLS if needed) to use Redis 6.2+ atomic
+`GETDEL`. If Redis is unset or unavailable at startup, a mutex-protected memory
+store provides the same TTL/single-use behavior and emits a warning. A running
+process never switches backends: runtime Redis failures fail closed, preventing
+replay through inconsistent stores. Memory challenges are lost on restart and
+are suitable only for a single API instance. Rate limits are process-local even
+with Redis; enforce distributed limits at the gateway for multiple replicas.
+Use direct peer IPs, or explicitly configure trusted proxies before relying on
+forwarded IP headers; the API does not blindly trust them.
+
+Use HTTPS throughout. Logs include device IDs and outcomes, never raw nonces,
+signatures, or tokens. The server verifies possession of the registered key,
+not the biometric itself; enforcing biometric-only use is the client's Keystore
+responsibility (no Android key attestation is implemented). Existing password
+token lifetime settings are unchanged. Device revocation UI/endpoints and
+hardware attestation are outside this implementation.
+
+Run focused tests with `cd api-go && go test -race ./internal/auth ./internal/middleware ./user`.
+Redis store tests use an in-process Redis test server, not a local Redis service.
+The race detector requires cgo and a C compiler; without them, omit `-race`.
+
 ## Mobile app handoffs
 
 - [Notes & Lists](MOBILE_NOTES_HANDOFF.md): folder types, typed editors,
@@ -96,10 +171,13 @@ against the deployment database.
 | --- | --- | --- |
 | `BOXING_SYNC_ENABLED` | `false` | `true` |
 | `YOUTUBE_SYNC_ENABLED` | `true` | `false` |
+| `SEARCH_SYNC_ENABLED` | `false` | `true` |
 
-Set either variable to `true` or `false` to override it; malformed or empty
-overrides fail startup. Enabled schedules still run immediately and every six
-hours. Disabling a schedule does not disable manual sync endpoints.
+Set any variable to `true` or `false` to override it; malformed or empty
+overrides fail startup. Boxing and YouTube schedules run immediately and every
+six hours. Marketplace searches run at startup and every 24 hours, checking
+only enabled searches due that UTC day. Disabling a schedule does not disable
+manual sync endpoints.
 
 SIGINT/SIGTERM cancels schedules and in-flight requests, drains Fiber, and waits
 for workers before closing the database. YouTube syncs allow one pending/running
@@ -117,8 +195,79 @@ Configure both `TELEGRAM_BOT_TOKEN` (from Telegram's BotFather) and
 `TELEGRAM_CHAT_ID` to make the reusable client available in the app container.
 With neither variable set the client is nil; partial or malformed configuration
 fails startup. Never commit tokens or log token-bearing URLs. Task reminders
-have been removed: no scheduled Telegram messages are sent. Any existing
+have been removed; marketplace searches can send scheduled Telegram alerts. Any existing
 `task_reminders` table is left untouched but is no longer used or migrated.
+
+## Marketplace search
+
+Open **Shopping > Marketplace search** (`/search`) to create, edit, pause, or
+delete personal saved searches. Select marketplaces, enter keywords and a
+maximum item price in EUR. This first release supports **eBay only**; Facebook
+Marketplace and Subito.it are visible but disabled until a suitable provider
+is integrated. They are not silently scraped or treated as empty results.
+
+Configure these server environment variables (never commit credentials):
+
+- `EBAY_CLIENT_ID` and `EBAY_CLIENT_SECRET`: production eBay application
+  credentials with access to the
+  [Browse API](https://developer.ebay.com/api-docs/buy/browse/resources/item_summary/methods/search).
+  Production Buy API access is subject to eBay's approval and usage limits.
+  Missing credentials leave saved-search management available; a partial
+  configuration fails startup.
+- `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`: the existing application-wide
+  Telegram destination. Search keywords and listing details go to this shared
+  chat, not a private per-user chat.
+- `SEARCH_SYNC_ENABLED=true`: enable the worker (default true outside
+  development, false in development). The UI reports missing configuration.
+
+Searches use `EBAY_IT`, EUR, and fixed-price listings deliverable to Italy.
+Shipping is **not** included. Integer-cent comparisons enforce **strictly below**:
+a EUR 100 maximum alerts for EUR 99.99, not EUR 100.00. Results are paginated;
+searches exceeding eBay's 10,000-result window fail explicitly and need more
+specific keywords. There is no live marketplace preview or manual check endpoint.
+
+The worker checks due searches at startup and every 24 hours, with persisted
+next-check dates preventing repeated checks within the same UTC day after
+restart. New searches wait until the next worker pass. Each check has a
+two-minute deadline and a database lease to prevent concurrent instances
+checking the same search. Edits/deletes during a check return HTTP 409.
+Failures are logged and shown on the search card, and are retried on the next
+daily check. Matches are persisted before sending; a failed Telegram send
+remains pending and is retried only if that listing still qualifies.
+Listings already notified are not sent again, including after restarts.
+Changing keywords or the price threshold resets match history; pausing does not.
+Delivery is at-least-once: a process crash after Telegram accepts a message but
+before its receipt is saved can cause a duplicate, since Telegram has no
+idempotency key.
+
+Authenticated API (all records are scoped to the current user):
+
+- `GET /api/marketplace-searches/configuration`: integration/worker readiness.
+- `GET /api/marketplace-searches`: saved searches (empty result is `[]`).
+- `POST /api/marketplace-searches`: create.
+- `PUT /api/marketplace-searches/:id`: replace criteria; omitted `enabled`
+  preserves it (creates default to enabled).
+- `DELETE /api/marketplace-searches/:id`: delete search and match history.
+- `GET /api/marketplace-searches/:id/matches`: latest 50 matching listings,
+  including `notifiedAt` (null when delivery is pending).
+
+Create/update body:
+
+```json
+{
+  "keywords": "folding bicycle",
+  "marketplaces": ["ebay"],
+  "maxPriceCents": 10000,
+  "enabled": true
+}
+```
+
+Keywords must contain 1-100 characters. `maxPriceCents` must be a positive
+integer within JavaScript's safe integer range; decimals and unsupported
+marketplaces are rejected. Startup AutoMigrate adds `marketplace_searches`
+and `marketplace_matches` without changing existing tables.
+Regression checks: `cd api-go && go test ./marketplace` and
+`cd frontend && node --test tests/marketplace-search.test.mjs`.
 
 ## Notes folder types
 

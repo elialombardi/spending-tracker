@@ -81,6 +81,7 @@ export const baseApi = createApi({
     "Channels",
     "Videos",
     "Tags",
-    "Sync"
+    "Sync",
+    "MarketplaceSearch"
   ],
 });

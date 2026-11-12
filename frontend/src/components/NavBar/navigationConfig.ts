@@ -9,6 +9,7 @@ import {
   SportsMma,
   LocalGasStation,
   PlayArrowRounded,
+  Search,
 } from "@mui/icons-material";
 import { NavSection } from "../../types/navigation";
 
@@ -17,6 +18,10 @@ export const NAV_SECTIONS: NavSection[] = [
     title: "Main",
     items: [{ path: "/map", label: "Map", icon: Home }],
     roles: ["User", "Admin"],
+  },
+  {
+    title: "Shopping",
+    items: [{ path: "/search", label: "Marketplace search", icon: Search }],
   },
   {
     title: "Training",

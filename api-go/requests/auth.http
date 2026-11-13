@@ -1,0 +1,86 @@
+# VS Code REST Client: set credentials, then send requests in order.
+# Point baseUrl at the Go API origin, without an /api suffix.
+# Full API: set BIOMETRIC_AUTH_ENABLED=true and JWT_SIGNING_KEY (32+ bytes),
+# then restart. Alternatively, run `go run ./cmd/api` from api-go.
+# A 405 can mean the wrong method/origin or disabled biometric routes.
+# File variables have TWO escaping layers: REST Client, then JSON.
+# In credential variables, write a literal backslash as \\\\ and a quote as \\".
+@baseUrl = http://localhost:7004
+@baseUrl = https://piccis.gwjz.uk
+@username = elia.lombardi
+@password = uvtecwtmCtZ7/5sdnU8N_FvFzP-R6.jmc5dDAy9M,t\\\\FWyzctg9\\\\TTNBBhr2
+@deviceId = rest-client-test-device
+@deviceName = VS Code REST Client
+
+# Valid P-256 sample public key for testing registration only.
+# Its private key is not retained. For successful verification, replace this
+# JSON string with your own public key BEFORE registering:
+#   umask 077
+#   openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out /tmp/spending-auth-test-key.pem
+#   openssl pkey -in /tmp/spending-auth-test-key.pem -pubout | jq -Rs .
+# Double every backslash in the JSON output for REST Client's variable decoder,
+# then paste the complete string, including quotes (newlines must be \\n).
+# Keep the private key outside the repository; remove it after testing.
+@publicKeyPem = "-----BEGIN PUBLIC KEY-----\\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAES6GWwJ+fNgBCX4F/vcutJ8cgNvSo\\nid/lQtulBjPqhufnI55Pa4qIKkx24WQrB0ETtUAOj3V64r87DB4iIu6APQ==\\n-----END PUBLIC KEY-----\\n"
+
+# After requesting a challenge, replace this with its signature (see step 4).
+@signatureB64 = REPLACE_WITH_STANDARD_BASE64_DER_SIGNATURE
+
+### 1. Password login (200; supplies the registration Bearer token)
+# @name passwordLogin
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+Accept: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+### 2. Register device (201 new, 200 updated)
+# Must use a password-login token, not a biometric token.
+# @name registerDevice
+POST {{baseUrl}}/api/v1/auth/register-device
+Authorization: Bearer {{passwordLogin.response.body.$.access_token}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "device_id": "{{deviceId}}",
+  "public_key_pem": {{publicKeyPem}},
+  "device_name": "{{deviceName}}"
+}
+
+### 3. Request challenge (200; expires after 60 seconds)
+# No Authorization header required.
+# @name deviceChallenge
+POST {{baseUrl}}/api/v1/auth/challenge
+Content-Type: application/json
+Accept: application/json
+
+{
+  "device_id": "{{deviceId}}"
+}
+
+### 4. Verify challenge (200; supplies a 15-minute biometric token)
+# Requires registration with YOUR key, not the sample public key above.
+# Copy the challenge response value into CHALLENGE below, then run:
+#   printf '%s=' 'CHALLENGE' | tr '_-' '/+' | openssl base64 -d -A | openssl dgst -sha256 -sign /tmp/spending-auth-test-key.pem | openssl base64 -A
+# Paste the output into signatureB64 above and send within 60 seconds.
+# Each verification attempt consumes the challenge, even on failure.
+# Request a new challenge and sign it again before retrying (410 on replay).
+# Challenge/verification endpoints each allow 5 requests/minute per device/IP.
+# @name biometricLogin
+POST {{baseUrl}}/api/v1/auth/verify-challenge
+Content-Type: application/json
+Accept: application/json
+
+{
+  "device_id": "{{deviceId}}",
+  "signature_b64": "{{signatureB64}}"
+}
+
+### 5. Test the biometric token on a protected endpoint (200)
+GET {{baseUrl}}/api/users?page=1&limit=1
+Authorization: Bearer {{biometricLogin.response.body.$.access_token}}
+Accept: application/json

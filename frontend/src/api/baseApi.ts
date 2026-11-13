@@ -82,6 +82,7 @@ export const baseApi = createApi({
     "Videos",
     "Tags",
     "Sync",
-    "MarketplaceSearch"
+    "MarketplaceSearch",
+    "RegisteredDevice"
   ],
 });

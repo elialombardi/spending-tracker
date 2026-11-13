@@ -59,6 +59,25 @@ func (s *Service) Register(ctx context.Context, device Device) (bool, error) {
 	return s.devices.Upsert(ctx, device)
 }
 
+func (s *Service) ListDevices(ctx context.Context, userID uint) ([]Device, error) {
+	return s.devices.List(ctx, userID)
+}
+
+func (s *Service) RenameDevice(ctx context.Context, userID uint, id, name string) error {
+	return s.devices.Rename(ctx, userID, id, name)
+}
+
+func (s *Service) RevokeDevice(ctx context.Context, userID uint, id string) error {
+	if err := s.devices.Delete(ctx, userID, id); err != nil {
+		return err
+	}
+	_, err := s.challenges.Consume(ctx, id)
+	if errors.Is(err, ErrChallengeMissing) {
+		return nil
+	}
+	return err
+}
+
 func (s *Service) Challenge(ctx context.Context, id string) (string, time.Time, error) {
 	nonce := make([]byte, 32)
 	if _, err := rand.Read(nonce); err != nil {

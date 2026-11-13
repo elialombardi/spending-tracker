@@ -68,12 +68,39 @@ Use HTTPS throughout. Logs include device IDs and outcomes, never raw nonces,
 signatures, or tokens. The server verifies possession of the registered key,
 not the biometric itself; enforcing biometric-only use is the client's Keystore
 responsibility (no Android key attestation is implemented). Existing password
-token lifetime settings are unchanged. Device revocation UI/endpoints and
-hardware attestation are outside this implementation.
+token lifetime settings are unchanged. Hardware attestation is outside this
+implementation.
+
+### Managing registered devices
+
+Open **Registered devices** from the user menu to list, rename, or revoke your
+own devices. These endpoints require a password-login Bearer token and
+`BIOMETRIC_AUTH_ENABLED=true`, just like enrollment:
+
+| Method | Endpoint | Success |
+| --- | --- | --- |
+| GET | `/api/v1/auth/devices` | Array of `{"device_id":"...","device_name":"..."}` |
+| PATCH | `/api/v1/auth/devices/:deviceID` | Send `{"device_name":"New name"}`; returns the renamed device |
+| DELETE | `/api/v1/auth/devices/:deviceID` | 204; removes the device and consumes any outstanding challenge |
+
+Other accounts' devices and unknown IDs both return 404 on changes. Public
+keys and account IDs are not included in list responses. Names must be nonblank
+and at most 200 UTF-8 bytes. Revocation prevents future biometric sign-ins;
+already-issued access tokens remain valid until expiry (up to 15 minutes).
+Renaming does not change the key or invalidate challenges. Deploy both the API
+and frontend updates to enable this page.
 
 Run focused tests with `cd api-go && go test -race ./internal/auth ./internal/middleware ./user`.
 Redis store tests use an in-process Redis test server, not a local Redis service.
 The race detector requires cgo and a C compiler; without them, omit `-race`.
+
+For manual testing in VS Code REST Client, use [auth.http](api-go/requests/auth.http).
+Set the API origin and credentials, then run password login, device registration,
+challenge, and verification in order. The file includes a valid registration-only
+sample public key and instructions for generating your own key and signing a
+challenge. Registration must use `POST /api/v1/auth/register-device`, not the
+unversioned login prefix. If it returns 405, check the method and API origin, and
+ensure biometric auth is enabled and the full API has been restarted.
 
 ## Mobile app handoffs
 

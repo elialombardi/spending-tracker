@@ -222,6 +222,10 @@ function UserMenu({
 
         <Divider sx={{ my: 0.5 }} />
 
+        <MenuItem onClick={() => { navigate('/devices'); handleClose(); }} sx={{ py: 1 }}>
+          Registered devices
+        </MenuItem>
+
         {/* Admin users button */}
         {isAdminUser && (
           <>

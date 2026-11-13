@@ -258,6 +258,103 @@ func TestHandlersAndRateLimits(t *testing.T) {
 	request("/challenge", `{"device_id":"new"}`, "192.0.2.1", 429)
 }
 
+func TestDeviceManagement(t *testing.T) {
+	db := testDatabase(t)
+	store := NewSQLDeviceStore(db)
+	service := NewService(store, NewMemoryChallengeStore(), testTokens(t), user.NewUserService(db))
+	handler := NewHandler(service, slog.New(slog.NewJSONHandler(io.Discard, nil)))
+	app := fiber.New()
+	handler.RegisterRoutes(app, func(c fiber.Ctx) error {
+		if c.Get("X-Test-Authenticated") == "true" {
+			c.Locals(user.UserIDKey, uint(1))
+		}
+		return c.Next()
+	})
+	request := func(method, path, body string, authenticated bool, status int) []byte {
+		t.Helper()
+		req := httptest.NewRequest(method, "/api/v1/auth/devices"+path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		if authenticated {
+			req.Header.Set("X-Test-Authenticated", "true")
+		}
+		response, err := app.Test(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer response.Body.Close()
+		data, err := io.ReadAll(response.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if response.StatusCode != status {
+			t.Fatalf("%s %s got %d: %s, want %d", method, path, response.StatusCode, data, status)
+		}
+		return data
+	}
+	for _, route := range []struct{ method, path string }{
+		{"GET", ""}, {"PATCH", "/phone"}, {"DELETE", "/phone"},
+	} {
+		request(route.method, route.path, `{"device_name":"New"}`, false, 401)
+	}
+	if data := request("GET", "", "", true, 200); string(data) != "[]" {
+		t.Fatalf("empty list should be [], got %s", data)
+	}
+	key, public := testKey(t)
+	for _, device := range []Device{
+		{DeviceID: "phone", DeviceName: "Phone", UserID: 1, PublicKeyPEM: public},
+		{DeviceID: "foreign", DeviceName: "Other account", UserID: 2, PublicKeyPEM: public},
+	} {
+		if _, err := service.Register(context.Background(), device); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var listed []map[string]string
+	if err := json.Unmarshal(request("GET", "", "", true, 200), &listed); err != nil {
+		t.Fatal(err)
+	}
+	if len(listed) != 1 || len(listed[0]) != 2 || listed[0]["device_id"] != "phone" || listed[0]["device_name"] != "Phone" {
+		t.Fatalf("unexpected device list or exposed private fields: %+v", listed)
+	}
+	for _, id := range []string{"foreign", "missing"} {
+		request("PATCH", "/"+id, `{"device_name":"Stolen"}`, true, 404)
+		request("DELETE", "/"+id, "", true, 404)
+	}
+	for _, body := range []string{
+		`{`, `{}`, `{"device_name":"   "}`, `{"device_name":false}`,
+		`{"device_name":"` + strings.Repeat("a", 201) + `"}`,
+		`{"device_name":"` + strings.Repeat("\u00e9", 101) + `"}`,
+	} {
+		request("PATCH", "/phone", body, true, 400)
+	}
+	request("PATCH", "/bad.id", `{"device_name":"Name"}`, true, 400)
+	request("DELETE", "/bad.id", "", true, 400)
+	request("PATCH", "/phone", `{"device_name":"  Renamed phone  "}`, true, 200)
+	device, err := store.Find(context.Background(), "phone")
+	if err != nil || device.DeviceName != "Renamed phone" || device.PublicKeyPEM != public || device.UserID != 1 {
+		t.Fatalf("rename changed unexpected fields: %+v, %v", device, err)
+	}
+	challenge, _, err := service.Challenge(context.Background(), "phone")
+	if err != nil {
+		t.Fatal(err)
+	}
+	request("DELETE", "/phone", "", true, 204)
+	if _, err := store.Find(context.Background(), "phone"); !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("revoked device still exists: %v", err)
+	}
+	// Re-enrollment must not restore a challenge issued before revocation.
+	if _, err := service.Register(context.Background(), device); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Verify(context.Background(), "phone", signChallenge(t, key, challenge)); !errors.Is(err, ErrChallengeMissing) {
+		t.Fatalf("pre-revocation challenge survived re-enrollment: %v", err)
+	}
+	request("DELETE", "/phone", "", true, 204)
+	foreign, err := store.Find(context.Background(), "foreign")
+	if err != nil || foreign.DeviceName != "Other account" {
+		t.Fatalf("other account's device was modified: %+v, %v", foreign, err)
+	}
+}
+
 func TestRateLimitsByIPAndDevice(t *testing.T) {
 	db := testDatabase(t)
 	for _, path := range []string{"/challenge", "/verify-challenge"} {

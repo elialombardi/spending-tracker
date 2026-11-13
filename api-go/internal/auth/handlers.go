@@ -109,6 +109,9 @@ func rateLimit(key func(fiber.Ctx) string) fiber.Handler {
 func (h *Handler) RegisterRoutes(app *fiber.App, authenticate fiber.Handler) {
 	group := app.Group("/api/v1/auth")
 	group.Post("/register-device", authenticate, parseDevice, h.register)
+	group.Get("/devices", authenticate, h.listDevices)
+	group.Patch("/devices/:deviceID", authenticate, h.renameDevice)
+	group.Delete("/devices/:deviceID", authenticate, h.revokeDevice)
 	for _, route := range []struct {
 		path    string
 		handler fiber.Handler
@@ -119,6 +122,73 @@ func (h *Handler) RegisterRoutes(app *fiber.App, authenticate fiber.Handler) {
 			rateLimit(func(c fiber.Ctx) string { return c.Locals("biometric_request").(deviceRequest).DeviceID }),
 			route.handler)
 	}
+}
+
+type deviceSummary struct {
+	DeviceID   string `json:"device_id"`
+	DeviceName string `json:"device_name"`
+}
+
+func (h *Handler) listDevices(c fiber.Ctx) error {
+	userID, ok := c.Locals(user.UserIDKey).(uint)
+	if !ok || userID == 0 {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "authentication failed"})
+	}
+	devices, err := h.service.ListDevices(c.Context(), userID)
+	if err != nil {
+		return h.failure(c, "", err)
+	}
+	result := make([]deviceSummary, 0, len(devices))
+	for _, device := range devices {
+		result = append(result, deviceSummary{DeviceID: device.DeviceID, DeviceName: device.DeviceName})
+	}
+	return c.JSON(result)
+}
+
+func (h *Handler) renameDevice(c fiber.Ctx) error {
+	userID, ok := c.Locals(user.UserIDKey).(uint)
+	if !ok || userID == 0 {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "authentication failed"})
+	}
+	id := c.Params("deviceID")
+	var req struct {
+		DeviceName string `json:"device_name"`
+	}
+	if !validDeviceID(id) || c.Bind().Body(&req) != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid device request"})
+	}
+	name := strings.TrimSpace(req.DeviceName)
+	if name == "" || len(name) > 200 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "device name must be between 1 and 200 bytes"})
+	}
+	if err := h.service.RenameDevice(c.Context(), userID, id, name); err != nil {
+		return h.deviceManagementFailure(c, id, err)
+	}
+	h.log.Info("biometric device renamed", "device_id", id)
+	return c.JSON(deviceSummary{DeviceID: id, DeviceName: name})
+}
+
+func (h *Handler) revokeDevice(c fiber.Ctx) error {
+	userID, ok := c.Locals(user.UserIDKey).(uint)
+	if !ok || userID == 0 {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "authentication failed"})
+	}
+	id := c.Params("deviceID")
+	if !validDeviceID(id) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid device request"})
+	}
+	if err := h.service.RevokeDevice(c.Context(), userID, id); err != nil {
+		return h.deviceManagementFailure(c, id, err)
+	}
+	h.log.Info("biometric device revoked", "device_id", id)
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+func (h *Handler) deviceManagementFailure(c fiber.Ctx, id string, err error) error {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "device not found"})
+	}
+	return h.failure(c, id, err)
 }
 
 func (h *Handler) register(c fiber.Ctx) error {

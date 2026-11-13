@@ -120,6 +120,9 @@ type Device struct {
 type DeviceStore interface {
 	Find(context.Context, string) (Device, error)
 	Upsert(context.Context, Device) (bool, error)
+	List(context.Context, uint) ([]Device, error)
+	Rename(context.Context, uint, string, string) error
+	Delete(context.Context, uint, string) error
 }
 
 type SQLDeviceStore struct {
@@ -134,6 +137,37 @@ func (s *SQLDeviceStore) Find(ctx context.Context, id string) (Device, error) {
 	var device Device
 	err := s.db.WithContext(ctx).Where("device_id = ?", id).First(&device).Error
 	return device, err
+}
+
+func (s *SQLDeviceStore) List(ctx context.Context, userID uint) ([]Device, error) {
+	devices := make([]Device, 0)
+	err := s.db.WithContext(ctx).Where("user_id = ?", userID).
+		Order("device_name ASC").Order("device_id ASC").Find(&devices).Error
+	return devices, err
+}
+
+func (s *SQLDeviceStore) Rename(ctx context.Context, userID uint, id, name string) error {
+	result := s.db.WithContext(ctx).Model(&Device{}).
+		Where("user_id = ? AND device_id = ?", userID, id).
+		Update("device_name", name)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
+func (s *SQLDeviceStore) Delete(ctx context.Context, userID uint, id string) error {
+	result := s.db.WithContext(ctx).Where("user_id = ? AND device_id = ?", userID, id).Delete(&Device{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (s *SQLDeviceStore) Upsert(ctx context.Context, device Device) (bool, error) {

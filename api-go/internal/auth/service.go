@@ -102,34 +102,41 @@ func (s *Service) Challenge(ctx context.Context, id string) (string, time.Time, 
 func (s *Service) Verify(ctx context.Context, id, signature string) (string, error) {
 	value, err := s.challenges.Consume(ctx, id)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("consume challenge: %w", err)
 	}
 	signatureBytes, err := base64.StdEncoding.Strict().DecodeString(signature)
 	if err != nil {
-		return "", ErrUnauthorized
+		return "", fmt.Errorf("signature is not valid standard base64: %w", ErrUnauthorized)
 	}
 	device, err := s.devices.Find(ctx, id)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return "", ErrUnauthorized
+		return "", fmt.Errorf("registered device not found: %w", ErrUnauthorized)
 	}
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("find registered device: %w", err)
 	}
 	keyHash := sha256.Sum256([]byte(device.PublicKeyPEM))
-	if device.UserID != value.UserID || subtle.ConstantTimeCompare(keyHash[:], value.KeyHash[:]) != 1 {
-		return "", ErrUnauthorized
+	if device.UserID != value.UserID {
+		return "", fmt.Errorf("device owner differs from challenge owner: %w", ErrUnauthorized)
+	}
+	if subtle.ConstantTimeCompare(keyHash[:], value.KeyHash[:]) != 1 {
+		return "", fmt.Errorf("registered key changed since challenge issuance: %w", ErrUnauthorized)
 	}
 	key, err := ParsePublicKey(device.PublicKeyPEM)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("parse registered public key: %w", err)
 	}
 	if !VerifySignature(key, value.Nonce, signatureBytes) {
-		return "", ErrUnauthorized
+		return "", fmt.Errorf("ECDSA signature verification failed (decoded_signature_bytes=%d): %w", len(signatureBytes), ErrUnauthorized)
 	}
 	account, err := s.users.GetByID(device.UserID)
 	if err != nil {
 		return "", fmt.Errorf("resolve device user: %w", err)
 	}
 	// Existing API tokens use the username as sub; preserve that contract.
-	return s.tokens.Issue(account.Username, id)
+	token, err := s.tokens.Issue(account.Username, id)
+	if err != nil {
+		return "", fmt.Errorf("issue biometric token: %w", err)
+	}
+	return token, nil
 }

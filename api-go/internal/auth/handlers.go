@@ -229,6 +229,7 @@ func (h *Handler) challenge(c fiber.Ctx) error {
 
 func (h *Handler) verify(c fiber.Ctx) error {
 	req := c.Locals("biometric_request").(deviceRequest)
+	h.log.Info("biometric verification requested", "device_id", req.DeviceID, "signature_b64_length", len(req.SignatureB64))
 	token, err := h.service.Verify(c.Context(), req.DeviceID, req.SignatureB64)
 	if err != nil {
 		return h.failure(c, req.DeviceID, err)
@@ -240,10 +241,10 @@ func (h *Handler) verify(c fiber.Ctx) error {
 func (h *Handler) failure(c fiber.Ctx, id string, err error) error {
 	switch {
 	case errors.Is(err, ErrUnauthorized):
-		h.log.Warn("biometric authentication failed", "device_id", id)
+		h.log.Warn("biometric authentication failed", "device_id", id, "reason", err)
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "authentication failed"})
 	case errors.Is(err, ErrChallengeMissing):
-		h.log.Warn("biometric challenge missing or expired", "device_id", id)
+		h.log.Warn("biometric challenge missing or expired", "device_id", id, "reason", err)
 		return c.Status(fiber.StatusGone).JSON(fiber.Map{"error": "challenge missing or expired"})
 	default:
 		h.log.Error("biometric authentication backend failed", "device_id", id, "error", err)

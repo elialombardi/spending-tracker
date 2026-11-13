@@ -65,7 +65,12 @@ Use direct peer IPs, or explicitly configure trusted proxies before relying on
 forwarded IP headers; the API does not blindly trust them.
 
 Use HTTPS throughout. Logs include device IDs and outcomes, never raw nonces,
-signatures, or tokens. The server verifies possession of the registered key,
+signatures, or tokens. Verification logs include the submitted base64 signature
+length and a server-only failure reason: missing/expired/consumed challenge,
+invalid standard base64, unknown device, changed ownership/key, or failed ECDSA
+verification (with decoded signature length). Client error responses remain
+generic. For missing challenges, also check whether requests reach different API
+instances while using the process-local memory store. The server verifies possession of the registered key,
 not the biometric itself; enforcing biometric-only use is the client's Keystore
 responsibility (no Android key attestation is implemented). Existing password
 token lifetime settings are unchanged. Hardware attestation is outside this

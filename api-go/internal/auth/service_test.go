@@ -128,6 +128,16 @@ func TestVerifyChallenge(t *testing.T) {
 				}
 			}
 			token, err := service.Verify(ctx, id, sig)
+			reasons := map[string]string{
+				"wrong key":           "ECDSA signature verification failed",
+				"malformed signature": "signature is not valid standard base64",
+				"expired":             "consume challenge",
+				"rotated key":         "registered key changed since challenge issuance",
+				"unknown device":      "registered device not found",
+			}
+			if reason, ok := reasons[scenario]; ok && (err == nil || !strings.Contains(err.Error(), reason)) {
+				t.Fatalf("expected verification diagnostic %q, got %v", reason, err)
+			}
 			switch scenario {
 			case "success":
 				if err != nil {
@@ -207,7 +217,8 @@ func TestRegistrationOwnershipAndKeyValidation(t *testing.T) {
 func TestHandlersAndRateLimits(t *testing.T) {
 	db := testDatabase(t)
 	service := NewService(NewSQLDeviceStore(db), NewMemoryChallengeStore(), testTokens(t), user.NewUserService(db))
-	handler := NewHandler(service, slog.New(slog.NewJSONHandler(io.Discard, nil)))
+	var logs bytes.Buffer
+	handler := NewHandler(service, slog.New(slog.NewJSONHandler(&logs, nil)))
 	app := fiber.New()
 	handler.RegisterRoutes(app, func(c fiber.Ctx) error {
 		c.Locals(user.UserIDKey, uint(1))
@@ -249,7 +260,27 @@ func TestHandlersAndRateLimits(t *testing.T) {
 	if verified["expires_in"] != float64(900) || verified["access_token"] == "" {
 		t.Fatalf("unexpected token response: %+v", verified)
 	}
-	request("/verify-challenge", verifyBody, "192.0.2.1", 410)
+	replay := request("/verify-challenge", verifyBody, "192.0.2.1", 410)
+	if replay["error"] != "challenge missing or expired" {
+		t.Fatalf("internal diagnostic exposed in response: %+v", replay)
+	}
+	if _, _, err := service.Challenge(context.Background(), "phone"); err != nil {
+		t.Fatal(err)
+	}
+	failed := request("/verify-challenge", `{"device_id":"phone","signature_b64":"not-base64!"}`, "192.0.2.2", 401)
+	if failed["error"] != "authentication failed" {
+		t.Fatalf("internal diagnostic exposed in response: %+v", failed)
+	}
+	for _, diagnostic := range []string{"signature_b64_length", "consume challenge", "signature is not valid standard base64"} {
+		if !strings.Contains(logs.String(), diagnostic) {
+			t.Fatalf("missing verification log diagnostic %q", diagnostic)
+		}
+	}
+	for _, sensitive := range []string{sig, "not-base64!", public, challenge["challenge"].(string), verified["access_token"].(string)} {
+		if strings.Contains(logs.String(), sensitive) {
+			t.Fatal("authentication logs contain sensitive material")
+		}
+	}
 
 	// Different device IDs cannot bypass the IP limit.
 	for i := 0; i < 4; i++ {

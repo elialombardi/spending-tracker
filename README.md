@@ -21,7 +21,7 @@ existing user accounts. The root `go run .` remains the full application.
 | --- | --- | --- |
 | `/api/v1/auth/register-device` | `{"device_id":"phone-uuid","public_key_pem":"-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----\n","device_name":"Android"}` | 201 created, 200 updated; `{"device_id":"phone-uuid"}` |
 | `/api/v1/auth/challenge` | `{"device_id":"phone-uuid"}` | `{"challenge":"base64url-nonce","expires_at":"RFC3339 timestamp"}` |
-| `/api/v1/auth/verify-challenge` | `{"device_id":"phone-uuid","signature_b64":"standard-base64-DER-signature"}` | `{"access_token":"JWT","expires_in":900}` |
+| `/api/v1/auth/verify-challenge` | `{"device_id":"phone-uuid","signature_b64":"standard-base64-DER-signature"}` | `{"access_token":"JWT","expires_in":900,"role":"Writer"}` |
 
 Registration requires `Authorization: Bearer <password-login-token>` from the
 existing `/api/auth/login` endpoint. Biometric-issued tokens cannot enroll or
@@ -29,6 +29,9 @@ replace keys. Device IDs are 1-128 ASCII letters, digits, hyphens, or underscore
 device names are nonblank and at most 200 bytes. A device ID cannot be taken
 over by another account. Re-registering the same account/device updates its key
 and name; a key change invalidates outstanding challenges.
+
+Verification returns the account's current database role alongside the token.
+The role is informational for clients; API authorization remains server-enforced.
 
 ### Android signing and security model
 

@@ -230,12 +230,12 @@ func (h *Handler) challenge(c fiber.Ctx) error {
 func (h *Handler) verify(c fiber.Ctx) error {
 	req := c.Locals("biometric_request").(deviceRequest)
 	h.log.Info("biometric verification requested", "device_id", req.DeviceID, "signature_b64_length", len(req.SignatureB64))
-	token, err := h.service.Verify(c.Context(), req.DeviceID, req.SignatureB64)
+	response, err := h.service.Verify(c.Context(), req.DeviceID, req.SignatureB64)
 	if err != nil {
 		return h.failure(c, req.DeviceID, err)
 	}
 	h.log.Info("biometric authentication succeeded", "device_id", req.DeviceID)
-	return c.JSON(fiber.Map{"access_token": token, "expires_in": int(TokenLifetime.Seconds())})
+	return c.JSON(response)
 }
 
 func (h *Handler) failure(c fiber.Ctx, id string, err error) error {

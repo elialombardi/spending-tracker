@@ -99,44 +99,54 @@ func (s *Service) Challenge(ctx context.Context, id string) (string, time.Time, 
 	return base64.RawURLEncoding.EncodeToString(nonce), value.ExpiresAt, nil
 }
 
-func (s *Service) Verify(ctx context.Context, id, signature string) (string, error) {
+type VerificationResponse struct {
+	AccessToken string `json:"access_token"`
+	ExpiresIn   int    `json:"expires_in"`
+	Role        string `json:"role"`
+}
+
+func (s *Service) Verify(ctx context.Context, id, signature string) (*VerificationResponse, error) {
 	value, err := s.challenges.Consume(ctx, id)
 	if err != nil {
-		return "", fmt.Errorf("consume challenge: %w", err)
+		return nil, fmt.Errorf("consume challenge: %w", err)
 	}
 	signatureBytes, err := base64.StdEncoding.Strict().DecodeString(signature)
 	if err != nil {
-		return "", fmt.Errorf("signature is not valid standard base64: %w", ErrUnauthorized)
+		return nil, fmt.Errorf("signature is not valid standard base64: %w", ErrUnauthorized)
 	}
 	device, err := s.devices.Find(ctx, id)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return "", fmt.Errorf("registered device not found: %w", ErrUnauthorized)
+		return nil, fmt.Errorf("registered device not found: %w", ErrUnauthorized)
 	}
 	if err != nil {
-		return "", fmt.Errorf("find registered device: %w", err)
+		return nil, fmt.Errorf("find registered device: %w", err)
 	}
 	keyHash := sha256.Sum256([]byte(device.PublicKeyPEM))
 	if device.UserID != value.UserID {
-		return "", fmt.Errorf("device owner differs from challenge owner: %w", ErrUnauthorized)
+		return nil, fmt.Errorf("device owner differs from challenge owner: %w", ErrUnauthorized)
 	}
 	if subtle.ConstantTimeCompare(keyHash[:], value.KeyHash[:]) != 1 {
-		return "", fmt.Errorf("registered key changed since challenge issuance: %w", ErrUnauthorized)
+		return nil, fmt.Errorf("registered key changed since challenge issuance: %w", ErrUnauthorized)
 	}
 	key, err := ParsePublicKey(device.PublicKeyPEM)
 	if err != nil {
-		return "", fmt.Errorf("parse registered public key: %w", err)
+		return nil, fmt.Errorf("parse registered public key: %w", err)
 	}
 	if !VerifySignature(key, value.Nonce, signatureBytes) {
-		return "", fmt.Errorf("ECDSA signature verification failed (decoded_signature_bytes=%d): %w", len(signatureBytes), ErrUnauthorized)
+		return nil, fmt.Errorf("ECDSA signature verification failed (decoded_signature_bytes=%d): %w", len(signatureBytes), ErrUnauthorized)
 	}
 	account, err := s.users.GetByID(device.UserID)
 	if err != nil {
-		return "", fmt.Errorf("resolve device user: %w", err)
+		return nil, fmt.Errorf("resolve device user: %w", err)
 	}
 	// Existing API tokens use the username as sub; preserve that contract.
 	token, err := s.tokens.Issue(account.Username, id)
 	if err != nil {
-		return "", fmt.Errorf("issue biometric token: %w", err)
+		return nil, fmt.Errorf("issue biometric token: %w", err)
 	}
-	return token, nil
+	return &VerificationResponse{
+		AccessToken: token,
+		ExpiresIn:   int(TokenLifetime.Seconds()),
+		Role:        account.Role,
+	}, nil
 }

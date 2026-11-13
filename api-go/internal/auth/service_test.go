@@ -127,7 +127,7 @@ func TestVerifyChallenge(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			token, err := service.Verify(ctx, id, sig)
+			response, err := service.Verify(ctx, id, sig)
 			reasons := map[string]string{
 				"wrong key":           "ECDSA signature verification failed",
 				"malformed signature": "signature is not valid standard base64",
@@ -143,7 +143,7 @@ func TestVerifyChallenge(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				claims, err := tokens.Validate(token)
+				claims, err := tokens.Validate(response.AccessToken)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -154,7 +154,7 @@ func TestVerifyChallenge(t *testing.T) {
 				t.Setenv("JWT_SIGNING_KEY", strings.Repeat("s", 32))
 				t.Setenv("JWT_ISSUER", "issuer")
 				t.Setenv("JWT_AUDIENCE", "audience")
-				account, err := user.NewAuthService(users).ValidateToken(token)
+				account, err := user.NewAuthService(users).ValidateToken(response.AccessToken)
 				if err != nil || account.ID != 1 {
 					t.Fatalf("token incompatible with existing API: %v", err)
 				}
@@ -256,8 +256,11 @@ func TestHandlersAndRateLimits(t *testing.T) {
 	}
 	sig := signChallenge(t, key, challenge["challenge"].(string))
 	verifyBody := `{"device_id":"phone","signature_b64":"` + sig + `"}`
+	if err := db.Model(&user.User{}).Where("id = ?", 1).Update("role", "Reader").Error; err != nil {
+		t.Fatal(err)
+	}
 	verified := request("/verify-challenge", verifyBody, "192.0.2.1", 200)
-	if verified["expires_in"] != float64(900) || verified["access_token"] == "" {
+	if verified["expires_in"] != float64(900) || verified["access_token"] == "" || verified["role"] != "Reader" {
 		t.Fatalf("unexpected token response: %+v", verified)
 	}
 	replay := request("/verify-challenge", verifyBody, "192.0.2.1", 410)

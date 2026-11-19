@@ -306,6 +306,11 @@ Regression checks: `cd api-go && go test ./marketplace` and
 
 ## Notes folder types
 
+The [Chrome extension](chrome-extension/README.md) saves the current browser
+page directly into a Bookmarks folder, with configurable app/API URLs and
+its own password sign-in. Load [chrome-extension/](chrome-extension/) unpacked
+from `chrome://extensions`; no build is required.
+
 Folders expose `type`: `buy_list`, `tasks_list`, `links`, or `diary` (the default).
 Create/edit it in the folder dialog. Nested folders have independent types.
 Existing folders migrate to diary without changing notes, ordering, or styles.
@@ -335,8 +340,11 @@ records. Create/update accepts it; omitted updates preserve it and `url: ""`
 clears it. Nonempty URLs are trimmed and must be absolute HTTP(S) addresses
 without embedded credentials, whitespace, or backslashes. Invalid URLs return
 HTTP 400. Empty URLs remain supported for folder conversions and older clients;
-the web requires a valid URL when saving a bookmark. Startup AutoMigrate adds
-the URL column without changing existing fields.
+the web requires a valid URL when saving a bookmark. The database URL column
+is nullable, with no default; missing or cleared URLs are stored as NULL and
+returned as `""` by the API. Startup AutoMigrate adds the nullable column or
+removes the previous NOT NULL constraint/default without rewriting existing
+NULLs, empty strings, or saved links.
 
 All note types use a responsive right-side editor drawer, full-width on phones,
 with a scrollable form and pinned actions. Closing via Escape, backdrop, or the

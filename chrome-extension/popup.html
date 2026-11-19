@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>Save a bookmark</title>
+    <link rel="stylesheet" href="popup.css">
+    <script type="module" src="popup.mjs"></script>
+  </head>
+  <body>
+    <header>
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17l-6-4-6 4V4Z"/></svg>
+      </span>
+      <div class="brand"><span class="eyebrow">SPENDING TRACKER</span><h1>Save a bookmark</h1></div>
+      <button id="settings-button" class="icon-button" type="button" aria-label="Connection settings" title="Connection settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 3-.7 2.2-2 .9-2.1-.5-2 3.4 1.5 1.7v2.6L2.2 15l2 3.4 2.1-.5 2 .9L9 21h4l.7-2.2 2-.9 2.1.5 2-3.4-1.5-1.7v-2.6L19.8 9l-2-3.4-2.1.5-2-.9L13 3H9Z"/><circle cx="11" cy="12" r="3"/></svg>
+      </button>
+    </header>
+    <main>
+      <div id="message" role="status" hidden></div>
+
+      <section id="settings-panel" aria-labelledby="settings-heading" hidden>
+        <h2 id="settings-heading">Connect your app</h2>
+        <p class="muted">Choose where to save your links. Chrome will ask for access to your API server only.</p>
+        <form id="settings-form">
+          <fieldset>
+            <label for="app-base">App URL</label>
+            <input id="app-base" type="url" required placeholder="https://tracker.example.com" autocomplete="url" aria-describedby="app-help">
+            <small id="app-help">The web app address, without /notes.</small>
+            <label for="api-base">API base URL</label>
+            <input id="api-base" type="url" required placeholder="https://api.example.com" autocomplete="url" aria-describedby="api-help">
+            <small id="api-help">Without /api. HTTPS required, except on localhost.</small>
+            <div class="actions">
+              <button id="cancel-settings" class="secondary" type="button">Cancel</button>
+              <button class="primary" type="submit">Save connection</button>
+            </div>
+          </fieldset>
+        </form>
+      </section>
+
+      <section id="login-panel" aria-labelledby="login-heading" hidden>
+        <h2 id="login-heading">Welcome back</h2>
+        <p class="muted">Sign in with your Spending Tracker account.</p>
+        <p id="server-label" class="server-label"></p>
+        <form id="login-form">
+          <fieldset>
+            <label for="username">Username</label>
+            <input id="username" autocomplete="username" required>
+            <label for="password">Password</label>
+            <input id="password" type="password" autocomplete="current-password" required>
+            <button class="primary wide" type="submit">Sign in</button>
+          </fieldset>
+        </form>
+        <p class="privacy-note">Your password is never saved. You stay signed in until your session expires or Chrome restarts.</p>
+      </section>
+
+      <section id="bookmark-panel" aria-labelledby="bookmark-heading" hidden>
+        <div class="account-row"><span id="account-label"></span><button id="sign-out" class="text-button" type="button">Sign out</button></div>
+        <div class="page-card"><span class="page-dot" aria-hidden="true"></span><div><h2 id="bookmark-heading">Keep something good</h2><p id="page-hint" class="muted">Capturing this page...</p></div></div>
+        <form id="bookmark-form">
+          <fieldset>
+            <label for="title">Title</label>
+            <input id="title" maxlength="200" required>
+            <label for="url">Page URL</label>
+            <input id="url" type="url" required placeholder="https://example.com">
+            <div class="label-row"><label for="folder">Save to folder</label><button id="refresh-folders" class="text-button" type="button">Refresh</button></div>
+            <select id="folder" required aria-describedby="folder-help"></select>
+            <p id="folder-help" class="muted">Only Bookmarks folders are shown, including nested folders.</p>
+            <label for="description">Description <span class="muted">(optional)</span></label>
+            <textarea id="description" rows="2" placeholder="Why is this worth keeping?"></textarea>
+          </fieldset>
+        </form>
+      </section>
+    </main>
+    <footer>
+      <div class="footer-meta"><span id="busy-label" role="status"></span><button id="open-app" class="text-button" type="button" disabled>Open app &nearr;</button></div>
+      <button id="save-bookmark" class="primary" type="submit" form="bookmark-form" hidden>Save bookmark</button>
+    </footer>
+  </body>
+</html>

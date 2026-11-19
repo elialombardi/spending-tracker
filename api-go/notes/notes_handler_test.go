@@ -195,7 +195,8 @@ func TestHandlersBindFolderTypesAndListFields(t *testing.T) {
 }
 
 func TestBookmarkURLsRoundTripAndValidation(t *testing.T) {
-	service := NewNotesService(newNotesTestDB(t))
+	database := newNotesTestDB(t)
+	service := NewNotesService(database)
 	handler := NewNotesHandler(service)
 	app := fiber.New()
 	app.Post("/folders", handler.CreateFolder)
@@ -259,6 +260,13 @@ func TestBookmarkURLsRoundTripAndValidation(t *testing.T) {
 	request("PUT", path, `{"url":""}`, 200, &note)
 	if note.URL != "" {
 		t.Fatal("explicit empty URL did not clear field")
+	}
+	var stored db.NoteEntity
+	if err := database.First(&stored, note.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if stored.URL != nil {
+		t.Fatal("cleared URL must be stored as NULL")
 	}
 	request("PUT", path, `{"url":123}`, 400, nil)
 }

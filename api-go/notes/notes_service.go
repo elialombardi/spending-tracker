@@ -351,6 +351,10 @@ func (s *notesService) wouldCreateCycle(folderID uint, candidateParentID uint) (
 }
 
 func mapNoteEntity(entity db.NoteEntity) NoteResponse {
+	bookmarkURL := ""
+	if entity.URL != nil {
+		bookmarkURL = *entity.URL
+	}
 	style := NoteStyle{
 		TextColor:       "#1f2937",
 		BackgroundColor: "#ffffff",
@@ -365,7 +369,7 @@ func mapNoteEntity(entity db.NoteEntity) NoteResponse {
 		Position:    entity.Position,
 		Title:       entity.Title,
 		Content:     entity.Content,
-		URL:         entity.URL,
+		URL:         bookmarkURL,
 		Description: entity.Description,
 		EndDate:     entity.EndDate,
 		Completed:   entity.Completed,
@@ -384,18 +388,18 @@ func validateFolderType(value string) error {
 	}
 }
 
-func normalizeBookmarkURL(value string) (string, error) {
+func normalizeBookmarkURL(value string) (*string, error) {
 	value = strings.TrimSpace(value)
 	if value == "" {
-		return "", nil
+		return nil, nil
 	}
 	parsed, err := url.ParseRequestURI(value)
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") ||
 		parsed.Hostname() == "" || parsed.User != nil || strings.ContainsAny(value, `\`) ||
 		strings.IndexFunc(value, unicode.IsSpace) >= 0 {
-		return "", errors.New("URL must be an absolute HTTP or HTTPS address without credentials or spaces")
+		return nil, errors.New("URL must be an absolute HTTP or HTTPS address without credentials or spaces")
 	}
-	return value, nil
+	return &value, nil
 }
 
 func normalizeEndDate(value *string) (*string, error) {

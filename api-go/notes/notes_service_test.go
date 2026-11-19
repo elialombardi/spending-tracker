@@ -301,6 +301,125 @@ func TestPositionMigrationDefaultsExistingRecords(t *testing.T) {
 	}
 }
 
+func TestNullableURLMigrationPreservesExistingValues(t *testing.T) {
+	empty, saved := "", "https://example.com/saved"
+	for _, test := range []struct {
+		name      string
+		urlColumn string
+		urls      []*string
+	}{
+		{name: "missing column", urls: []*string{nil}},
+		{name: "nullable column", urlColumn: ", url text", urls: []*string{nil, &empty, &saved}},
+		{name: "non-null column", urlColumn: ", url text NOT NULL DEFAULT ''", urls: []*string{&empty, &saved}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			database := newNotesTestDB(t)
+			service := NewNotesService(database)
+			folder, err := service.CreateFolder(&CreateFolderRequest{Name: "Existing"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := database.Exec("DROP TABLE notes").Error; err != nil {
+				t.Fatal(err)
+			}
+			schema := "CREATE TABLE notes (" +
+				"id integer PRIMARY KEY AUTOINCREMENT, folder_id integer NOT NULL, " +
+				"position integer NOT NULL DEFAULT 0, title text NOT NULL, content text NOT NULL, " +
+				"description text, end_date text, completed numeric NOT NULL DEFAULT false, " +
+				"style_json text NOT NULL DEFAULT '{}', created_at datetime, updated_at datetime" +
+				test.urlColumn + ")"
+			if err := database.Exec(schema).Error; err != nil {
+				t.Fatal(err)
+			}
+			for _, value := range test.urls {
+				statement := "INSERT INTO notes (folder_id, title, content) VALUES (?, ?, ?)"
+				args := []interface{}{folder.ID, "Existing note", "Keep content"}
+				if test.urlColumn != "" {
+					statement = "INSERT INTO notes (folder_id, title, content, url) VALUES (?, ?, ?, ?)"
+					args = append(args, value)
+				}
+				if err := database.Exec(statement, args...).Error; err != nil {
+					t.Fatal(err)
+				}
+			}
+			for range 2 {
+				if err := database.AutoMigrate(&db.NoteEntity{}); err != nil {
+					t.Fatal(err)
+				}
+				var rows []struct {
+					URL     *string
+					Content string
+				}
+				if err := database.Table("notes").Select("url", "content").Order("id ASC").Find(&rows).Error; err != nil {
+					t.Fatal(err)
+				}
+				if len(rows) != len(test.urls) {
+					t.Fatalf("migration changed row count: %d", len(rows))
+				}
+				for i, row := range rows {
+					if !reflect.DeepEqual(row.URL, test.urls[i]) || row.Content != "Keep content" {
+						t.Fatalf("migration changed row %d: %+v", i, row)
+					}
+				}
+				columns, err := database.Migrator().ColumnTypes(&db.NoteEntity{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				found := false
+				for _, column := range columns {
+					if column.Name() == "url" {
+						found = true
+						if nullable, ok := column.Nullable(); !ok || !nullable {
+							t.Fatal("URL column must allow existing NULL values")
+						}
+						if _, hasDefault := column.DefaultValue(); hasDefault {
+							t.Fatal("URL column must not require an empty-string default")
+						}
+					}
+				}
+				if !found {
+					t.Fatal("URL column missing")
+				}
+			}
+			note, err := service.CreateNote(&CreateNoteRequest{FolderID: folder.ID, Title: "No URL"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if note.URL != "" {
+				t.Fatalf("missing URL changed API representation: %q", note.URL)
+			}
+			var stored struct{ URL *string }
+			if err := database.Table("notes").Select("url").Where("id = ?", note.ID).Take(&stored).Error; err != nil {
+				t.Fatal(err)
+			}
+			if stored.URL != nil {
+				t.Fatal("missing URL must be stored as NULL")
+			}
+			title := "Updated without URL"
+			updated, err := service.UpdateNote(note.ID, &UpdateNoteRequest{Title: &title})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if updated.URL != "" {
+				t.Fatalf("partial update changed API representation: %q", updated.URL)
+			}
+			if err := database.Table("notes").Select("url").Where("id = ?", note.ID).Take(&stored).Error; err != nil {
+				t.Fatal(err)
+			}
+			if stored.URL != nil {
+				t.Fatal("partial update must preserve NULL URL")
+			}
+			tree, err := service.ListFolderTree()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(tree) != 1 || len(tree[0].Notes) != len(test.urls)+1 {
+				t.Fatalf("unexpected migrated tree: %+v", tree)
+			}
+		})
+	}
+}
+
 func TestFolderTypesAndHiddenNoteFieldsSurviveConversion(t *testing.T) {
 	service := NewNotesService(newNotesTestDB(t))
 	folder, err := service.CreateFolder(&CreateFolderRequest{Name: "Diary"})

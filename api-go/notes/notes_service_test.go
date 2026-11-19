@@ -294,6 +294,7 @@ func TestPositionMigrationDefaultsExistingRecords(t *testing.T) {
 		if len(tree) != 1 || tree[0].Position != 0 || tree[0].Name != "Existing folder" ||
 			tree[0].Type != FolderTypeDiary || len(tree[0].Notes) != 1 ||
 			tree[0].Notes[0].Position != 0 || tree[0].Notes[0].Content != "Existing content" ||
+			tree[0].Notes[0].URL != "" ||
 			tree[0].Notes[0].Description != nil || tree[0].Notes[0].EndDate != nil || tree[0].Notes[0].Completed {
 			t.Fatalf("migration changed existing data: %+v", tree)
 		}
@@ -317,13 +318,14 @@ func TestFolderTypesAndHiddenNoteFieldsSurviveConversion(t *testing.T) {
 	description := "Task description"
 	note, err := service.CreateNote(&CreateNoteRequest{
 		FolderID: folder.ID, Title: "Title", Content: "Diary content",
+		URL:         "https://example.com/saved",
 		Description: &description, EndDate: &endDate, Completed: true,
 		Style: NoteStyle{Bold: true, Italic: true, TextColor: "#123456", FontSize: 24},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, folderType := range []string{FolderTypeBuyList, FolderTypeTasksList, FolderTypeDiary} {
+	for _, folderType := range []string{FolderTypeBuyList, FolderTypeTasksList, FolderTypeDiary, FolderTypeLinks} {
 		updated, err := service.UpdateFolder(folder.ID, &UpdateFolderRequest{Type: &folderType})
 		if err != nil {
 			t.Fatal(err)
@@ -357,7 +359,7 @@ func TestFolderTypesAndHiddenNoteFieldsSurviveConversion(t *testing.T) {
 		t.Fatal(err)
 	}
 	if updatedNote.Completed || !reflect.DeepEqual(updatedNote.Description, note.Description) || updatedNote.Content != note.Content ||
-		updatedNote.EndDate == nil || *updatedNote.EndDate != endDate || updatedNote.Style != note.Style {
+		updatedNote.EndDate == nil || *updatedNote.EndDate != endDate || updatedNote.Style != note.Style || updatedNote.URL != note.URL {
 		t.Fatalf("partial update lost hidden fields: %+v", updatedNote)
 	}
 	clear := ""

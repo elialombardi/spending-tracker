@@ -21,6 +21,7 @@ type CreateNotePayload = {
   position?: number
   title: string
   content?: string
+  url?: string
   style?: NoteStyle
   description?: string | null
   endDate?: string
@@ -32,6 +33,7 @@ type UpdateNotePayload = {
   position?: number
   title?: string
   content?: string
+  url?: string
   style?: NoteStyle
   description?: string | null
   endDate?: string

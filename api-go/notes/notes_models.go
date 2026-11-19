@@ -9,6 +9,7 @@ const (
 	FolderTypeBuyList   = "buy_list"
 	FolderTypeTasksList = "tasks_list"
 	FolderTypeDiary     = "diary"
+	FolderTypeLinks     = "links"
 )
 
 type NoteStyle struct {
@@ -25,6 +26,7 @@ type NoteResponse struct {
 	Position    int       `json:"position"`
 	Title       string    `json:"title"`
 	Content     string    `json:"content"`
+	URL         string    `json:"url"`
 	Description *string   `json:"description"`
 	EndDate     *string   `json:"endDate"`
 	Completed   bool      `json:"completed"`
@@ -45,14 +47,14 @@ type NoteFolderTreeResponse struct {
 
 type CreateFolderRequest struct {
 	Name     string `json:"name" validate:"required,min=1,max=100"`
-	Type     string `json:"type" validate:"omitempty,oneof=buy_list tasks_list diary"`
+	Type     string `json:"type" validate:"omitempty,oneof=buy_list tasks_list diary links"`
 	ParentID *uint  `json:"parentId"`
 	Position int    `json:"position" validate:"gte=0"`
 }
 
 type UpdateFolderRequest struct {
 	Name     *string `json:"name" validate:"omitempty,min=1,max=100"`
-	Type     *string `json:"type" validate:"omitempty,oneof=buy_list tasks_list diary"`
+	Type     *string `json:"type" validate:"omitempty,oneof=buy_list tasks_list diary links"`
 	ParentID *uint   `json:"parentId"`
 	Position *int    `json:"position" validate:"omitempty,gte=0"`
 }
@@ -62,6 +64,7 @@ type CreateNoteRequest struct {
 	Position    int       `json:"position" validate:"gte=0"`
 	Title       string    `json:"title" validate:"required,min=1,max=200"`
 	Content     string    `json:"content"`
+	URL         string    `json:"url"`
 	Description *string   `json:"description"`
 	EndDate     *string   `json:"endDate"`
 	Completed   bool      `json:"completed"`
@@ -73,6 +76,7 @@ type UpdateNoteRequest struct {
 	Position       *int       `json:"position,omitempty" validate:"omitempty,gte=0"`
 	Title          *string    `json:"title,omitempty" validate:"omitempty,min=1,max=200"`
 	Content        *string    `json:"content,omitempty"`
+	URL            *string    `json:"url,omitempty"`
 	Description    *string    `json:"description,omitempty"`
 	EndDate        *string    `json:"endDate,omitempty"`
 	Completed      *bool      `json:"completed,omitempty"`

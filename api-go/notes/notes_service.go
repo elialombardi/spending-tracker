@@ -3,8 +3,10 @@ package notes
 import (
 	"encoding/json"
 	"errors"
+	"net/url"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/elialombardi/spending-tracker/api-go/spending-tracker.go/internal/db"
 	"gorm.io/gorm"
@@ -195,6 +197,10 @@ func (s *notesService) DeleteFolder(id uint) error {
 }
 
 func (s *notesService) CreateNote(req *CreateNoteRequest) (*NoteResponse, error) {
+	bookmarkURL, err := normalizeBookmarkURL(req.URL)
+	if err != nil {
+		return nil, err
+	}
 	endDate, err := normalizeEndDate(req.EndDate)
 	if err != nil {
 		return nil, err
@@ -221,6 +227,7 @@ func (s *notesService) CreateNote(req *CreateNoteRequest) (*NoteResponse, error)
 		Position:    req.Position,
 		Title:       title,
 		Content:     req.Content,
+		URL:         bookmarkURL,
 		Description: req.Description,
 		EndDate:     endDate,
 		Completed:   req.Completed,
@@ -261,6 +268,13 @@ func (s *notesService) UpdateNote(id uint, req *UpdateNoteRequest) (*NoteRespons
 	}
 	if req.Content != nil {
 		entity.Content = *req.Content
+	}
+	if req.URL != nil {
+		bookmarkURL, err := normalizeBookmarkURL(*req.URL)
+		if err != nil {
+			return nil, err
+		}
+		entity.URL = bookmarkURL
 	}
 	if req.Description != nil || req.descriptionSet {
 		entity.Description = req.Description
@@ -351,6 +365,7 @@ func mapNoteEntity(entity db.NoteEntity) NoteResponse {
 		Position:    entity.Position,
 		Title:       entity.Title,
 		Content:     entity.Content,
+		URL:         entity.URL,
 		Description: entity.Description,
 		EndDate:     entity.EndDate,
 		Completed:   entity.Completed,
@@ -362,11 +377,25 @@ func mapNoteEntity(entity db.NoteEntity) NoteResponse {
 
 func validateFolderType(value string) error {
 	switch value {
-	case FolderTypeDiary, FolderTypeBuyList, FolderTypeTasksList:
+	case FolderTypeDiary, FolderTypeBuyList, FolderTypeTasksList, FolderTypeLinks:
 		return nil
 	default:
-		return errors.New("folder type must be buy_list, tasks_list or diary")
+		return errors.New("folder type must be buy_list, tasks_list, diary or links")
 	}
+}
+
+func normalizeBookmarkURL(value string) (string, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "", nil
+	}
+	parsed, err := url.ParseRequestURI(value)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") ||
+		parsed.Hostname() == "" || parsed.User != nil || strings.ContainsAny(value, `\`) ||
+		strings.IndexFunc(value, unicode.IsSpace) >= 0 {
+		return "", errors.New("URL must be an absolute HTTP or HTTPS address without credentials or spaces")
+	}
+	return value, nil
 }
 
 func normalizeEndDate(value *string) (*string, error) {

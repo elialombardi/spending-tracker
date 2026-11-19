@@ -23,6 +23,7 @@ test('note editors show only the fields for their folder type', async () => {
             canWrite: true, errorMessage: '', onPositionChange() {}, onTitleChange() {},
             onContentChange() {}, onStyleChange() {}, onDescriptionChange() {},
             onEndDateChange() {}, onCompletedChange() {},
+            url: 'https://example.com/docs', onURLChange() {},
         }
         const render = folderType => renderToStaticMarkup(createElement(
             LocalizationProvider, { dateAdapter: AdapterDateFns },
@@ -40,6 +41,12 @@ test('note editors show only the fields for their folder type', async () => {
         const diary = render('diary')
         assert.match(diary, /Private diary content/)
         assert.doesNotMatch(diary, /Purchased|Task details|End date|>Done</)
+        const links = render('links')
+        assert.match(links, /type="url"/)
+        assert.match(links, /Task details/)
+        assert.match(links, /href="https:\/\/example.com\/docs"/)
+        assert.match(links, /target="_blank" rel="noopener noreferrer"/)
+        assert.doesNotMatch(links, /type="checkbox"|Private diary content|End date/)
     } finally {
         await server.close()
     }
@@ -49,25 +56,25 @@ test('sidebar tree displays nested folders with type icons but no type labels, i
     const server = await createServer(serverOptions)
     try {
         const { NoteTree } = await server.ssrLoadModule('/src/components/Notes/NoteTree.tsx')
-        const tree = ['buy_list', 'tasks_list', 'diary'].map((type, index) => ({
+        const tree = ['buy_list', 'tasks_list', 'diary', 'links'].map((type, index) => ({
             id: index + 1, name: type, type, position: 0, children: [],
             notes: [{ id: index + 1, title: `Item ${index}`, completed: true, endDate: '2026-11-30' }],
         }))
         tree[0].children.push({
-            id: 4, name: 'Nested folder', type: 'diary', children: [],
-            notes: [{ id: 4, title: 'Nested item' }],
+            id: 5, name: 'Nested folder', type: 'diary', children: [],
+            notes: [{ id: 5, title: 'Nested item' }],
         })
         const markup = renderToStaticMarkup(createElement(NoteTree, {
             tree, selectedFolderID: 1, onSelectFolder() {},
             canWrite: false, isBusy: false, onMoveFolder() {},
         }))
-        for (const icon of ['ShoppingBagOutlined', 'ChecklistRounded', 'AutoStoriesOutlined']) {
+        for (const icon of ['ShoppingBagOutlined', 'ChecklistRounded', 'AutoStoriesOutlined', 'BookmarkBorderRounded']) {
             assert.match(markup, new RegExp(`data-testid="${icon}Icon"`))
         }
         assert.doesNotMatch(markup, /Buy list|Tasks list|Diary|class="[^"]*MuiListItemText-secondary/)
-        assert.equal((markup.match(/MuiTypography-body2/g) || []).length, 4)
+        assert.equal((markup.match(/MuiTypography-body2/g) || []).length, 5)
         assert.match(markup, /Nested folder/)
-        assert.equal((markup.match(/aria-label="1 item"/g) || []).length, 4)
+        assert.equal((markup.match(/aria-label="1 item"/g) || []).length, 5)
         assert.equal((markup.match(/aria-current="page"/g) || []).length, 1)
         assert.doesNotMatch(markup, /Item [012]|Nested item|type="checkbox"|End date:/)
     } finally {
@@ -104,14 +111,14 @@ test('main item list shows only the selected folder and preserves type-specific 
     const server = await createServer(serverOptions)
     try {
         const { NoteList } = await server.ssrLoadModule('/src/components/Notes/NoteList.tsx')
-        for (const type of ['buy_list', 'tasks_list', 'diary']) {
+        for (const type of ['buy_list', 'tasks_list', 'diary', 'links']) {
             const props = {
                 folder: {
                     id: 1, name: 'Selected folder', type, children: [{
                         id: 2, name: 'Child folder', type: 'buy_list', children: [],
                         notes: [{ id: 2, title: 'Child item' }],
                     }],
-                    notes: [{ id: 1, title: 'Selected item', completed: true, endDate: '2026-11-30' }],
+                    notes: [{ id: 1, title: 'Selected item', url: 'https://example.com', completed: true, endDate: '2026-11-30' }],
                 },
                 selectedNoteID: 1, isBusy: false, onSelectNote() {}, onToggleCompleted() {}, onMoveNote() {},
             }
@@ -119,7 +126,7 @@ test('main item list shows only the selected folder and preserves type-specific 
             assert.match(writable, /Selected item/)
             assert.match(writable, /aria-label="Folder items"/)
             assert.doesNotMatch(writable, /Child item|Child folder/)
-            if (type === 'diary') {
+            if (type === 'diary' || type === 'links') {
                 assert.doesNotMatch(writable, /type="checkbox"|End date:/)
             } else {
                 assert.equal((writable.match(/type="checkbox"/g) || []).length, 1)
@@ -130,6 +137,7 @@ test('main item list shows only the selected folder and preserves type-specific 
                 assert.equal((busy.match(/disabled="" type="checkbox"/g) || []).length, 1)
             }
             assert.equal(writable.includes('End date: 2026-11-30'), type === 'tasks_list')
+            assert.equal(writable.includes('aria-label="Open bookmark: Selected item"'), type === 'links')
         }
         for (const type of ['buy_list', 'tasks_list', 'diary']) {
             const empty = renderToStaticMarkup(createElement(NoteList, {
@@ -138,6 +146,28 @@ test('main item list shows only the selected folder and preserves type-specific 
                 onSelectNote() {}, onToggleCompleted() {}, onMoveNote() {},
             }))
             assert.match(empty, type === 'diary' ? /No notes in this folder/ : /No items in this folder/)
+        }
+    } finally {
+        await server.close()
+    }
+})
+
+test('bookmark URLs allow only complete HTTP(S) addresses and never render unsafe anchors', async () => {
+    const server = await createServer(serverOptions)
+    try {
+        const { getBookmarkURL } = await server.ssrLoadModule('/src/types/notes.ts')
+        const { NoteList } = await server.ssrLoadModule('/src/components/Notes/NoteList.tsx')
+        assert.equal(getBookmarkURL('  https://example.com/docs?q=go#intro  '), 'https://example.com/docs?q=go#intro')
+        assert.equal(getBookmarkURL('http://example.com'), 'http://example.com')
+        for (const url of ['', 'javascript:alert(1)', 'data:text/html,test', '//example.com', 'https:example.com',
+            'https://', 'https://example.com/with space', 'https://user:password@example.com', 'https://example.com\\@other.test']) {
+            assert.equal(getBookmarkURL(url), null, url)
+            const markup = renderToStaticMarkup(createElement(NoteList, {
+                folder: { id: 1, type: 'links', notes: [{ id: 1, title: 'Unsafe', url }] },
+                selectedNoteID: null, canWrite: false, isBusy: false,
+                onSelectNote() {}, onToggleCompleted() {}, onMoveNote() {},
+            }))
+            assert.doesNotMatch(markup, /href=|Open bookmark:|type="checkbox"/)
         }
     } finally {
         await server.close()
@@ -174,6 +204,9 @@ test('notes API supports types, title-only items, date clearing and completion w
         await notesApi.createNote({ folderId: 1, title: 'No description', description: null })
         await notesApi.updateNote(1, { description: null })
         await notesApi.updateNote(1, { title: 'Preserve description' })
+        await notesApi.createNoteFolder({ name: 'Reading', type: 'links' })
+        await notesApi.createNote({ folderId: 1, title: 'Reference', url: 'https://example.com', description: 'Read later' })
+        await notesApi.updateNote(1, { url: 'https://example.org' })
         assert.deepEqual(calls, [
             { method: 'POST', path: '/api/note-folders', payload: { name: 'Shopping', type: 'buy_list' } },
             { method: 'PUT', path: '/api/note-folders/1', payload: { type: 'tasks_list' } },
@@ -184,6 +217,9 @@ test('notes API supports types, title-only items, date clearing and completion w
             { method: 'POST', path: '/api/notes', payload: { folderId: 1, title: 'No description', description: null } },
             { method: 'PUT', path: '/api/notes/1', payload: { description: null } },
             { method: 'PUT', path: '/api/notes/1', payload: { title: 'Preserve description' } },
+            { method: 'POST', path: '/api/note-folders', payload: { name: 'Reading', type: 'links' } },
+            { method: 'POST', path: '/api/notes', payload: { folderId: 1, title: 'Reference', url: 'https://example.com', description: 'Read later' } },
+            { method: 'PUT', path: '/api/notes/1', payload: { url: 'https://example.org' } },
         ])
     } finally {
         await server.close()

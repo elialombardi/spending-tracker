@@ -306,13 +306,15 @@ Regression checks: `cd api-go && go test ./marketplace` and
 
 ## Notes folder types
 
-Folders expose `type`: `buy_list`, `tasks_list`, or `diary` (the default).
+Folders expose `type`: `buy_list`, `tasks_list`, `links`, or `diary` (the default).
 Create/edit it in the folder dialog. Nested folders have independent types.
 Existing folders migrate to diary without changing notes, ordering, or styles.
 
 - **Buy list:** item title and purchased checkbox.
 - **Tasks list:** title, description, optional end date, and done checkbox.
 - **Diary:** the existing content editor, styling, and preview.
+- **Bookmarks (`links`):** title, HTTP(S) URL, optional description, and a
+  separate open-in-new-tab action. Bookmarks have no completion checkbox.
 
 The existing folder create/update endpoints accept `type`; omitted update
 values preserve the current type. Invalid types are rejected. Notes expose
@@ -325,8 +327,21 @@ clears it. Empty strings remain supported for existing clients. Startup
 migration makes the description column nullable without rewriting existing text
 or empty strings. The web editor treats null as blank and saves a blank
 description as null. Invalid dates are rejected. Switching folder types only changes which
-fields are shown; hidden content, description, date, completion, and styles
+fields are shown; hidden content, URL, description, date, completion, and styles
 are preserved. No reminder is attached to a note's end date.
+
+Notes also expose `url`, a string that defaults to `""` for existing and new
+records. Create/update accepts it; omitted updates preserve it and `url: ""`
+clears it. Nonempty URLs are trimmed and must be absolute HTTP(S) addresses
+without embedded credentials, whitespace, or backslashes. Invalid URLs return
+HTTP 400. Empty URLs remain supported for folder conversions and older clients;
+the web requires a valid URL when saving a bookmark. Startup AutoMigrate adds
+the URL column without changing existing fields.
+
+All note types use a responsive right-side editor drawer, full-width on phones,
+with a scrollable form and pinned actions. Closing via Escape, backdrop, or the
+close button prompts before discarding unsaved changes. Changing the destination
+folder in the editor does not navigate away from the current folder before save.
 
 ## YouTube configuration
 

@@ -19,7 +19,7 @@ The latest requirements supersede a combined folder-and-note sidebar:
 - Selecting a folder shows **only its direct items**, not descendants' items.
 - Selecting an item opens its type-specific editor. Selecting another folder
   closes the editor and clears the previous item selection.
-- Every folder has a type: Buy list, Tasks list, or Diary. Diary is the default.
+- Every folder has a type: Buy list, Tasks list, Bookmarks, or Diary. Diary is the default.
 - Changing type or moving an item preserves all fields hidden by the new type.
 - Task reminders have been removed. No note end date or completion action
   schedules or sends a Telegram notification.
@@ -40,6 +40,7 @@ Notes API and the existing styled note content model.
 | `buy_list` | Buy list | Title and Purchased checkbox. |
 | `tasks_list` | Tasks list | Title, description, optional end date, and Done checkbox. |
 | `diary` | Diary | Title, multiline content, formatting controls, and preview. |
+| `links` | Bookmarks | Title, HTTP(S) URL, optional description, and Open bookmark action. |
 
 Folder name, type, and position are configurable in folder create/edit forms.
 Item position and destination folder remain configurable for all types.
@@ -52,6 +53,8 @@ Item position and destination folder remain configurable for all types.
 - `completed` means Purchased for buy-list items and Done for task-list items.
   Preserve it when hidden in Diary. Items can be unchecked again.
 - `endDate` is a date-only value, not a notification time or timestamp.
+- `url` is separate from diary `content` and defaults to `""`. Preserve it
+  when hidden by another folder type. Bookmarks do not show completion controls.
 - The backend retains all item fields regardless of folder type. Mobile
   editors must hide inapplicable fields rather than erase them.
 
@@ -69,6 +72,7 @@ Item position and destination folder remain configurable for all types.
 | Completion | Boolean, default false. Explicit false must be serialized when unchecking. |
 | Description | Optional string or null. Omitted/null on create stores null. No length limit is declared. |
 | Content | Optional string; no length limit is declared by the request DTOs. |
+| URL | String, default `""`; nonempty values must be absolute HTTP(S) URLs without credentials, whitespace, or backslashes. Values are trimmed; invalid values return HTTP 400. Web bookmark saves require a valid URL; the API permits empty values for compatibility and folder conversions. |
 
 Preserve calendar dates without converting through UTC timestamps. Do not invent
 an end-date ordering rule or disallow past dates; neither rule is implemented.
@@ -105,6 +109,11 @@ mirror the web layout. Do not put item rows underneath folders in the navigator.
 - Diary rows: title and updated timestamp; do not show completion controls.
 - Selecting a row opens the appropriate editor. Keep the item list available
   on wide screens; use normal push/back navigation on phones.
+- The web now uses a right-side editor drawer (full-width on phones), with
+  pinned header/actions and a scrollable form. Destination-folder changes stay
+  in the draft until save rather than navigating the folder list immediately.
+- Bookmark rows show title and URL, with a separate open-in-new-tab action.
+  Validate the HTTP(S) scheme before launching a URL; never launch script/data URLs.
 - Provide Save, Delete for existing items, and Close editor/back.
 - A completion toggle in the list saves immediately with a completion-only
   request. A checkbox changed inside the editor saves with the form.
@@ -168,6 +177,12 @@ Collection paths match the web client; backend collection routes are also
 registered with a trailing `/`. There is no separate GET-all-notes, GET-one-note,
 completion, move, or PATCH endpoint. The tree is the read source. It returns a
 plain array (`[]` when empty), without pagination or a `{data: ...}` envelope.
+
+Bookmark additions use these same endpoints: folders accept `type: "links"`;
+all note responses include `url`. Create/update accepts a `url` string,
+omitted updates preserve it, and `url: ""` clears it. Description follows the
+same nullable/partial-update rules as task-list descriptions. The server does
+not fetch linked pages or generate metadata previews.
 
 ### Tree response example
 

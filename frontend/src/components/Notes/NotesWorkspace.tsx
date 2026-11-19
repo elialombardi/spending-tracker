@@ -10,10 +10,18 @@ import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import Chip from '@mui/material/Chip';
+import Drawer from '@mui/material/Drawer';
+import IconButton from '@mui/material/IconButton';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogActions from '@mui/material/DialogActions';
 import { isMatch } from 'date-fns';
 import { useTheme, alpha } from '@mui/material/styles';
 import api from '../../api';
-import { Note, NoteFolderTree, NoteFolderType, NoteStyle, folderTypeLabels } from '../../types/notes';
+import { Note, NoteFolderTree, NoteFolderType, NoteStyle, folderTypeLabels, getBookmarkURL } from '../../types/notes';
 import { NotesWorkspaceProps, defaultStyle, folderTypeAppearance } from './types';
 import { findFolderByID, findNoteByID, reorderItems } from './utils/noteTreeUtils';
 import { FolderActions } from './FolderActions';
@@ -34,10 +42,14 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
   const [selectedFolderID, setSelectedFolderID] = useState<number | null>(null);
   const [selectedNoteID, setSelectedNoteID] = useState<number | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editorFolderID, setEditorFolderID] = useState<number | null>(null);
+  const [savedDraft, setSavedDraft] = useState('');
+  const [isDiscardDialogOpen, setIsDiscardDialogOpen] = useState(false);
 
   const [title, setTitle] = useState('');
   const [position, setPosition] = useState('0');
   const [content, setContent] = useState('');
+  const [url, setURL] = useState('');
   const [description, setDescription] = useState('');
   const [endDate, setEndDate] = useState('');
   const [completed, setCompleted] = useState(false);
@@ -55,6 +67,12 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
     [selectedFolderID, tree],
   );
   const folderType = selectedFolder?.type ?? 'diary';
+  const editorFolder = editorFolderID ? findFolderByID(tree, editorFolderID) : null;
+  const editorFolderType = editorFolder?.type ?? 'diary';
+  const itemLabel = editorFolderType === 'links' ? 'bookmark' : editorFolderType === 'diary' ? 'note' : 'item';
+  const isDirty = isEditorOpen && savedDraft !== JSON.stringify([
+    editorFolderID, title, position, content, url, description, endDate, completed, style,
+  ]);
   const { icon: FolderTypeIcon, color: folderColor } = folderTypeAppearance[folderType];
   const folderAccent = theme.palette[folderColor][theme.palette.mode === 'dark' ? 'light' : 'main'];
   const panelSx = {
@@ -66,6 +84,16 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
   useEffect(() => {
     void reloadTree();
   }, []);
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warnBeforeUnload);
+    return () => window.removeEventListener('beforeunload', warnBeforeUnload);
+  }, [isDirty]);
 
   async function reloadTree(noteToReselect?: number, forceFolderReset = false) {
     setIsLoading(true);
@@ -96,15 +124,34 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
 
   function startNewNote() {
     resetEditor();
+    setEditorFolderID(selectedFolderID);
+    setSavedDraft(JSON.stringify([selectedFolderID, '', '0', '', '', '', '', false, defaultStyle]));
     setIsEditorOpen(true);
+  }
+
+  function requestCloseEditor() {
+    if (isSaving) return;
+    if (isDirty) {
+      setIsDiscardDialogOpen(true);
+    } else {
+      closeEditor();
+    }
+  }
+
+  function closeEditor() {
+    setIsEditorOpen(false);
+    setIsDiscardDialogOpen(false);
   }
 
   function resetEditor() {
     setIsEditorOpen(false);
+    setIsDiscardDialogOpen(false);
+    setEditorFolderID(null);
     setSelectedNoteID(null);
     setTitle('');
     setPosition('0');
     setContent('');
+    setURL('');
     setDescription('');
     setEndDate('');
     setCompleted(false);
@@ -119,17 +166,23 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
   }
 
   function loadNote(note: Note) {
+    setEditorFolderID(note.folderId);
     setTitle(note.title);
     setPosition(String(note.position));
     setContent(note.content);
+    setURL(note.url ?? '');
     setDescription(note.description ?? '');
     setEndDate(note.endDate ?? '');
     setCompleted(note.completed);
     setStyle(note.style || defaultStyle);
+    setSavedDraft(JSON.stringify([
+      note.folderId, note.title, String(note.position), note.content, note.url ?? '',
+      note.description ?? '', note.endDate ?? '', note.completed, note.style || defaultStyle,
+    ]));
   }
 
   async function handleSaveNote() {
-    if (!selectedFolderID) {
+    if (!editorFolderID) {
       setErrorMessage('Select a folder first.');
       return;
     }
@@ -138,17 +191,22 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
       setErrorMessage('Position must be a non-negative integer.');
       return;
     }
-    if (folderType === 'tasks_list' && endDate && !isMatch(endDate, 'yyyy-MM-dd')) {
+    if (editorFolderType === 'tasks_list' && endDate && !isMatch(endDate, 'yyyy-MM-dd')) {
       setErrorMessage('End date must be a valid date.');
+      return;
+    }
+    if (editorFolderType === 'links' && !getBookmarkURL(url)) {
+      setErrorMessage('Enter a complete HTTP or HTTPS URL without credentials or spaces.');
       return;
     }
     setIsSaving(true);
     setErrorMessage('');
     try {
-      const fields = folderType === 'diary' ? { content, style }
-        : folderType === 'tasks_list' ? { description: description === '' ? null : description, endDate, completed }
+      const fields = editorFolderType === 'diary' ? { content, style }
+        : editorFolderType === 'links' ? { url: url.trim(), description: description === '' ? null : description }
+        : editorFolderType === 'tasks_list' ? { description: description === '' ? null : description, endDate, completed }
           : { completed };
-      const payload = { folderId: selectedFolderID, title, position: nextPosition, ...fields };
+      const payload = { folderId: editorFolderID, title: title.trim(), position: nextPosition, ...fields };
       if (selectedNoteID) {
         const updated = await api.updateNote(selectedNoteID, payload);
         await reloadTree(updated?.id);
@@ -217,7 +275,7 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
     setErrorMessage('');
     try {
       await api.deleteNote(selectedNoteID);
-      resetEditor();
+      closeEditor();
       await reloadTree();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to delete note.');
@@ -371,7 +429,7 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
                   </Stack>
                   {!isEditorOpen && (
                     <Button variant="contained" startIcon={<NoteAddIcon />} onClick={startNewNote} disabled={!canWrite || isSaving || isLoading} sx={{ flexShrink: 0, borderRadius: '12px', px: 2.5, py: 1.2, fontWeight: 600 }}>
-                      {folderType === 'diary' ? 'New note' : 'New item'}
+                      {folderType === 'links' ? 'New bookmark' : folderType === 'diary' ? 'New note' : 'New item'}
                     </Button>
                   )}
                 </Stack>
@@ -385,47 +443,6 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
                   onMoveNote={(id, offset) => handleReorder(selectedFolder.notes, id, offset, 'note')}
                 />
               </Paper>
-              {isEditorOpen && (
-                <Paper component="section" aria-label="Item editor" variant="outlined" sx={{ ...panelSx, p: { xs: 2, sm: 3 } }}>
-                  <Stack spacing={2}>
-                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ justifyContent: 'space-between' }}>
-                      <NoteActions
-                        canWrite={canWrite}
-                        isSaving={isSaving}
-                        hasTitle={!!title.trim()}
-                        hasSelectedNote={!!selectedNoteID}
-                        isList={folderType !== 'diary'}
-                        onNewNote={startNewNote}
-                        onSaveNote={handleSaveNote}
-                        onDeleteNote={handleDeleteNote}
-                      />
-                      <Button onClick={resetEditor} disabled={isSaving}>Close editor</Button>
-                    </Stack>
-                    <NoteEditor
-                      title={title}
-                      position={position}
-                      onPositionChange={setPosition}
-                      content={content}
-                      style={style}
-                      canWrite={canWrite && !isSaving}
-                      folderType={folderType}
-                      description={description}
-                      endDate={endDate}
-                      completed={completed}
-                      onDescriptionChange={setDescription}
-                      onEndDateChange={setEndDate}
-                      onCompletedChange={setCompleted}
-                      errorMessage=""
-                      tree={tree}
-                      selectedFolderID={selectedFolderID}
-                      onFolderChange={setSelectedFolderID}
-                      onTitleChange={setTitle}
-                      onContentChange={setContent}
-                      onStyleChange={setStyle}
-                    />
-                  </Stack>
-                </Paper>
-              )}
             </>
           ) : (
             <Typography role="status" color="text.secondary" sx={{ p: 2 }}>
@@ -434,6 +451,88 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
           )}
         </Stack>
       </Grid>
+
+      <Drawer
+        anchor="right"
+        open={isEditorOpen}
+        onClose={requestCloseEditor}
+        slotProps={{
+          transition: { onExited: resetEditor },
+          paper: {
+            role: 'dialog',
+            'aria-modal': true,
+            'aria-labelledby': 'note-editor-title',
+            sx: {
+              width: { xs: '100%', sm: 580, md: 640 }, maxWidth: '100%',
+              borderRadius: { xs: 0, sm: '24px 0 0 24px' },
+              bgcolor: 'background.default', backgroundImage: 'none',
+            },
+          },
+        }}
+      >
+        <Stack direction="row" spacing={2} sx={{ px: { xs: 2, sm: 3 }, py: 2, alignItems: 'center', borderBottom: 1, borderColor: 'divider' }}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="overline" color="text.secondary">{folderTypeLabels[editorFolderType]}</Typography>
+            <Typography id="note-editor-title" variant="h5" component="h2" sx={{ fontWeight: 700 }}>
+              {canWrite ? (selectedNoteID ? `Edit ${itemLabel}` : `New ${itemLabel}`) : `View ${itemLabel}`}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" noWrap>{editorFolder?.name}</Typography>
+          </Box>
+          <IconButton aria-label="Close editor" onClick={requestCloseEditor} disabled={isSaving}>
+            <CloseRoundedIcon />
+          </IconButton>
+        </Stack>
+        <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', p: { xs: 2, sm: 3 } }}>
+          <NoteEditor
+            title={title}
+            position={position}
+            onPositionChange={setPosition}
+            content={content}
+            url={url}
+            onURLChange={setURL}
+            style={style}
+            canWrite={canWrite && !isSaving}
+            folderType={editorFolderType}
+            description={description}
+            endDate={endDate}
+            completed={completed}
+            onDescriptionChange={setDescription}
+            onEndDateChange={setEndDate}
+            onCompletedChange={setCompleted}
+            errorMessage={errorMessage}
+            tree={tree}
+            selectedFolderID={editorFolderID}
+            onFolderChange={setEditorFolderID}
+            onTitleChange={setTitle}
+            onContentChange={setContent}
+            onStyleChange={setStyle}
+          />
+        </Box>
+        <Stack spacing={1.5} sx={{ p: { xs: 2, sm: 3 }, borderTop: 1, borderColor: 'divider', bgcolor: 'background.paper', pb: 'max(16px, env(safe-area-inset-bottom))' }}>
+          <Typography variant="caption" color="text.secondary" role="status">
+            {isSaving ? 'Saving changes...' : isDirty ? 'Unsaved changes' : !canWrite ? 'Read-only' : selectedNoteID ? 'All changes saved' : 'Ready to create'}
+          </Typography>
+          <NoteActions
+            canWrite={canWrite}
+            isSaving={isSaving}
+            hasTitle={!!title.trim()}
+            hasSelectedNote={!!selectedNoteID}
+            onSaveNote={handleSaveNote}
+            onDeleteNote={handleDeleteNote}
+          />
+        </Stack>
+      </Drawer>
+
+      <Dialog open={isDiscardDialogOpen} onClose={() => setIsDiscardDialogOpen(false)} aria-labelledby="discard-note-title">
+        <DialogTitle id="discard-note-title">Discard unsaved changes?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>Your changes have not been saved. Keep editing or discard them to close the editor.</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button autoFocus onClick={() => setIsDiscardDialogOpen(false)}>Keep editing</Button>
+          <Button color="error" onClick={closeEditor}>Discard changes</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Folder Dialog */}
       <FolderDialog

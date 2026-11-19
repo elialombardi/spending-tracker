@@ -9,7 +9,10 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
-import { Note, NoteFolderTree } from '../../types/notes';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
+import { getBookmarkURL, Note, NoteFolderTree } from '../../types/notes';
 import { folderTypeAppearance } from './types';
 import { ReorderDragHandle } from './ReorderDragHandle';
 import { useReorderDrag } from './useReorderDrag';
@@ -57,7 +60,7 @@ export function NoteList({ folder, selectedNoteID, canWrite, isBusy, onSelectNot
                     '&:last-child': { mb: 0 },
                     '&:hover': { borderColor: alpha(theme.palette.primary.main, 0.3), boxShadow: `0 3px 12px ${alpha(theme.palette.text.primary, 0.04)}` },
                 })}>
-                    {folder.type !== 'diary' && (
+                    {(folder.type === 'buy_list' || folder.type === 'tasks_list') && (
                         <ListItemIcon sx={{ minWidth: 44, pl: 1 }}>
                             <Checkbox
                                 checked={note.completed}
@@ -77,7 +80,7 @@ export function NoteList({ folder, selectedNoteID, canWrite, isBusy, onSelectNot
                             '&.Mui-focusVisible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: -2 },
                         })}
                     >
-                        {folder.type === 'diary' && (
+                        {(folder.type === 'diary' || folder.type === 'links') && (
                             <Box sx={(theme) => ({
                                 display: 'grid', placeItems: 'center', width: 40, height: 40, flexShrink: 0,
                                 borderRadius: '12px', bgcolor: alpha(theme.palette[color].main, 0.1), color: theme.palette[color][theme.palette.mode === 'dark' ? 'light' : 'main'],
@@ -89,15 +92,30 @@ export function NoteList({ folder, selectedNoteID, canWrite, isBusy, onSelectNot
                             primary={note.title}
                             sx={{ my: 0 }}
                             slotProps={{
-                                primary: { variant: 'body2', sx: { fontWeight: 500, textDecoration: folder.type !== 'diary' && note.completed ? 'line-through' : 'none', overflowWrap: 'anywhere' } },
+                                primary: { variant: 'body2', sx: { fontWeight: 500, textDecoration: (folder.type === 'buy_list' || folder.type === 'tasks_list') && note.completed ? 'line-through' : 'none', overflowWrap: 'anywhere' } },
                                 secondary: { variant: 'caption', sx: { mt: 0.5, overflowWrap: 'anywhere' } },
                             }}
-                            secondary={folder.type === 'diary'
+                            secondary={folder.type === 'links' ? (note.url || 'Add a URL to this bookmark')
+                                : folder.type === 'diary'
                                 ? (note.updatedAt ? `Updated ${new Date(note.updatedAt).toLocaleString()}` : undefined)
                                 : folder.type === 'tasks_list' && note.endDate ? `End date: ${note.endDate}` : undefined}
                         />
                         <ArrowForwardRoundedIcon sx={{ fontSize: 18, color: 'text.secondary', flexShrink: 0 }} />
                     </ListItemButton>
+                    {folder.type === 'links' && getBookmarkURL(note.url ?? '') && (
+                        <Tooltip title="Open bookmark in a new tab">
+                            <IconButton
+                                component="a"
+                                href={getBookmarkURL(note.url) ?? undefined}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={`Open bookmark: ${note.title}`}
+                                sx={{ mx: 1 }}
+                            >
+                                <OpenInNewRoundedIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                    )}
                     {canWrite && (
                         <ReorderDragHandle
                             label={`item ${note.title}`}

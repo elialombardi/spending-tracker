@@ -1,14 +1,13 @@
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
-import NoteAddIcon from '@mui/icons-material/NoteAdd';
+import SaveRoundedIcon from '@mui/icons-material/SaveRounded';
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 
 type NoteActionsProps = {
     canWrite: boolean;
     isSaving: boolean;
     hasTitle: boolean;
     hasSelectedNote: boolean;
-    isList: boolean;
-    onNewNote: () => void;
     onSaveNote: () => void;
     onDeleteNote: () => void;
 };
@@ -18,31 +17,24 @@ export function NoteActions({
     isSaving,
     hasTitle,
     hasSelectedNote,
-    isList,
-    onNewNote,
     onSaveNote,
     onDeleteNote,
 }: NoteActionsProps) {
     return (
-        <Stack direction="row" spacing={1}>
-            <Button
-                variant="outlined"
-                startIcon={<NoteAddIcon />}
-                onClick={onNewNote}
-                disabled={!canWrite || isSaving}
-            >
-                {isList ? 'New item' : 'New note'}
-            </Button>
+        <Stack direction="row" spacing={1} sx={{ justifyContent: 'space-between' }}>
             <Button
                 variant="contained"
+                startIcon={<SaveRoundedIcon />}
+                loading={isSaving}
                 onClick={onSaveNote}
                 disabled={!canWrite || isSaving || !hasTitle}
             >
-                {isList ? 'Save item' : 'Save note'}
+                Save changes
             </Button>
             <Button
                 variant="text"
                 color="error"
+                startIcon={<DeleteOutlineRoundedIcon />}
                 onClick={onDeleteNote}
                 disabled={!canWrite || isSaving || !hasSelectedNote}
             >

@@ -155,7 +155,7 @@ func TestHandlersBindFolderTypesAndListFields(t *testing.T) {
 		t.Fatalf("default response type = %q", folder.Type)
 	}
 	folderPath := fmt.Sprintf("/folders/%d", folder.ID)
-	for _, folderType := range []string{FolderTypeBuyList, FolderTypeTasksList, FolderTypeDiary} {
+	for _, folderType := range []string{FolderTypeLinks, FolderTypeBuyList, FolderTypeTasksList, FolderTypeDiary} {
 		request("PUT", folderPath, fmt.Sprintf(`{"type":%q}`, folderType), 200, &folder)
 		if folder.Type != folderType {
 			t.Fatalf("response type = %q", folder.Type)
@@ -192,6 +192,75 @@ func TestHandlersBindFolderTypesAndListFields(t *testing.T) {
 		tree[0].Notes[0].Completed || tree[0].Notes[0].Description == nil || *tree[0].Notes[0].Description != "Details" || tree[0].Notes[0].EndDate != nil {
 		t.Fatalf("tree did not preserve list fields: %+v", tree)
 	}
+}
+
+func TestBookmarkURLsRoundTripAndValidation(t *testing.T) {
+	service := NewNotesService(newNotesTestDB(t))
+	handler := NewNotesHandler(service)
+	app := fiber.New()
+	app.Post("/folders", handler.CreateFolder)
+	app.Post("/notes", handler.CreateNote)
+	app.Put("/notes/:id", handler.UpdateNote)
+	app.Get("/tree", handler.ListFolderTree)
+
+	request := func(method, path, body string, status int, result interface{}) {
+		t.Helper()
+		req := httptest.NewRequest(method, path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != status {
+			t.Fatalf("%s %s: status = %d, want %d", method, path, resp.StatusCode, status)
+		}
+		if result != nil {
+			if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	var folder NoteFolderTreeResponse
+	request("POST", "/folders", `{"name":"Bookmarks","type":"links"}`, 201, &folder)
+	if folder.Type != FolderTypeLinks {
+		t.Fatalf("unexpected folder type: %q", folder.Type)
+	}
+	var note NoteResponse
+	create := fmt.Sprintf(`{"folderId":%d,"title":"Reference","url":"  https://example.com/docs?q=go#intro  ","description":"Useful docs","content":"Keep hidden content"}`, folder.ID)
+	request("POST", "/notes", create, 201, &note)
+	if note.URL != "https://example.com/docs?q=go#intro" || note.Description == nil || *note.Description != "Useful docs" {
+		t.Fatalf("bookmark fields not returned: %+v", note)
+	}
+	path := fmt.Sprintf("/notes/%d", note.ID)
+	request("PUT", path, `{"title":"Renamed"}`, 200, &note)
+	if note.URL != "https://example.com/docs?q=go#intro" {
+		t.Fatalf("partial update lost URL: %+v", note)
+	}
+	for _, value := range []string{
+		"javascript:alert(1)", "data:text/html,test", "ftp://example.com", "//example.com",
+		"https:example.com", "https://", "https://example.com/with space",
+		"https://user:password@example.com", `https://example.com\@other.test`, "https://example.com/%zz",
+	} {
+		t.Run(value, func(t *testing.T) {
+			request("POST", "/notes", fmt.Sprintf(`{"folderId":%d,"title":"Invalid","url":%q}`, folder.ID, value), 400, nil)
+			request("PUT", path, fmt.Sprintf(`{"url":%q,"title":"Must not persist"}`, value), 400, nil)
+		})
+	}
+	var tree []NoteFolderTreeResponse
+	request("GET", "/tree", "", 200, &tree)
+	if len(tree) != 1 || len(tree[0].Notes) != 1 || tree[0].Notes[0].URL != note.URL || tree[0].Notes[0].Title != "Renamed" {
+		t.Fatalf("invalid update changed stored bookmark: %+v", tree)
+	}
+	request("PUT", path, `{"url":"http://example.org/new"}`, 200, &note)
+	if note.URL != "http://example.org/new" || note.Content != "Keep hidden content" {
+		t.Fatalf("URL update lost hidden fields: %+v", note)
+	}
+	request("PUT", path, `{"url":""}`, 200, &note)
+	if note.URL != "" {
+		t.Fatal("explicit empty URL did not clear field")
+	}
+	request("PUT", path, `{"url":123}`, 400, nil)
 }
 
 func TestHandlersBindAndValidatePositions(t *testing.T) {

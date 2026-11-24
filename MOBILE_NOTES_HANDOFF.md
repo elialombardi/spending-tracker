@@ -1,8 +1,67 @@
 # Mobile Notes & Lists: developer handoff
 
 Prepared: 10 November 2026  
+API contract checked against repository source: 24 November 2026  
 Application: Spending Tracker  
 Audience: mobile developer and QA
+
+## Quick check: errors when opening Notes
+
+This document describes the backend in this repository, not a verified live
+deployment. The mobile app source and its failing response have not been
+inspected, so an API mismatch is not yet a confirmed cause.
+
+Opening Notes should read **`GET /api/note-folders/tree`**, with
+`Authorization: Bearer <token>`. It must decode the response as a **top-level
+array of folders**, not a single folder or a `{data: ...}` / `{folders: ...}`
+wrapper. There is no `GET /api/notes` route.
+
+Use the same API origin and session as the mobile app for this read-only check.
+`API_ORIGIN` is the origin only, without a trailing `/api`; use an existing token
+locally and do not paste it into tickets, screenshots, or shared logs.
+
+```sh
+curl --include --request GET \
+  "${API_ORIGIN}/api/note-folders/tree" \
+  --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+  --header "Accept: application/json"
+```
+
+Check the HTTP status and `Content-Type` before decoding the body:
+
+| Observation | What to check |
+| --- | --- |
+| 200 and JSON array | Compare the mobile models with the exact field rules below. An empty tree is `[]`. |
+| 200 and HTML | The request may be reaching a web page or SPA fallback instead of the API. Check the origin and proxy path. |
+| 401 | The Bearer header is missing/invalid or the session is no longer valid. The current auth middleware returns plain `Unauthorized`, not a Notes JSON error. |
+| 404 / 405 | Check the exact method/path and deployed backend version; do not use `/api/notes/tree`, `/api/notes`, or a duplicated `/api/api/` prefix for the read. |
+| 500 with `{"error":"..."}` | Tree loading failed on the server. Check backend logs and whether startup database migrations completed, rather than displaying an empty folder list. |
+| No HTTP response | Check device connectivity, TLS trust, and platform HTTP restrictions. On a device, `localhost` refers to that device, not the development computer. |
+
+### Mobile decoding checklist
+
+- IDs are JSON **numbers**, not UUIDs or numeric strings. JSON names use
+  lower camel case: `folderId`, `parentId`, `endDate`, `createdAt`, `updatedAt`.
+- Folder `type` accepts **four** values: `buy_list`, `tasks_list`, `diary`,
+  and **`links`** (Bookmarks). An older strict enum with only three cases can
+  reject the entire tree as soon as a Bookmarks folder exists.
+- `parentId`, `description`, and `endDate` can be **null**. Root folders return
+  `"parentId": null`; an unset description/date is not necessarily `""`.
+- `endDate` is `null` or a **date-only string**, such as `"2026-11-14"`;
+  it is not an ISO timestamp. Only `createdAt` and `updatedAt` are timestamps.
+- Every note response has a `url` **string**, including `""` when unset.
+  `style` is a nested JSON **object**, not a serialized JSON string.
+- Every folder has `children` and `notes` **arrays**, including `[]` for empty
+  collections. Recursively decode `children`; each folder's `notes` contains
+  only its direct items.
+- Decode non-2xx errors separately from success models. Notes handlers normally
+  return `{"error":"..."}`; authentication failures can be plain text.
+
+For comparison/debugging, capture the app version, requested method and URL,
+HTTP status, response content type, and decoder exception including its field
+path. Use a sanitized response sample; remove tokens and private note content
+before sharing. Compare the deployed backend version with this source contract
+before changing mobile models or assuming migrations are deployed.
 
 ## 1. Objective and latest agreed behavior
 
@@ -17,7 +76,7 @@ The latest requirements supersede a combined folder-and-note sidebar:
   Direct item-count badges are allowed; item titles and completion controls
   belong in the selected folder's main content area.
 - Selecting a folder shows **only its direct items**, not descendants' items.
-- Selecting an item opens its type-specific editor. Selecting another folder
+- Selecting a non-bookmark item opens its type-specific editor. Selecting another folder
   closes the editor and clears the previous item selection.
 - Every folder has a type: Buy list, Tasks list, Bookmarks, or Diary. Diary is the default.
 - Changing type or moving an item preserves all fields hidden by the new type.
@@ -42,8 +101,9 @@ Notes API and the existing styled note content model.
 | `diary` | Diary | Title, multiline content, formatting controls, and preview. |
 | `links` | Bookmarks | Title, HTTP(S) URL, optional description, and Open bookmark action. |
 
-Folder name, type, and position are configurable in folder create/edit forms.
-Item position and destination folder remain configurable for all types.
+Folder name and type are configurable in folder create/edit forms.
+Item destination folder remains configurable for all types. Do not show numeric
+position fields in either form; use the list's reorder controls instead.
 
 - New folders default to Diary, even when their parent is another type.
 - Existing folders migrate to Diary without changing existing notes or styles.
@@ -107,17 +167,22 @@ mirror the web layout. Do not put item rows underneath folders in the navigator.
 - Main list: direct items only, in server order.
 - Buy/task lists: completion checkbox and title; task rows can also show end date.
 - Diary rows: title and updated timestamp; do not show completion controls.
-- Selecting a row opens the appropriate editor. Keep the item list available
+- Selecting a non-bookmark row opens the appropriate editor. Keep the item list available
   on wide screens; use normal push/back navigation on phones.
 - The web now uses a right-side editor drawer (full-width on phones), with
   pinned header/actions and a scrollable form. Destination-folder changes stay
   in the draft until save rather than navigating the folder list immediately.
-- Bookmark rows show title and URL, with a separate open-in-new-tab action.
+- Bookmark rows show title and URL; selecting the row opens the URL (in a new tab
+  on the web). A separate pencil button opens the bookmark form, read-only for
+  readers. Missing or invalid URLs disable opening, not access to the form.
   Validate the HTTP(S) scheme before launching a URL; never launch script/data URLs.
 - Provide Save, Delete for existing items, and Close editor/back.
 - A completion toggle in the list saves immediately with a completion-only
   request. A checkbox changed inside the editor saves with the form.
-- After successful create/edit, refresh the tree and reselect the saved item.
+- Enter in a single-line editor field submits any item type. Enter in Description
+  or diary Content inserts a newline without submitting.
+- After successful create/edit, refresh the tree, reselect the saved item, and
+  close the editor. Failed saves keep the editor and draft open with an error.
   After deletion, close the editor and refresh the selected folder.
 - Empty folders show an explicit empty state and still offer item creation.
 - Warn before discarding unsaved changes using the mobile app's existing
@@ -202,6 +267,7 @@ not fetch linked pages or generate metadata previews.
         "position": 0,
         "title": "Collect parcel",
         "content": "",
+        "url": "",
         "description": "Bring the collection code",
         "endDate": "2026-11-14",
         "completed": false,
@@ -222,6 +288,32 @@ not fetch linked pages or generate metadata previews.
 
 `parentId`, `description`, and `endDate` are nullable. `createdAt`/`updatedAt` are server-generated
 timestamps; `endDate` is not. Preserve hidden response fields in client state.
+
+### Response model reference
+
+These are response fields, not a full-record update payload. Use the partial
+write rules in section 6 rather than sending all decoded fields back.
+
+| Folder field | JSON type | Notes |
+| --- | --- | --- |
+| `id` | integer | Server-assigned numeric folder ID. |
+| `name` | string | Folder display name. |
+| `type` | string | `buy_list`, `tasks_list`, `diary`, or `links`. |
+| `position` | integer | Non-negative ordering position. |
+| `parentId` | integer or null | Null for root folders. |
+| `children` | folder array | Recursive; empty array when there are no children. |
+| `notes` | note array | Direct items only; empty array when there are none. |
+
+| Note field | JSON type | Notes |
+| --- | --- | --- |
+| `id`, `folderId` | integer | Item ID and its containing folder ID. |
+| `position` | integer | Non-negative ordering position. |
+| `title`, `content`, `url` | string | Content and URL can be empty, including for non-Diary/non-Bookmarks items. |
+| `description` | string or null | Separate from `content`; may also be an empty string. |
+| `endDate` | string or null | `YYYY-MM-DD` when set. |
+| `completed` | boolean | Not `done`, `purchased`, or a numeric status. |
+| `style` | object | Boolean `bold`/`italic`, string `textColor`/`backgroundColor`, integer `fontSize`. |
+| `createdAt`, `updatedAt` | string | RFC 3339 timestamps; accept fractional seconds and timezone offsets. |
 
 ### Ordering
 
@@ -295,6 +387,18 @@ Diary item:
     "backgroundColor": "#ffffff",
     "fontSize": 16
   }
+}
+```
+
+Bookmarks item:
+
+```json
+{
+  "folderId": 12,
+  "title": "Reference",
+  "url": "https://example.com/docs",
+  "description": null,
+  "position": 0
 }
 ```
 
@@ -382,8 +486,8 @@ clear account-specific client state on logout/account change.
 | Nested selection | Selecting a child shows its own items, not parent/sibling items. |
 | Selection changes | Switching folders closes the old editor; canceling folder creation preserves selection. |
 | Root/child creation | Correct parent sent; default Diary; child type remains independent. |
-| Configuration | Name/type/position persist after refresh and reopening the app. |
-| Buy list | Title and Purchased only, plus common position/folder controls. |
+| Configuration | Name/type and reordered positions persist after refresh and reopening the app; no numeric position fields appear in forms. |
+| Buy list | Title and Purchased only, plus the common destination-folder control. |
 | Tasks list | Title, separate description, optional end date, Done. |
 | Diary | Existing text, formatting, and preview; no completion/end-date controls. |
 | Hidden fields | Diary -> Buy list -> Tasks list -> Diary retains content, style, description, date, completion. |
@@ -430,7 +534,7 @@ isolation, new authorization rules, and notification scheduling are separate wor
 | [Folder tree](frontend/src/components/Notes/NoteTree.tsx) | Folder-only navigator, type icons, counts. |
 | [Item list](frontend/src/components/Notes/NoteList.tsx) | Direct items and completion controls. |
 | [Editor](frontend/src/components/Notes/NoteEditor.tsx) | Type-specific forms and optional date picker. |
-| [Folder dialog](frontend/src/components/Notes/FolderDialog.tsx) | Folder name, type, and position configuration. |
+| [Folder dialog](frontend/src/components/Notes/FolderDialog.tsx) | Folder name and type configuration. |
 | [Service tests](api-go/notes/notes_service_test.go) | Migration, ordering, type conversion, hidden-field preservation. |
 | [Handler tests](api-go/notes/notes_handler_test.go) | Binding, defaults, explicit resets, validation. |
 | [Frontend tests](frontend/tests/notes-types.test.mjs) | Field visibility, sidebar separation, action restrictions, payloads. |

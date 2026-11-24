@@ -15,8 +15,6 @@ type FolderDialogProps = {
     folderType: NoteFolderType;
     onTypeChange: (value: NoteFolderType) => void;
     errorMessage: string;
-    position: string;
-    onPositionChange: (value: string) => void;
     isSaving: boolean;
     onClose: () => void;
     onChange: (value: string) => void;
@@ -30,8 +28,6 @@ export function FolderDialog({
     folderType,
     onTypeChange,
     errorMessage,
-    position,
-    onPositionChange,
     isSaving,
     onClose,
     onChange,
@@ -67,25 +63,13 @@ export function FolderDialog({
                         <MenuItem key={value} value={value}>{label}</MenuItem>
                     ))}
                 </TextField>
-                <TextField
-                    fullWidth
-                    margin="dense"
-                    label="Position"
-                    type="number"
-                    value={position}
-                    disabled={isSaving}
-                    onChange={(e) => onPositionChange(e.target.value)}
-                    slotProps={{ htmlInput: { min: 0, step: 1 } }}
-                    helperText="Lower positions appear first among sibling folders."
-                    error={!position.trim() || !Number.isSafeInteger(Number(position)) || Number(position) < 0}
-                />
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>Cancel</Button>
                 <Button
                     variant="contained"
                     onClick={onSubmit}
-                    disabled={!folderName.trim() || !position.trim() || !Number.isSafeInteger(Number(position)) || Number(position) < 0 || isSaving}
+                    disabled={!folderName.trim() || isSaving}
                 >
                     Save
                 </Button>

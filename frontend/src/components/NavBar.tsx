@@ -1,13 +1,14 @@
 import AppBar from '@mui/material/AppBar';
 import Toolbar from '@mui/material/Toolbar';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import { useLocation } from 'react-router-dom';
 import { useState } from 'react';
 
 import Logo from './NavBar/Logo';
-import DesktopNav from './NavBar/DesktopNav';
-import MobileNav from './NavBar/MobileNav';
+import SidebarNav from './NavBar/SidebarNav';
 import UserMenu from './NavBar/UserMenu';
-import { NAV_SECTIONS } from './NavBar/navigationConfig';
+import { getNavigationSections } from './NavBar/navigationConfig';
 import { AuthSession } from '../types/domain';
 
 interface NavBarProps {
@@ -16,23 +17,22 @@ interface NavBarProps {
     session: AuthSession | null;
     themeName: string;
     setThemeName: (theme: string) => void;
+    sidebarCollapsed: boolean;
+    onToggleSidebar: () => void;
 }
 
-function NavBar({ canWrite, onLogout, session, themeName, setThemeName }: NavBarProps) {
+function NavBar({ canWrite, onLogout, session, themeName, setThemeName, sidebarCollapsed, onToggleSidebar }: NavBarProps) {
     const location = useLocation();
-    const [drawerOpen, setDrawerOpen] = useState(false);
+    const theme = useTheme();
+    const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+    const [drawerLocation, setDrawerLocation] = useState<typeof location | null>(null);
+    const drawerOpen = drawerLocation === location && !isDesktop;
 
-    const closeDrawer = () => setDrawerOpen(false);
+    const closeDrawer = () => setDrawerLocation(null);
 
     const isAdminUser = session?.role === 'Admin';
 
-    // Filter sections based on user role
-    const visibleSections = NAV_SECTIONS.filter(section => {
-        if (!section.roles) return true;
-        if (isAdminUser && section.roles.includes('Admin')) return true;
-        if (!isAdminUser && section.roles.includes('User')) return true;
-        return false;
-    });
+    const visibleSections = getNavigationSections(isAdminUser);
 
     return (
         <AppBar
@@ -41,6 +41,8 @@ function NavBar({ canWrite, onLogout, session, themeName, setThemeName }: NavBar
             elevation={1}
             sx={{
                 mb: 3,
+                top: 0,
+                zIndex: theme.zIndex.appBar,
                 bgcolor: 'background.paper',
                 borderBottom: '1px solid',
                 borderColor: 'divider',
@@ -57,11 +59,10 @@ function NavBar({ canWrite, onLogout, session, themeName, setThemeName }: NavBar
                     flexWrap: 'nowrap', // Prevent wrapping
                 }}
             >
-                <Logo onMenuClick={() => setDrawerOpen(true)} />
-
-                <DesktopNav
-                    sections={visibleSections}
-                    currentPath={location.pathname}
+                <Logo
+                    onMenuClick={() => isDesktop ? onToggleSidebar() : setDrawerLocation(location)}
+                    drawerOpen={drawerOpen}
+                    sidebarCollapsed={sidebarCollapsed}
                 />
 
                 <UserMenu
@@ -74,9 +75,12 @@ function NavBar({ canWrite, onLogout, session, themeName, setThemeName }: NavBar
                 />
             </Toolbar>
 
-            <MobileNav
+            <SidebarNav
+                isDesktop={isDesktop}
                 open={drawerOpen}
                 onClose={closeDrawer}
+                collapsed={sidebarCollapsed}
+                onCollapse={onToggleSidebar}
                 sections={visibleSections}
                 currentPath={location.pathname}
             />

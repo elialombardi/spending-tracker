@@ -16,38 +16,35 @@ import { NavSection } from "../../types/navigation";
 export const NAV_SECTIONS: NavSection[] = [
   {
     title: "Main",
-    items: [{ path: "/map", label: "Map", icon: Home }],
-    roles: ["User", "Admin"],
-  },
-  {
-    title: "Shopping",
-    items: [{ path: "/search", label: "Marketplace search", icon: Search }],
-  },
-  {
-    title: "Training",
     items: [
-      { path: "/cognitive", label: "Cognitive Training", icon: Psychology },
-      { path: "/workout", label: "Workout", icon: FitnessCenter },
-    ],
-    roles: ["User", "Admin"],
-  },
-  {
-    title: "Finances",
-    items: [
+      { path: "/notes", label: "Notes", icon: Note },
+      { path: "/fuel-manager", label: "Fuel Manager", icon: LocalGasStation },
       { path: "/dashboard", label: "Money", icon: Euro },
       { path: "/tasks", label: "Tasks", icon: Assignment },
     ],
     roles: ["Admin"],
   },
   {
-    title: "Personal",
+    title: "More tools",
     items: [
-      { path: "/diary", label: "Diary", icon: CalendarToday },
-      { path: "/notes", label: "Notes", icon: Note },
-      { path: "/boxing-events", label: "Boxing Events", icon: SportsMma },
-      { path: "/fuel-manager", label: "Fuel Manager", icon: LocalGasStation },
-      { path: "/youtube-manager", label: "YouTube Manager", icon: PlayArrowRounded }
+      { path: "/map", label: "Map", icon: Home },
+      { path: "/search", label: "Marketplace search", icon: Search },
+      { path: "/cognitive", label: "Cognitive Training", icon: Psychology },
+      { path: "/workout", label: "Workout", icon: FitnessCenter },
+      { path: "/diary", label: "Diary", icon: CalendarToday, roles: ["Admin"] },
+      { path: "/boxing-events", label: "Boxing Events", icon: SportsMma, roles: ["Admin"] },
+      { path: "/youtube-manager", label: "YouTube Manager", icon: PlayArrowRounded, roles: ["Admin"] }
     ],
-    roles: ["Admin"],
   },
 ];
+
+export function getNavigationSections(isAdmin: boolean): NavSection[] {
+  const role = isAdmin ? "Admin" : "User";
+  return NAV_SECTIONS
+    .filter(section => !section.roles || section.roles.includes(role))
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item => !item.roles || item.roles.includes(role)),
+    }))
+    .filter(section => section.items.length > 0);
+}

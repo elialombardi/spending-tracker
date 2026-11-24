@@ -78,6 +78,7 @@ function UserMenu({
   return (
     <Box sx={{ flexShrink: 0 }}>
       <Button
+        aria-label="Account menu"
         onClick={handleClick}
         variant="contained"
         size="small"
@@ -88,7 +89,7 @@ function UserMenu({
           display: 'flex',
           alignItems: 'center',
           gap: 1,
-          minHeight: 40,
+          minHeight: 44,
           whiteSpace: 'nowrap', // Prevent text from wrapping
           flexShrink: 0, // Prevent button from shrinking
         }}
@@ -105,7 +106,7 @@ function UserMenu({
           {getInitials()}
         </Avatar>
         <Box sx={{
-          display: 'flex',
+          display: { xs: 'none', sm: 'flex' },
           flexDirection: 'column',
           alignItems: 'flex-start',
           lineHeight: 1.2,

@@ -18,9 +18,9 @@ test('note editors show only the fields for their folder type', async () => {
         const { NoteEditor } = await server.ssrLoadModule('/src/components/Notes/NoteEditor.tsx')
         const { defaultStyle } = await server.ssrLoadModule('/src/components/Notes/types.ts')
         const props = {
-            title: 'Milk', position: '0', content: 'Private diary content',
+            title: 'Milk', content: 'Private diary content',
             description: 'Task details', endDate: '', completed: true, style: defaultStyle,
-            canWrite: true, errorMessage: '', onPositionChange() {}, onTitleChange() {},
+            canWrite: true, errorMessage: '', onTitleChange() {},
             onContentChange() {}, onStyleChange() {}, onDescriptionChange() {},
             onEndDateChange() {}, onCompletedChange() {},
             url: 'https://example.com/docs', onURLChange() {},
@@ -47,6 +47,27 @@ test('note editors show only the fields for their folder type', async () => {
         assert.match(links, /href="https:\/\/example.com\/docs"/)
         assert.match(links, /target="_blank" rel="noopener noreferrer"/)
         assert.doesNotMatch(links, /type="checkbox"|Private diary content|End date/)
+        for (const markup of [buyList, tasksList, diary, links]) {
+            assert.doesNotMatch(markup, /Position|type="number"/)
+        }
+    } finally {
+        await server.close()
+    }
+})
+
+test('note save action submits its editor form and keeps write and saving restrictions', async () => {
+    const server = await createServer(serverOptions)
+    try {
+        const { NoteActions } = await server.ssrLoadModule('/src/components/Notes/NoteActions.tsx')
+        const props = {
+            canWrite: true, isSaving: false, hasTitle: true, hasSelectedNote: true,
+            formID: 'note-editor-form', onDeleteNote() {},
+        }
+        const render = overrides => renderToStaticMarkup(createElement(NoteActions, { ...props, ...overrides }))
+        assert.match(render({}), /<button (?=[^>]*type="submit")(?=[^>]*form="note-editor-form")[^>]*>/)
+        for (const overrides of [{ canWrite: false }, { isSaving: true }, { hasTitle: false }]) {
+            assert.match(render(overrides), /<button (?=[^>]*type="submit")(?=[^>]*disabled="")[^>]*>/)
+        }
     } finally {
         await server.close()
     }
@@ -168,7 +189,32 @@ test('bookmark URLs allow only complete HTTP(S) addresses and never render unsaf
                 onSelectNote() {}, onToggleCompleted() {}, onMoveNote() {},
             }))
             assert.doesNotMatch(markup, /href=|Open bookmark:|type="checkbox"/)
+            assert.match(markup, /aria-label="View bookmark: Unsafe"/)
         }
+    } finally {
+        await server.close()
+    }
+})
+
+test('bookmark rows open URLs while pencil buttons keep the editor accessible', async () => {
+    const server = await createServer(serverOptions)
+    try {
+        const { NoteList } = await server.ssrLoadModule('/src/components/Notes/NoteList.tsx')
+        const props = {
+            folder: { id: 1, type: 'links', notes: [{ id: 1, title: 'Reference', url: 'https://example.com' }] },
+            selectedNoteID: null, canWrite: true, isBusy: false,
+            onSelectNote() {}, onToggleCompleted() {}, onMoveNote() {},
+        }
+        const render = overrides => renderToStaticMarkup(createElement(NoteList, { ...props, ...overrides }))
+        const markup = render({})
+        assert.match(markup, /<a (?=[^>]*href="https:\/\/example.com")(?=[^>]*target="_blank")(?=[^>]*rel="noopener noreferrer")(?=[^>]*aria-label="Open bookmark: Reference")[^>]*>/)
+        assert.match(markup, /<button (?=[^>]*aria-label="Edit bookmark: Reference")[^>]*>/)
+        assert.match(markup, /data-testid="EditOutlinedIcon"/)
+        assert.equal((markup.match(/href=/g) || []).length, 1)
+        const busy = render({ isBusy: true })
+        assert.doesNotMatch(busy, /href=/)
+        assert.match(busy, /<button (?=[^>]*disabled="")(?=[^>]*aria-label="Edit bookmark: Reference")[^>]*>/)
+        assert.match(render({ canWrite: false }), /aria-label="View bookmark: Reference"/)
     } finally {
         await server.close()
     }

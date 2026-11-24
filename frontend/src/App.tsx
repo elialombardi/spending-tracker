@@ -1,9 +1,10 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import NavBar from './components/NavBar';
 import LoginScreen from './components/LoginScreen';
 import { Navigate, Routes, Route } from 'react-router-dom';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
+import { SIDEBAR_WIDTH } from './components/NavBar/SidebarNav';
 import { bootstrapDevelopmentSession, canWrite, isSessionExpired, login, logout, useAuthSession, isAdmin } from './auth';
 import { isDevelopmentEnv } from './config';
 
@@ -24,9 +25,18 @@ const MarketplaceSearchPage = lazy(() => import('./pages/MarketplaceSearchPage')
 const RegisteredDevicesPage = lazy(() => import('./pages/RegisteredDevicesPage'));
 
 function App({ themeName, setThemeName }) {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem('spending-tracker.sidebar-collapsed') === 'true',
+  );
   const { message, session, status } = useAuthSession();
   const canModify = canWrite(session);
   const isAdminUser = isAdmin(session);
+
+  function toggleSidebar() {
+    const collapsed = !sidebarCollapsed;
+    localStorage.setItem('spending-tracker.sidebar-collapsed', String(collapsed));
+    setSidebarCollapsed(collapsed);
+  }
 
   useEffect(() => {
     if (session && isSessionExpired(session)) {
@@ -45,9 +55,9 @@ function App({ themeName, setThemeName }) {
   }
 
   return (
-    <>
-      <Container maxWidth="lg" sx={{ py: 2 }}>
-        <NavBar canWrite={canModify} onLogout={() => logout()} session={session} themeName={themeName} setThemeName={setThemeName} />
+    <Box sx={{ ml: { md: sidebarCollapsed ? 0 : `${SIDEBAR_WIDTH}px` }, minWidth: 0 }}>
+      <Container maxWidth="lg" sx={{ py: { xs: 1, sm: 2 }, px: { xs: 1, sm: 3 } }}>
+        <NavBar canWrite={canModify} onLogout={() => logout()} session={session} themeName={themeName} setThemeName={setThemeName} sidebarCollapsed={sidebarCollapsed} onToggleSidebar={toggleSidebar} />
         <Suspense fallback={<Box sx={{ p: 3 }}>Loading…</Box>}>
           <Routes>
             <Route path="/" element={<Navigate to={isAdminUser ? "/tasks" : "/map"} replace />} />
@@ -75,7 +85,7 @@ function App({ themeName, setThemeName }) {
       <Box sx={{ mt: 2, textAlign: 'right', color: 'text.secondary', fontSize: '0.75rem', px: 2, py: 1 }}>
         Version {appVersion}
       </Box>
-    </>
+    </Box>
   );
 }
 

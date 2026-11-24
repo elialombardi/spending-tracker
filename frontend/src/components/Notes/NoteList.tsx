@@ -12,6 +12,7 @@ import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import OpenInNewRoundedIcon from '@mui/icons-material/OpenInNewRounded';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import { getBookmarkURL, Note, NoteFolderTree } from '../../types/notes';
 import { folderTypeAppearance } from './types';
 import { ReorderDragHandle } from './ReorderDragHandle';
@@ -30,6 +31,7 @@ type NoteListProps = {
 export function NoteList({ folder, selectedNoteID, canWrite, isBusy, onSelectNote, onToggleCompleted, onMoveNote }: NoteListProps) {
     const drag = useReorderDrag<Note>(canWrite && !isBusy, (_siblings, id, offset) => onMoveNote(id, offset));
     const { icon: FolderTypeIcon, color } = folderTypeAppearance[folder.type];
+    const isBookmark = folder.type === 'links';
     if (folder.notes.length === 0) {
         return (
             <Stack spacing={1} sx={{ alignItems: 'center', textAlign: 'center', py: 6, px: 2, border: '1px dashed', borderColor: 'divider', borderRadius: '16px' }}>
@@ -49,7 +51,9 @@ export function NoteList({ folder, selectedNoteID, canWrite, isBusy, onSelectNot
 
     return (
         <List disablePadding aria-label="Folder items">
-            {folder.notes.map((note) => (
+            {folder.notes.map((note) => {
+                const bookmarkURL = isBookmark ? getBookmarkURL(note.url ?? '') : null;
+                return (
                 <ListItem key={note.id} disablePadding {...drag.rowProps(note.id, folder.notes)} sx={(theme) => ({
                     mb: 1, border: '1px solid', borderRadius: '14px', overflow: 'hidden',
                     outline: drag.dropTargetID === note.id ? '2px solid' : undefined,
@@ -71,9 +75,14 @@ export function NoteList({ folder, selectedNoteID, canWrite, isBusy, onSelectNot
                         </ListItemIcon>
                     )}
                     <ListItemButton
+                        component={isBookmark ? 'a' : 'div'}
+                        href={isBookmark && !isBusy ? bookmarkURL ?? undefined : undefined}
+                        target={isBookmark ? '_blank' : undefined}
+                        rel={isBookmark ? 'noopener noreferrer' : undefined}
+                        aria-label={bookmarkURL ? `Open bookmark: ${note.title}` : undefined}
                         selected={selectedNoteID === note.id}
-                        disabled={isBusy}
-                        onClick={() => onSelectNote(note)}
+                        disabled={isBusy || (isBookmark && !bookmarkURL)}
+                        onClick={isBookmark ? undefined : () => onSelectNote(note)}
                         sx={(theme) => ({
                             gap: 1.5, py: 1.75, minHeight: 72,
                             '&.Mui-selected': { bgcolor: alpha(theme.palette.primary.main, 0.05) },
@@ -100,19 +109,19 @@ export function NoteList({ folder, selectedNoteID, canWrite, isBusy, onSelectNot
                                 ? (note.updatedAt ? `Updated ${new Date(note.updatedAt).toLocaleString()}` : undefined)
                                 : folder.type === 'tasks_list' && note.endDate ? `End date: ${note.endDate}` : undefined}
                         />
-                        <ArrowForwardRoundedIcon sx={{ fontSize: 18, color: 'text.secondary', flexShrink: 0 }} />
+                        {isBookmark
+                            ? <OpenInNewRoundedIcon sx={{ fontSize: 18, color: 'text.secondary', flexShrink: 0 }} />
+                            : <ArrowForwardRoundedIcon sx={{ fontSize: 18, color: 'text.secondary', flexShrink: 0 }} />}
                     </ListItemButton>
-                    {folder.type === 'links' && getBookmarkURL(note.url ?? '') && (
-                        <Tooltip title="Open bookmark in a new tab">
+                    {isBookmark && (
+                        <Tooltip title={canWrite ? 'Edit bookmark' : 'View bookmark'}>
                             <IconButton
-                                component="a"
-                                href={getBookmarkURL(note.url) ?? undefined}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label={`Open bookmark: ${note.title}`}
+                                onClick={() => onSelectNote(note)}
+                                disabled={isBusy}
+                                aria-label={`${canWrite ? 'Edit' : 'View'} bookmark: ${note.title}`}
                                 sx={{ mx: 1 }}
                             >
-                                <OpenInNewRoundedIcon fontSize="small" />
+                                <EditOutlinedIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
                     )}
@@ -125,7 +134,8 @@ export function NoteList({ folder, selectedNoteID, canWrite, isBusy, onSelectNot
                         />
                     )}
                 </ListItem>
-            ))}
+                );
+            })}
         </List>
     );
 }

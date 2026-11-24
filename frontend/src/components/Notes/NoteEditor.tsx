@@ -20,8 +20,6 @@ import { NoteFolderTree, NoteFolderType } from '../../types/notes';
 
 type NoteEditorProps = {
     title: string;
-    position: string;
-    onPositionChange: (value: string) => void;
     content: string;
     url: string;
     onURLChange: (value: string) => void;
@@ -45,8 +43,6 @@ type NoteEditorProps = {
 
 export function NoteEditor({
     title,
-    position,
-    onPositionChange,
     content,
     url,
     onURLChange,
@@ -182,17 +178,6 @@ export function NoteEditor({
                         ))}
                     </Select>
                 </FormControl>
-                <TextField
-                    fullWidth
-                    sx={{ flex: 1 }}
-                    label="Position"
-                    type="number"
-                    value={position}
-                    disabled={!canWrite}
-                    onChange={(e) => onPositionChange(e.target.value)}
-                    slotProps={{ htmlInput: { min: 0, step: 1 } }}
-                    helperText="Lower positions appear first."
-                />
             </Stack>
         </Stack>
     );

@@ -5,16 +5,20 @@ import MenuIcon from '@mui/icons-material/Menu';
 
 interface LogoProps {
   onMenuClick: () => void;
+  drawerOpen: boolean;
+  sidebarCollapsed: boolean;
 }
 
-function Logo({ onMenuClick }: LogoProps) {
+function Logo({ onMenuClick, drawerOpen, sidebarCollapsed }: LogoProps) {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
       <IconButton
         edge="start"
-        aria-label="menu"
+        aria-label="Open navigation"
+        aria-controls={drawerOpen ? 'app-navigation' : undefined}
+        aria-expanded={drawerOpen}
         onClick={onMenuClick}
-        sx={{ display: { xs: 'inline-flex', md: 'none' } }}
+        sx={{ display: { xs: 'inline-flex', md: sidebarCollapsed ? 'inline-flex' : 'none' }, minWidth: 44, minHeight: 44 }}
       >
         <MenuIcon />
       </IconButton>
@@ -29,6 +33,7 @@ function Logo({ onMenuClick }: LogoProps) {
           borderRadius: '50%',
           border: '2px solid',
           borderColor: 'primary.main',
+          display: { xs: 'none', sm: 'block' },
         }}
       />
 

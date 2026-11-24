@@ -23,6 +23,18 @@ After signing in at the application root (`/`), admins are redirected to Tasks
 available from navigation for both roles. Direct links to other pages are
 preserved when signing in.
 
+Navigation uses a persistent left sidebar on desktop and a hamburger-triggered
+drawer on smaller screens. Notes, Fuel Manager, Money, and Tasks are shown first
+for admins; less-used pages are grouped under **More tools**. Existing role
+restrictions are unchanged. The drawer closes after selecting a page, with the
+close button, by tapping the backdrop, or with Escape. Links highlight the
+current page, and **More tools** expands automatically for its active page.
+Account, theme, device, and user-management actions remain in the account menu.
+On desktop, **Collapse navigation** hides the sidebar and gives its space back to
+the page. Use **Open navigation** in the header to restore it. This preference is
+saved in browser local storage and restored after reloading or reopening the app.
+The mobile drawer continues to open and close independently.
+
 ```sh
 npm run typecheck
 npm run lint
@@ -95,8 +107,8 @@ If saving fails, the dialog should remain open and show the error.
 
 Use **Add root folder**, **Add child folder**, or **Edit folder** in Notes to
 choose **Buy list**, **Tasks list**, or **Diary**. New and existing folders
-default to Diary; children have independent types. Folder position and name
-remain editable for all types.
+default to Diary; children have independent types. Folder names remain editable
+for all types; ordering is managed through the list's drag controls.
 
 Buy-list items have a title and Purchased checkbox. Task-list items have a title,
 optional nullable description, optional clearable end date, and Done checkbox.
@@ -105,14 +117,20 @@ when the field is cleared. Other folder types leave the hidden description
 untouched. Toggle checkboxes
 in the main item list to save immediately, or edit the checkbox in the editor and
 choose **Save item**. Reader accounts cannot edit or toggle items. Diary retains
-the content editor, styling, and preview. Item position and folder assignment
-remain available in all editors.
+the content editor, styling, and preview. Folder assignment remains available in
+all editors. Press Enter in a single-line field to save any item type; Enter in
+Description or diary Content inserts a newline instead. Successful saves close
+the editor; failed saves keep the draft open with an error.
 
 The sidebar contains only folders, including nested folders. Selecting one shows
 only that folder's items in the main section. Select an item to open its editor,
 or choose **New item** / **New note** to create one. **Close editor** returns to
 the list; selecting another folder closes the editor. Empty folders show an
 empty-state message and still allow adding items.
+
+For bookmarks, clicking the row opens its URL in a new tab. Use the pencil button
+to open the bookmark form (read-only for readers). Bookmarks with a missing or
+invalid URL cannot be opened, but their form remains accessible via the pencil.
 
 The Notes workspace uses theme-aware cards, type-specific folder icons, item-count
 badges, and highlighted selection states.
@@ -126,7 +144,7 @@ accessible labels, and the layout stacks on small screens.
 
 Drag the grip beside a folder or item onto another row to move it directly to
 that position; the destination row is highlighted while dragging.
-Numeric positions remain editable in the item editor and folder dialog.
+Numeric position fields are not shown in the item editor or folder dialog.
 Folders move within their current parent (including root
 folders); items move within their current folder. Order is saved to the server
 and survives reloads, including when existing positions are tied. Reordering

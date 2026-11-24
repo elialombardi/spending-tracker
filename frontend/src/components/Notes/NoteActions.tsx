@@ -8,7 +8,7 @@ type NoteActionsProps = {
     isSaving: boolean;
     hasTitle: boolean;
     hasSelectedNote: boolean;
-    onSaveNote: () => void;
+    formID: string;
     onDeleteNote: () => void;
 };
 
@@ -17,7 +17,7 @@ export function NoteActions({
     isSaving,
     hasTitle,
     hasSelectedNote,
-    onSaveNote,
+    formID,
     onDeleteNote,
 }: NoteActionsProps) {
     return (
@@ -26,7 +26,8 @@ export function NoteActions({
                 variant="contained"
                 startIcon={<SaveRoundedIcon />}
                 loading={isSaving}
-                onClick={onSaveNote}
+                type="submit"
+                form={formID}
                 disabled={!canWrite || isSaving || !hasTitle}
             >
                 Save changes

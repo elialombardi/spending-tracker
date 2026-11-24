@@ -182,6 +182,11 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
   }
 
   async function handleSaveNote() {
+    if (!canWrite || isSaving) return;
+    if (!title.trim()) {
+      setErrorMessage('Title is required.');
+      return;
+    }
     if (!editorFolderID) {
       setErrorMessage('Select a folder first.');
       return;
@@ -214,6 +219,7 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
         const created = await api.createNote(payload);
         await reloadTree(created?.id);
       }
+      closeEditor();
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to save note.');
     } finally {
@@ -482,11 +488,17 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
             <CloseRoundedIcon />
           </IconButton>
         </Stack>
-        <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', p: { xs: 2, sm: 3 } }}>
+        <Box
+          component="form"
+          id="note-editor-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSaveNote();
+          }}
+          sx={{ flex: 1, minHeight: 0, overflowY: 'auto', p: { xs: 2, sm: 3 } }}
+        >
           <NoteEditor
             title={title}
-            position={position}
-            onPositionChange={setPosition}
             content={content}
             url={url}
             onURLChange={setURL}
@@ -517,7 +529,7 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
             isSaving={isSaving}
             hasTitle={!!title.trim()}
             hasSelectedNote={!!selectedNoteID}
-            onSaveNote={handleSaveNote}
+            formID="note-editor-form"
             onDeleteNote={handleDeleteNote}
           />
         </Stack>
@@ -542,8 +554,6 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
         folderType={folderTypeDraft}
         onTypeChange={setFolderTypeDraft}
         errorMessage={errorMessage}
-        position={folderPositionDraft}
-        onPositionChange={setFolderPositionDraft}
         isSaving={isSaving}
         onClose={() => setIsFolderDialogOpen(false)}
         onChange={setFolderNameDraft}

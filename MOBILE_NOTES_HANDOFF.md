@@ -76,6 +76,10 @@ The latest requirements supersede a combined folder-and-note sidebar:
   Direct item-count badges are allowed; item titles and completion controls
   belong in the selected folder's main content area.
 - Selecting a folder shows **only its direct items**, not descendants' items.
+- On the web, folder selection is encoded as `/notes?folderId=<id>`, including
+  nested folders. Refresh and browser Back/Forward restore that selection.
+  Invalid or deleted folder links show a warning; mobile deep links should
+  preserve the same folder identity using the app's navigation conventions.
 - Selecting a non-bookmark item opens its type-specific editor. Selecting another folder
   closes the editor and clears the previous item selection.
 - Every folder has a type: Buy list, Tasks list, Bookmarks, or Diary. Diary is the default.

@@ -12,6 +12,25 @@ const serverOptions = {
     server: { middlewareMode: true, hmr: false, ws: false, watch: null },
 }
 
+test('folder URLs restore root and nested selections without choosing a different folder for invalid links', async () => {
+    const server = await createServer(serverOptions)
+    try {
+        const { findFolderFromParam } = await server.ssrLoadModule('/src/components/Notes/utils/noteTreeUtils.ts')
+        const nested = { id: 3, children: [] }
+        const tree = [{ id: 1, children: [] }, { id: 2, children: [nested] }]
+        assert.equal(findFolderFromParam(tree, null), tree[0])
+        assert.equal(findFolderFromParam(tree, '2'), tree[1])
+        assert.equal(findFolderFromParam(tree, '3'), nested)
+        for (const param of ['', '0', '-1', '1.5', '1e0', 'abc', '999', '9007199254740992']) {
+            assert.equal(findFolderFromParam(tree, param), null, param)
+        }
+        assert.equal(findFolderFromParam([], null), null)
+        assert.equal(findFolderFromParam([], '3'), null)
+    } finally {
+        await server.close()
+    }
+})
+
 test('note editors show only the fields for their folder type', async () => {
     const server = await createServer(serverOptions)
     try {

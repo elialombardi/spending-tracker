@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
@@ -23,7 +24,7 @@ import { useTheme, alpha } from '@mui/material/styles';
 import api from '../../api';
 import { Note, NoteFolderTree, NoteFolderType, NoteStyle, folderTypeLabels, getBookmarkURL } from '../../types/notes';
 import { NotesWorkspaceProps, defaultStyle, folderTypeAppearance } from './types';
-import { findFolderByID, findNoteByID, reorderItems } from './utils/noteTreeUtils';
+import { findFolderByID, findFolderFromParam, findNoteByID, reorderItems } from './utils/noteTreeUtils';
 import { FolderActions } from './FolderActions';
 import { FolderDialog } from './FolderDialog';
 import { FolderList } from './FolderList';
@@ -33,13 +34,15 @@ import { NoteList } from './NoteList';
 
 export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
   const theme = useTheme();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const folderParam = searchParams.get('folderId');
+  const [previousFolderParam, setPreviousFolderParam] = useState(folderParam);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [tree, setTree] = useState<NoteFolderTree[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const [selectedFolderID, setSelectedFolderID] = useState<number | null>(null);
   const [selectedNoteID, setSelectedNoteID] = useState<number | null>(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editorFolderID, setEditorFolderID] = useState<number | null>(null);
@@ -63,9 +66,10 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
   const [folderParentID, setFolderParentID] = useState<number | null>(null);
 
   const selectedFolder = useMemo(
-    () => (selectedFolderID ? findFolderByID(tree, selectedFolderID) : null),
-    [selectedFolderID, tree],
+    () => findFolderFromParam(tree, folderParam),
+    [folderParam, tree],
   );
+  const selectedFolderID = selectedFolder?.id ?? null;
   const folderType = selectedFolder?.type ?? 'diary';
   const editorFolder = editorFolderID ? findFolderByID(tree, editorFolderID) : null;
   const editorFolderType = editorFolder?.type ?? 'diary';
@@ -95,6 +99,16 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
     return () => window.removeEventListener('beforeunload', warnBeforeUnload);
   }, [isDirty]);
 
+  function setSelectedFolderID(id: number | null, replace = false) {
+    if (folderParam === (id === null ? null : String(id))) return;
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      if (id === null) next.delete('folderId');
+      else next.set('folderId', String(id));
+      return next;
+    }, { replace });
+  }
+
   async function reloadTree(noteToReselect?: number, forceFolderReset = false) {
     setIsLoading(true);
     setErrorMessage('');
@@ -103,12 +117,13 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
       const nextTree = Array.isArray(response) ? response : [];
       setTree(nextTree);
 
-      if ((forceFolderReset || !selectedFolderID) && nextTree.length > 0) {
-        setSelectedFolderID(nextTree[0].id);
+      if (forceFolderReset || folderParam === null) {
+        setSelectedFolderID(nextTree[0]?.id ?? null, true);
       }
       if (noteToReselect) {
         const selected = findNoteByID(nextTree, noteToReselect);
         if (selected) {
+          setPreviousFolderParam(String(selected.folderId));
           setSelectedNoteID(selected.note.id);
           setSelectedFolderID(selected.folderId);
           loadNote(selected.note);
@@ -156,6 +171,13 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
     setEndDate('');
     setCompleted(false);
     setStyle(defaultStyle);
+  }
+
+  // Reset drafts before rendering a folder reached through browser history.
+  if (previousFolderParam !== folderParam) {
+    setPreviousFolderParam(folderParam);
+    resetEditor();
+    setErrorMessage('');
   }
 
   function pickNote(note: Note, folderID: number) {
@@ -297,7 +319,6 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
     try {
       await api.deleteNoteFolder(selectedFolderID);
       resetEditor();
-      setSelectedFolderID(null);
       await reloadTree(undefined, true);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to delete folder.');
@@ -407,6 +428,9 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
             </Button>
           )}
           {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
+          {!isLoading && folderParam !== null && !selectedFolder && (
+            <Alert severity="warning">The folder in this link is invalid or no longer exists. Select another folder.</Alert>
+          )}
           {selectedFolder ? (
             <>
               <Paper component="section" aria-label="Folder item list" variant="outlined" sx={{ ...panelSx, p: { xs: 2, sm: 3 } }}>

@@ -127,6 +127,11 @@ only that folder's items in the main section. Select an item to open its editor,
 or choose **New item** / **New note** to create one. **Close editor** returns to
 the list; selecting another folder closes the editor. Empty folders show an
 empty-state message and still allow adding items.
+Selecting a folder updates the URL (for example, `/notes?folderId=12`).
+Refreshing or sharing that URL restores the same folder, including nested
+folders. Browser Back/Forward also follows folder selections and closes the
+previous editor. Invalid or deleted folder links show a warning rather than
+silently selecting a different folder.
 
 For bookmarks, clicking the row opens its URL in a new tab. Use the pencil button
 to open the bookmark form (read-only for readers). Bookmarks with a missing or

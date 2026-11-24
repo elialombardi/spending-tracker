@@ -34,6 +34,13 @@ export function findFolderByID(nodes: NoteFolderTree[], folderID: number): NoteF
     return null;
 }
 
+export function findFolderFromParam(nodes: NoteFolderTree[], folderParam: string | null): NoteFolderTree | null {
+    if (folderParam === null) return nodes[0] ?? null;
+    if (!/^[1-9]\d*$/.test(folderParam)) return null;
+    const folderID = Number(folderParam);
+    return Number.isSafeInteger(folderID) ? findFolderByID(nodes, folderID) : null;
+}
+
 export function findNoteByID(nodes: NoteFolderTree[], noteID: number): { note: Note; folderId: number } | null {
     for (const node of nodes) {
         const found = (node.notes || []).find((note) => note.id === noteID);

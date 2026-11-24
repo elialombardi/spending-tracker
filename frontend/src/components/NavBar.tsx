@@ -1,11 +1,12 @@
-import AppBar from '@mui/material/AppBar';
-import Toolbar from '@mui/material/Toolbar';
+import Box from '@mui/material/Box';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import MenuIcon from '@mui/icons-material/Menu';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { ReactNode, useState } from 'react';
 
-import Logo from './NavBar/Logo';
 import SidebarNav from './NavBar/SidebarNav';
 import UserMenu from './NavBar/UserMenu';
 import { getNavigationSections } from './NavBar/navigationConfig';
@@ -31,49 +32,38 @@ function NavBar({ canWrite, onLogout, session, themeName, setThemeName, sidebarC
     const closeDrawer = () => setDrawerLocation(null);
 
     const isAdminUser = session?.role === 'Admin';
-
     const visibleSections = getNavigationSections(isAdminUser);
+    const sidebarVisible = isDesktop && !sidebarCollapsed;
+
+    const accountMenu: ReactNode = (
+        <UserMenu
+            session={session}
+            onLogout={onLogout}
+            canWrite={canWrite}
+            isAdminUser={isAdminUser}
+            themeName={themeName}
+            setThemeName={setThemeName}
+        />
+    );
 
     return (
-        <AppBar
-            position="sticky"
-            color="default"
-            elevation={1}
-            sx={{
-                mb: 3,
-                top: 0,
-                zIndex: theme.zIndex.appBar,
-                bgcolor: 'background.paper',
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-                flexShrink: 0, // Prevent appbar from shrinking
-            }}
-        >
-            <Toolbar
-                sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    py: 1,
-                    minHeight: '64px !important', // Fixed minimum height
-                    flexWrap: 'nowrap', // Prevent wrapping
-                }}
-            >
-                <Logo
-                    onMenuClick={() => isDesktop ? onToggleSidebar() : setDrawerLocation(location)}
-                    drawerOpen={drawerOpen}
-                    sidebarCollapsed={sidebarCollapsed}
-                />
-
-                <UserMenu
-                    session={session}
-                    onLogout={onLogout}
-                    canWrite={canWrite}
-                    isAdminUser={isAdminUser}
-                    themeName={themeName}
-                    setThemeName={setThemeName}
-                />
-            </Toolbar>
+        <>
+            {!sidebarVisible && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+                    <Tooltip title="Open navigation">
+                        <IconButton
+                            edge="start"
+                            aria-label="Open navigation"
+                            aria-controls={drawerOpen ? 'app-navigation' : undefined}
+                            aria-expanded={drawerOpen}
+                            onClick={() => isDesktop ? onToggleSidebar() : setDrawerLocation(location)}
+                            sx={{ minWidth: 44, minHeight: 44 }}
+                        >
+                            <MenuIcon />
+                        </IconButton>
+                    </Tooltip>
+                </Box>
+            )}
 
             <SidebarNav
                 isDesktop={isDesktop}
@@ -83,8 +73,9 @@ function NavBar({ canWrite, onLogout, session, themeName, setThemeName, sidebarC
                 onCollapse={onToggleSidebar}
                 sections={visibleSections}
                 currentPath={location.pathname}
+                footer={accountMenu}
             />
-        </AppBar>
+        </>
     );
 }
 

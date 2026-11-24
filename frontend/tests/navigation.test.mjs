@@ -45,7 +45,7 @@ test('sidebar prioritizes the main tools and collapses secondary navigation', as
     }
 })
 
-test('collapsed desktop navigation is hidden and the header retains a reopen control', async () => {
+test('collapsed desktop navigation renders nothing and the sidebar footer hosts the account menu', async () => {
     const server = await createServer({
         configFile: false,
         optimizeDeps: { noDiscovery: true },
@@ -53,19 +53,20 @@ test('collapsed desktop navigation is hidden and the header retains a reopen con
     })
     try {
         const { default: SidebarNav } = await server.ssrLoadModule('/src/components/NavBar/SidebarNav.tsx')
-        const { default: Logo } = await server.ssrLoadModule('/src/components/NavBar/Logo.tsx')
-        const markup = renderToStaticMarkup(createElement(MemoryRouter, null,
+        const render = props => renderToStaticMarkup(createElement(MemoryRouter, null,
             createElement(SidebarNav, {
-                isDesktop: true, open: false, collapsed: true,
+                isDesktop: true, open: false, collapsed: false,
                 onClose() {}, onCollapse() {}, sections: [], currentPath: '/notes',
-            }),
-            createElement(Logo, {
-                onMenuClick() {}, drawerOpen: false, sidebarCollapsed: true,
+                footer: createElement('button', { 'aria-label': 'Account menu' }, 'test'),
+                ...props,
             }),
         ))
-        assert.doesNotMatch(markup, /aria-label="Main navigation"|aria-label="Collapse navigation"/)
-        assert.match(markup, /aria-label="Open navigation"/)
-        assert.match(markup, /aria-expanded="false"/)
+        assert.equal(render({ collapsed: true }), '')
+        const expanded = render({})
+        assert.match(expanded, /aria-label="Main navigation"/)
+        assert.match(expanded, /aria-label="Collapse navigation"/)
+        assert.match(expanded, /aria-label="Account menu"/)
+        assert.doesNotMatch(expanded, /<header/)
     } finally {
         await server.close()
     }

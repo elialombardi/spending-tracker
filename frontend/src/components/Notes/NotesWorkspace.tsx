@@ -10,6 +10,8 @@ import Divider from '@mui/material/Divider';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
+import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
+import Tooltip from '@mui/material/Tooltip';
 import Chip from '@mui/material/Chip';
 import Drawer from '@mui/material/Drawer';
 import IconButton from '@mui/material/IconButton';
@@ -25,6 +27,8 @@ import api from '../../api';
 import { Note, NoteFolderTree, NoteFolderType, NoteStyle, folderTypeLabels, getBookmarkURL } from '../../types/notes';
 import { NotesWorkspaceProps, defaultStyle, folderTypeAppearance } from './types';
 import { findFolderByID, findFolderFromParam, findNoteByID, reorderItems } from './utils/noteTreeUtils';
+import { formatFolderAsText } from './utils/folderExport';
+import { useSnackbar } from '../../hooks/useSnackbar';
 import { FolderActions } from './FolderActions';
 import { FolderDialog } from './FolderDialog';
 import { FolderList } from './FolderList';
@@ -34,6 +38,7 @@ import { NoteList } from './NoteList';
 
 export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
   const theme = useTheme();
+  const snackbar = useSnackbar();
   const [searchParams, setSearchParams] = useSearchParams();
   const folderParam = searchParams.get('folderId');
   const [previousFolderParam, setPreviousFolderParam] = useState(folderParam);
@@ -249,6 +254,16 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
     }
   }
 
+  async function handleCopyFolderAsText() {
+    if (!selectedFolder) return;
+    try {
+      await navigator.clipboard.writeText(formatFolderAsText(selectedFolder));
+      snackbar.success(`Copied ${selectedFolder.notes.length} ${selectedFolder.notes.length === 1 ? 'item' : 'items'} from "${selectedFolder.name}".`);
+    } catch {
+      snackbar.error('Could not copy to the clipboard.');
+    }
+  }
+
   async function handleToggleCompleted(note: Note) {
     if (!canWrite || isSaving) return;
     setIsSaving(true);
@@ -457,11 +472,25 @@ export default function NotesWorkspace({ canWrite }: NotesWorkspaceProps) {
                       </Stack>
                     </Box>
                   </Stack>
-                  {!isEditorOpen && (
-                    <Button variant="contained" startIcon={<NoteAddIcon />} onClick={startNewNote} disabled={!canWrite || isSaving || isLoading} sx={{ flexShrink: 0, borderRadius: '12px', px: 2.5, py: 1.2, fontWeight: 600 }}>
-                      {folderType === 'links' ? 'New bookmark' : folderType === 'diary' ? 'New note' : 'New item'}
-                    </Button>
-                  )}
+                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
+                    <Tooltip title="Copy this list as plain text">
+                      <span>
+                        <IconButton
+                          aria-label="Copy list as text"
+                          onClick={handleCopyFolderAsText}
+                          disabled={isLoading || selectedFolder.notes.length === 0}
+                          sx={{ border: 1, borderColor: 'divider', borderRadius: '12px', width: 44, height: 44 }}
+                        >
+                          <ContentCopyRoundedIcon fontSize="small" />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                    {!isEditorOpen && (
+                      <Button variant="contained" startIcon={<NoteAddIcon />} onClick={startNewNote} disabled={!canWrite || isSaving || isLoading} sx={{ flexShrink: 0, borderRadius: '12px', px: 2.5, py: 1.2, fontWeight: 600 }}>
+                        {folderType === 'links' ? 'New bookmark' : folderType === 'diary' ? 'New note' : 'New item'}
+                      </Button>
+                    )}
+                  </Stack>
                 </Stack>
                 <NoteList
                   folder={selectedFolder}

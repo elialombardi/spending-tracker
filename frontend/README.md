@@ -29,11 +29,12 @@ for admins; less-used pages are grouped under **More tools**. Existing role
 restrictions are unchanged. The drawer closes after selecting a page, with the
 close button, by tapping the backdrop, or with Escape. Links highlight the
 current page, and **More tools** expands automatically for its active page.
-Account, theme, device, and user-management actions remain in the account menu.
-On desktop, **Collapse navigation** hides the sidebar and gives its space back to
-the page. Use **Open navigation** in the header to restore it. This preference is
-saved in browser local storage and restored after reloading or reopening the app.
-The mobile drawer continues to open and close independently.
+Account, theme, device, and user-management actions live in the account menu at
+the bottom of the sidebar; there is no separate top bar. On desktop, **Collapse
+navigation** hides the sidebar and gives its space back to the page. Use the
+**Open navigation** button shown above the page content to restore it. This
+preference is saved in browser local storage and restored after reloading or
+reopening the app. The mobile drawer continues to open and close independently.
 
 ```sh
 npm run typecheck
@@ -136,6 +137,12 @@ silently selecting a different folder.
 For bookmarks, clicking the row opens its URL in a new tab. Use the pencil button
 to open the bookmark form (read-only for readers). Bookmarks with a missing or
 invalid URL cannot be opened, but their form remains accessible via the pencil.
+
+**Copy list as text** in the folder header copies the selected folder's direct
+items to the clipboard as plain text, headed by the folder name. Buy and task
+lists use `[x]`/`[ ]` checkboxes (tasks also include description and due date),
+bookmarks list title, URL, and description, and diary entries include their
+content. The button is disabled for empty folders and available to readers.
 
 The Notes workspace uses theme-aware cards, type-specific folder icons, item-count
 badges, and highlighted selection states.

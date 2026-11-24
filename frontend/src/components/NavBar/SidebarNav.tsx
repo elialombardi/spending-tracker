@@ -11,6 +11,7 @@ import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import Tooltip from '@mui/material/Tooltip';
+import { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import MobileNavMenu from './MobileNavMenu';
 import { NavSection } from '../../types/navigation';
@@ -25,9 +26,10 @@ interface SidebarNavProps {
   onCollapse: () => void;
   sections: NavSection[];
   currentPath: string;
+  footer?: ReactNode;
 }
 
-function SidebarNav({ isDesktop, open, onClose, collapsed, onCollapse, sections, currentPath }: SidebarNavProps) {
+function SidebarNav({ isDesktop, open, onClose, collapsed, onCollapse, sections, currentPath, footer }: SidebarNavProps) {
   const mainItems = sections.find(section => section.title === 'Main')?.items ?? [];
   const dropdownSections = sections.filter(section => section.title !== 'Main');
 
@@ -45,10 +47,12 @@ function SidebarNav({ isDesktop, open, onClose, collapsed, onCollapse, sections,
           maxWidth: 'calc(100vw - 32px)',
           boxSizing: 'border-box',
           bgcolor: 'background.paper',
+          display: 'flex',
+          flexDirection: 'column',
         },
       }}
     >
-      <Box id="app-navigation" component="nav" aria-label="Main navigation" sx={{ p: 2 }}>
+      <Box id="app-navigation" component="nav" aria-label="Main navigation" sx={{ p: 2, flex: 1, overflowY: 'auto' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minHeight: 48, mb: 2 }}>
           <Box
             component="img"
@@ -115,6 +119,11 @@ function SidebarNav({ isDesktop, open, onClose, collapsed, onCollapse, sections,
           ))}
         </List>
       </Box>
+      {footer && (
+        <Box sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+          {footer}
+        </Box>
+      )}
     </Drawer>
   );
 }

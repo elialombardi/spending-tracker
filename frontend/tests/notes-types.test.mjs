@@ -12,6 +12,39 @@ const serverOptions = {
     server: { middlewareMode: true, hmr: false, ws: false, watch: null },
 }
 
+test('folder text export formats each folder type and skips empty optional fields', async () => {
+    const server = await createServer(serverOptions)
+    try {
+        const { formatFolderAsText } = await server.ssrLoadModule('/src/components/Notes/utils/folderExport.ts')
+        assert.equal(formatFolderAsText({
+            name: 'Shopping', type: 'buy_list',
+            notes: [{ title: 'Milk', completed: true }, { title: ' Eggs ', completed: false }],
+        }), 'Shopping\n\n[x] Milk\n[ ] Eggs')
+        assert.equal(formatFolderAsText({
+            name: 'Chores', type: 'tasks_list',
+            notes: [
+                { title: 'Taxes', completed: false, description: 'Collect receipts', endDate: '2026-11-30' },
+                { title: 'Call mom', completed: true, description: null, endDate: null },
+                { title: 'Plain', completed: false, description: '  ', endDate: '' },
+            ],
+        }), 'Chores\n\n[ ] Taxes (Collect receipts — due 2026-11-30)\n[x] Call mom\n[ ] Plain')
+        assert.equal(formatFolderAsText({
+            name: 'Reading', type: 'links',
+            notes: [
+                { title: 'Docs', url: 'https://example.com', description: 'Read later' },
+                { title: 'No URL yet', url: '', description: null },
+            ],
+        }), 'Reading\n\nDocs — https://example.com\n  Read later\nNo URL yet')
+        assert.equal(formatFolderAsText({
+            name: 'Journal', type: 'diary',
+            notes: [{ title: 'Monday', content: 'Line one\nLine two' }, { title: 'Tuesday', content: '' }],
+        }), 'Journal\n\nMonday\nLine one\nLine two\n\nTuesday')
+        assert.equal(formatFolderAsText({ name: 'Empty', type: 'buy_list', notes: [] }), 'Empty')
+    } finally {
+        await server.close()
+    }
+})
+
 test('folder URLs restore root and nested selections without choosing a different folder for invalid links', async () => {
     const server = await createServer(serverOptions)
     try {

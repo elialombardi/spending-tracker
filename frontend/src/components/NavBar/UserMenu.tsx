@@ -80,50 +80,46 @@ function UserMenu({
       <Button
         aria-label="Account menu"
         onClick={handleClick}
-        variant="contained"
-        size="small"
+        variant="outlined"
+        fullWidth
         sx={{
           textTransform: 'none',
           fontWeight: 500,
           borderRadius: 2,
           display: 'flex',
           alignItems: 'center',
-          gap: 1,
-          minHeight: 44,
-          whiteSpace: 'nowrap', // Prevent text from wrapping
-          flexShrink: 0, // Prevent button from shrinking
+          justifyContent: 'flex-start',
+          gap: 1.5,
+          minHeight: 52,
+          px: 1.5,
+          borderColor: 'divider',
+          color: 'text.primary',
+          whiteSpace: 'nowrap',
         }}
       >
         <Avatar
           sx={{
-            width: 28,
-            height: 28,
-            fontSize: '0.75rem',
-            bgcolor: 'primary.dark',
+            width: 32,
+            height: 32,
+            fontSize: '0.8rem',
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
             flexShrink: 0,
           }}
         >
           {getInitials()}
         </Avatar>
         <Box sx={{
-          display: { xs: 'none', sm: 'flex' },
+          display: 'flex',
           flexDirection: 'column',
           alignItems: 'flex-start',
           lineHeight: 1.2,
-          flexShrink: 0,
+          minWidth: 0,
         }}>
-          <Typography variant="body2" sx={{
-            fontWeight: 500,
-            fontSize: '0.8rem',
-            whiteSpace: 'nowrap',
-          }}>
+          <Typography variant="body2" noWrap sx={{ fontWeight: 600, maxWidth: '100%' }}>
             {getDisplayName()}
           </Typography>
-          <Typography variant="caption" sx={{
-            opacity: 0.7,
-            fontSize: '0.65rem',
-            whiteSpace: 'nowrap',
-          }}>
+          <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: '100%' }}>
             {getRoleDisplay()}
           </Typography>
         </Box>
@@ -134,12 +130,12 @@ function UserMenu({
         open={open}
         onClose={handleClose}
         anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'right',
+          vertical: 'top',
+          horizontal: 'left',
         }}
         transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
+          vertical: 'bottom',
+          horizontal: 'left',
         }}
         slotProps={{
           paper: {
@@ -147,7 +143,7 @@ function UserMenu({
               minWidth: 260,
               maxWidth: 320,
               py: 1,
-              mt: 1,
+              mb: 1,
               borderRadius: 2,
               boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
               overflow: 'visible',
